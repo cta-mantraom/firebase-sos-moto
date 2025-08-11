@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public read access for memorial pages
+    match /user_profiles/{profileId} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+    
+    // Payments log - system only
+    match /payments_log/{paymentId} {
+      allow read: if false;
+      allow write: if false; // Only backend can write
+    }
+    
+    // Memorial pages
+    match /memorial_pages/{pageId} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+  }
+}

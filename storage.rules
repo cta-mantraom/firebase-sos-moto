@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // QR codes are publicly readable
+    match /qrcodes/{qrId} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+    
+    // Profile images (future feature)
+    match /profiles/{profileId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Only backend can write
+    }
+  }
+}

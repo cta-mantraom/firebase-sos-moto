@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SOS Motoboy Design System  Emergency Medical Information App */
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  
+  :root {
+    /* Base colors */
+    --background: 0 0% 98%;
+    --foreground: 220 13% 18%;
+
+    /* Card system */
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 18%;
+
+    /* Popover system */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 18%;
+
+    /* Emergency Red - Primary brand color */
+    --primary: 0 84% 55%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 0 84% 50%;
+    --primary-light: 0 84% 96%;
+
+    /* Medical Blue - Secondary for contacts */
+    --secondary: 210 100% 45%;
+    --secondary-foreground: 0 0% 98%;
+    --secondary-hover: 210 100% 40%;
+    --secondary-light: 210 100% 96%;
+
+    /* Success Green - For confirmations */
+    --success: 145 85% 35%;
+    --success-foreground: 0 0% 98%;
+    --success-light: 145 85% 96%;
+
+    /* Warning Orange - For plans */
+    --warning: 35 100% 55%;
+    --warning-foreground: 0 0% 98%;
+    --warning-light: 35 100% 96%;
+
+    /* Muted grays */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Accent */
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 13% 18%;
+
+    /* Destructive */
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Border and inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 0 84% 55%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-emergency: linear-gradient(135deg, hsl(0 84% 55%), hsl(0 84% 65%));
+    --gradient-medical: linear-gradient(135deg, hsl(210 100% 45%), hsl(210 100% 55%));
+    --gradient-success: linear-gradient(135deg, hsl(145 85% 35%), hsl(145 85% 45%));
+    --gradient-hero: linear-gradient(135deg, hsl(0 84% 55%), hsl(210 100% 45%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(220 14% 96%));
+
+    /* Shadows */
+    --shadow-emergency: 0 10px 30px -10px hsl(0 84% 55% / 0.3);
+    --shadow-medical: 0 10px 30px -10px hsl(210 100% 45% / 0.3);
+    --shadow-elegant: 0 20px 40px -15px hsl(220 13% 18% / 0.1);
+    --shadow-card: 0 4px 20px -4px hsl(220 13% 18% / 0.1);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter;
+  }
+}
+
+@layer components {
+  /* Emergency Button */
+  .btn-emergency {
+    @apply bg-[var(--gradient-emergency)] text-primary-foreground shadow-[var(--shadow-emergency)] 
+           hover:scale-105 transform transition-[var(--transition-smooth)] 
+           border-0 font-semibold;
+  }
+
+  /* Medical Button */
+  .btn-medical {
+    @apply bg-[var(--gradient-medical)] text-secondary-foreground shadow-[var(--shadow-medical)]
+           hover:scale-105 transform transition-[var(--transition-smooth)]
+           border-0 font-semibold;
+  }
+
+  /* Hero Section */
+  .hero-gradient {
+    @apply bg-[var(--gradient-hero)];
+  }
+
+  /* Card with medical theme */
+  .card-emergency {
+    @apply bg-card border-primary/20 shadow-[var(--shadow-card)] 
+           hover:shadow-[var(--shadow-elegant)] transition-[var(--transition-smooth)];
+  }
+
+  .card-medical {
+    @apply bg-card border-secondary/20 shadow-[var(--shadow-card)]
+           hover:shadow-[var(--shadow-elegant)] transition-[var(--transition-smooth)];
+  }
+
+  /* Floating animation */
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Pulse animation for emergency elements */
+  .pulse-emergency {
+    animation: pulse-emergency 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-emergency {
+    0%, 100% { 
+      box-shadow: 0 0 0 0 hsl(0 84% 55% / 0.4);
+    }
+    50% { 
+      box-shadow: 0 0 0 10px hsl(0 84% 55% / 0);
+    }
+  }
+}

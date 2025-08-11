@@ -35,6 +35,7 @@ export interface MemorialData {
     medical_conditions?: string[];
     health_plan?: string;
     preferred_hospital?: string;
+    medical_notes?: string;
     emergency_contacts: EmergencyContact[];
     plan_type: "basic" | "premium";
     created_at: string;

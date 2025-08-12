@@ -2,8 +2,6 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
-const db = admin.firestore();
-
 // Initialize AWS SES client
 const sesClient = new SESv2Client({
   region: process.env.AWS_SES_REGION || "sa-east-1",
@@ -13,18 +11,24 @@ const sesClient = new SESv2Client({
   },
 });
 
-export const sendConfirmationEmail = onDocumentCreated("email_queue/{emailId}", async (event) => {
-  const snap = event.data;
-  if (!snap) {
-    console.log("No data associated with the event");
-    return;
-  }
-  const emailData = snap.data();
-  const emailId = event.params.emailId;
-    
+export const sendConfirmationEmail = onDocumentCreated(
+  {
+    document: "email_queue/{emailId}",
+    region: "southamerica-east1",
+  },
+  async (event) => {
+    const db = admin.firestore();
+    const snap = event.data;
+    if (!snap) {
+      console.log("No data associated with the event");
+      return;
+    }
+    const emailData = snap.data();
+    const emailId = event.params.emailId;
+
     try {
       console.log(`Sending email to ${emailData.to}`);
-      
+
       // Create email HTML content
       const emailHtml = `
         <!DOCTYPE html>
@@ -50,16 +54,22 @@ export const sendConfirmationEmail = onDocumentCreated("email_queue/{emailId}", 
               <div class="content">
                 <h2>Olá ${emailData.name}!</h2>
                 <p>Seu cadastro no Moto SOS Guardian foi realizado com sucesso!</p>
-                <p><strong>Plano contratado:</strong> ${emailData.planType === "premium" ? "Premium" : "Básico"}</p>
+                <p><strong>Plano contratado:</strong> ${
+                  emailData.planType === "premium" ? "Premium" : "Básico"
+                }</p>
                 
                 <div class="qr-code">
                   <p><strong>Seu QR Code de emergência:</strong></p>
-                  <img src="${emailData.qrCodeData}" alt="QR Code" style="max-width: 200px;">
+                  <img src="${
+                    emailData.qrCodeData
+                  }" alt="QR Code" style="max-width: 200px;">
                 </div>
                 
                 <p>Acesse sua página memorial através do link:</p>
                 <p style="text-align: center;">
-                  <a href="${emailData.memorialUrl}" class="button">Acessar Minha Página</a>
+                  <a href="${
+                    emailData.memorialUrl
+                  }" class="button">Acessar Minha Página</a>
                 </p>
                 
                 <p>Mantenha este QR Code sempre com você durante suas viagens!</p>
@@ -72,7 +82,7 @@ export const sendConfirmationEmail = onDocumentCreated("email_queue/{emailId}", 
           </body>
         </html>
       `;
-      
+
       // Send email via AWS SES
       const command = new SendEmailCommand({
         FromEmailAddress: process.env.SES_FROM_EMAIL || "contact@memoryys.com",
@@ -98,26 +108,29 @@ export const sendConfirmationEmail = onDocumentCreated("email_queue/{emailId}", 
           },
         },
       });
-      
+
       const response = await sesClient.send(command);
-      
+
       // Update email status
       await db.collection("email_queue").doc(emailId).update({
         status: "sent",
         messageId: response.MessageId,
         sentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      
+
       console.log(`Email sent successfully to ${emailData.to}`);
-      
     } catch (error) {
       console.error(`Failed to send email to ${emailData.to}:`, error);
-      
+
       // Update email status to failed
-      await db.collection("email_queue").doc(emailId).update({
-        status: "failed",
-        error: (error as Error).message,
-        failedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      await db
+        .collection("email_queue")
+        .doc(emailId)
+        .update({
+          status: "failed",
+          error: (error as Error).message,
+          failedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
     }
-});
+  }
+);

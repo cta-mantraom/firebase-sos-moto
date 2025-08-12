@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "moto-sos-guardian-app"
-  }
+    "default": "moto-sos-guardian-app",
+    "production": "moto-sos-guardian-app-78272"
+  },
+  "targets": {},
+  "etags": {}
 }

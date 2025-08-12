@@ -1,18 +1,22 @@
 # Deployment Guide - Moto SOS Guardian App
 
-## Production Domain
-- **Primary Domain**: https://memoryys.com
+## Production Domains
+
+- **Main Website**: https://memoryys.com (Vercel)
+- **App Domain**: https://app.memoryys.com (Firebase Hosting)
 - **Contact Email**: contact@memoryys.com
 
 ## Environment Configuration
 
 ### Important Notice ⚠️
+
 Firebase's `functions.config()` is **DEPRECATED** and will stop working after December 31, 2025.
 We use `.env` files for all environment variables.
 
 ### Setting Up Environment Variables
 
 1. **Development Environment**:
+
    ```bash
    cd functions
    cp .env.example .env
@@ -40,18 +44,20 @@ AWS_SES_REGION=sa-east-1
 
 # URLs and Email
 SES_FROM_EMAIL=contact@memoryys.com
-FRONTEND_URL=https://memoryys.com
+FRONTEND_URL=https://app.memoryys.com
 ```
 
 ## Deployment Steps
 
 ### 1. Build Functions
+
 ```bash
 cd functions
 npm run build
 ```
 
 ### 2. Deploy to Firebase
+
 ```bash
 # Deploy everything
 firebase deploy
@@ -68,8 +74,8 @@ firebase deploy --only functions:functionName
 
 ### 3. Production Checklist
 
-- [ ] Domain DNS configured (memoryys.com → Firebase Hosting)
-- [ ] SSL certificate valid for memoryys.com
+- [ ] App domain DNS configured (app.memoryys.com → Firebase Hosting)
+- [ ] SSL certificate valid for app.memoryys.com
 - [ ] contact@memoryys.com verified in AWS SES
 - [ ] MercadoPago webhook URL configured
 - [ ] Environment variables set in .env
@@ -79,11 +85,14 @@ firebase deploy --only functions:functionName
 ## URLs by Environment
 
 ### Production
-- Frontend: https://memoryys.com
+
+- Main Website: https://memoryys.com (Vercel)
+- App Frontend: https://app.memoryys.com (Firebase Hosting)
 - Functions: https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net
 - Email: contact@memoryys.com
 
 ### Staging/Development
+
 - Frontend: https://moto-sos-guardian-app-78272.web.app
 - Functions: Same as production (use different project for true staging)
 - Email: Use test email address
@@ -97,16 +106,19 @@ firebase deploy --only functions:functionName
 ## Troubleshooting
 
 ### Function Deployment Fails
+
 - Check `.env` file exists and is properly formatted
 - Verify all required environment variables are set
 - Run `npm run build` before deploying
 
 ### Email Not Sending
+
 - Verify contact@memoryys.com is verified in AWS SES
 - Check AWS SES is in production mode (not sandbox)
 - Verify AWS credentials are correct
 
 ### Payment Webhook Not Working
+
 - Check MercadoPago webhook URL is correct
 - Verify MERCADOPAGO_WEBHOOK_SECRET matches
 - Check function logs for errors

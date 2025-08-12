@@ -1,19 +1,20 @@
-import * as functions from "firebase-functions";
+import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import * as QRCode from "qrcode";
+import QRCode from "qrcode";
 
 const db = admin.firestore();
-const storage = admin.storage();
 
-export const processPayment = functions.firestore
-  .document("pending_profiles/{profileId}")
-  .onUpdate(async (change, context) => {
-    const newData = change.after.data();
-    const previousData = change.before.data();
+export const processPayment = onDocumentUpdated("pending_profiles/{profileId}", async (event) => {
+  const newData = event.data?.after.data();
+  const previousData = event.data?.before.data();
     
-    // Only process when payment changes from pending to approved
-    if (previousData.status === "pending" && newData.paymentData?.status === "approved") {
-      const profileId = context.params.profileId;
+    if (!newData || !previousData) {
+      return;
+    }
+    
+  // Only process when payment changes from pending to approved
+  if (previousData.status === "pending" && newData.paymentData?.status === "approved") {
+    const profileId = event.params.profileId;
       const correlationId = newData.correlationId || crypto.randomUUID();
       
       try {
@@ -88,9 +89,9 @@ export const processPayment = functions.firestore
         // Update status to failed
         await db.collection("pending_profiles").doc(profileId).update({
           status: "failed",
-          error: error.message,
+          error: (error as Error).message,
           failedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-      }
     }
-  });
+  }
+});

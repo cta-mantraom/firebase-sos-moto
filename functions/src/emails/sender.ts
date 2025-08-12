@@ -1,11 +1,11 @@
-import * as functions from "firebase-functions";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 const db = admin.firestore();
 
 // Initialize AWS SES client
-const sesClient = new SESClient({
+const sesClient = new SESv2Client({
   region: process.env.AWS_SES_REGION || "sa-east-1",
   credentials: {
     accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
@@ -13,11 +13,14 @@ const sesClient = new SESClient({
   },
 });
 
-export const sendConfirmationEmail = functions.firestore
-  .document("email_queue/{emailId}")
-  .onCreate(async (snap, context) => {
-    const emailData = snap.data();
-    const emailId = context.params.emailId;
+export const sendConfirmationEmail = onDocumentCreated("email_queue/{emailId}", async (event) => {
+  const snap = event.data;
+  if (!snap) {
+    console.log("No data associated with the event");
+    return;
+  }
+  const emailData = snap.data();
+  const emailId = event.params.emailId;
     
     try {
       console.log(`Sending email to ${emailData.to}`);
@@ -113,8 +116,8 @@ export const sendConfirmationEmail = functions.firestore
       // Update email status to failed
       await db.collection("email_queue").doc(emailId).update({
         status: "failed",
-        error: error.message,
+        error: (error as Error).message,
         failedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-  });
+});

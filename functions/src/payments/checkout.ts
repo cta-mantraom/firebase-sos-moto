@@ -1,9 +1,9 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { MercadoPago } from "mercadopago";
+// MercadoPago SDK not needed - using REST API
 import { PaymentRequestSchema } from "../schemas";
 import { generateUniqueUrl } from "../utils/crypto";
-import * as cors from "cors";
+import cors from "cors";
 
 const corsHandler = cors({ origin: true });
 const db = admin.firestore();
@@ -34,20 +34,20 @@ export const createPaymentPreference = functions.https.onRequest((req, res) => {
       const validatedData = PaymentRequestSchema.parse(req.body);
       const { planType, userData } = validatedData;
 
-      // Initialize MercadoPago
-      const mercadopago = new MercadoPago({
-        accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-      });
-
       // Generate unique URL for memorial page
       const uniqueUrl = generateUniqueUrl();
       
       // Get frontend URL from environment
       const frontendUrl = process.env.FRONTEND_URL || "https://memoryys.com";
 
-      // Create payment preference
-      const preference = await mercadopago.preferences.create({
-        body: {
+      // Create payment preference using REST API
+      const preferenceResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           items: [
             {
               id: planType,
@@ -75,8 +75,10 @@ export const createPaymentPreference = functions.https.onRequest((req, res) => {
           statement_descriptor: "MOTO SOS",
           expires: true,
           expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        },
+        }),
       });
+      
+      const preference = await preferenceResponse.json();
 
       // Store pending profile data
       await db.collection("pending_profiles").doc(uniqueUrl).set({

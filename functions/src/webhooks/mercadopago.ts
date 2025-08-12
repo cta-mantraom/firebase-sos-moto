@@ -2,7 +2,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { MercadoPagoWebhookSchema } from "../schemas";
 import { validateHMACSignature } from "../utils/crypto";
-import { MercadoPago } from "mercadopago";
+// MercadoPago not needed - using REST API directly
 
 const db = admin.firestore();
 
@@ -34,7 +34,6 @@ export const mercadopagoWebhook = functions.https.onRequest(async (req, res) => 
     }
 
     // Validate signature
-    const rawBody = JSON.stringify(req.body);
     const isValid = validateHMACSignature(requestId, signature, webhookSecret);
     
     if (!isValid) {
@@ -59,12 +58,13 @@ export const mercadopagoWebhook = functions.https.onRequest(async (req, res) => 
       return;
     }
 
-    // Get payment details from MercadoPago
-    const mercadopago = new MercadoPago({
-      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
+    // Get payment details from MercadoPago REST API
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${webhookData.data.id}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+      },
     });
-
-    const payment = await mercadopago.payment.get(Number(webhookData.data.id));
+    const payment = await paymentResponse.json();
     
     // Log payment to Firestore
     await db.collection("payments_log").doc(webhookData.data.id).set({

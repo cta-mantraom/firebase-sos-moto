@@ -74,7 +74,7 @@ export const createPaymentPreference = onRequest(
             },
             auto_return: "approved",
             external_reference: uniqueUrl,
-            notification_url: `${process.env.FUNCTIONS_URL}/handleMercadoPagoWebhook`,
+            notification_url: `https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net/handleMercadoPagoWebhook`,
             statement_descriptor: "MOTO SOS",
             expires: true,
             expiration_date_to: new Date(

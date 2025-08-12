@@ -8,3 +8,13 @@ typings/
 # Node.js dependency directory
 node_modules/
 *.local
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.production
+.env.production.example
+.env.example
+
+# Keep the example file
+!.env.example

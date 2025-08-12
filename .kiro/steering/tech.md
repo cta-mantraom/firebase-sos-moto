@@ -53,6 +53,10 @@ npm run build        # Build TypeScript
 npm run serve        # Serve functions locally
 npm run deploy       # Deploy to Firebase
 npm run logs         # View function logs
+
+# Environment Variables (NEW METHOD - post 2025)
+# Create .env file in functions/ directory with variables
+# DO NOT use: firebase functions:config:set (deprecated!)
 ```
 
 ### Firebase Local Development
@@ -65,6 +69,12 @@ firebase deploy --only hosting     # Deploy hosting only
 firebase deploy --only functions   # Deploy functions only
 firebase deploy --only firestore   # Deploy Firestore rules
 firebase emulators:start           # Start all emulators
+
+# Environment Setup (IMPORTANT!)
+cd functions
+cp .env.example .env  # Copy template
+# Edit .env with your actual values
+# NEVER commit .env file!
 ```
 
 ## Key Dependencies
@@ -79,3 +89,25 @@ firebase emulators:start           # Start all emulators
 - **uuid** - UUID generation
 - **date-fns** - Date utilities
 - **zod** - Schema validation
+
+## Production Configuration
+
+### Environment Variables
+⚠️ **CRITICAL**: `functions.config()` is deprecated and will stop working after Dec 31, 2025.
+
+Use `.env` files in `functions/` directory:
+```env
+MERCADOPAGO_ACCESS_TOKEN=your_token
+MERCADOPAGO_WEBHOOK_SECRET=your_secret
+AWS_SES_ACCESS_KEY_ID=your_key_id  # Note: _ID suffix required!
+AWS_SES_SECRET_ACCESS_KEY=your_secret
+AWS_SES_REGION=sa-east-1
+SES_FROM_EMAIL=contact@memoryys.com
+FRONTEND_URL=https://memoryys.com
+```
+
+### Production URLs
+- **Domain**: https://memoryys.com
+- **Email**: contact@memoryys.com
+- **Staging**: https://moto-sos-guardian-app-78272.web.app
+- **Functions**: https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net

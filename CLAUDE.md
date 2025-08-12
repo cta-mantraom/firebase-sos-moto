@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the Moto SOS Guardian App - a payment processing and profile management system built with Supabase Edge Functions, TypeScript, and React. The system handles MercadoPago payment integration, user profile creation, and QR code generation for emergency contact information.
+This is the Moto SOS Guardian App - a payment processing and profile management system built with Firebase Cloud Functions, TypeScript, and React. The system handles MercadoPago payment integration, user profile creation, and QR code generation for emergency contact information.
 
 ## Critical Rules for Development
 
@@ -12,15 +12,46 @@ This is the Moto SOS Guardian App - a payment processing and profile management 
 
 - **NEVER use `any`** type in production code
 - **DO NOT modify, create, or delete** any files in `tests/` or `test-integration/` directories
-- **DO NOT use `import_map.json`** in Supabase Functions - it causes compatibility issues
+- **DO NOT use `import_map.json`** in Cloud Functions - it causes compatibility issues
+- **DO NOT use `functions.config()`** - deprecated and will stop working after Dec 31, 2025
 
 ### ✅ Required Practices
 
 - Use `unknown` **ONLY** at system boundaries (external data entry points) before validation
 - Immediately validate all external data with Zod schemas
 - After validation, work only with strongly typed data
-- Each Edge Function requiring npm packages must have its own `.npmrc` file
-- Each Edge Function must have its own `deno.json` configuration
+- Each Cloud Function must be properly exported from `functions/src/index.ts`
+- Use Firebase Admin SDK for server-side operations
+- Use `.env` files for environment variables (NOT functions.config())
+
+### 🎯 Type Safety Strategy
+
+#### How we removed `any` types:
+
+1. **Firebase REST API responses**: Changed from `any` to `unknown`, then cast to specific interface:
+   ```typescript
+   // Before: (v: any) => v.stringValue
+   // After:
+   (v: unknown) => {
+     const value = v as { stringValue?: string };
+     return value.stringValue || '';
+   }
+   ```
+
+2. **Generic API responses**: Created typed interface with generic `T = unknown`:
+   ```typescript
+   interface APIResponse<T = unknown> {
+     success: boolean;
+     data?: T;
+     // ...
+   }
+   ```
+
+3. **Logger data**: Changed from `[key: string]: any` to `[key: string]: unknown`
+
+4. **Payment userData**: Changed from `any` to specific `Profile` type
+
+**Rule**: Use `unknown` for external data → validate with Zod → work with typed data
 
 ## Development Commands
 
@@ -33,24 +64,29 @@ npm run lint       # Run ESLint
 npm run preview    # Preview production build
 ```
 
-### Supabase Edge Functions
+### Firebase Cloud Functions
 ```bash
-supabase functions serve               # Serve all functions locally
-supabase functions serve <function>   # Serve specific function
-supabase functions deploy              # Deploy all functions
-supabase functions deploy <function>  # Deploy specific function
+cd functions
+npm run serve        # Serve functions locally with emulator
+npm run shell        # Interactive shell for testing functions
+npm run deploy       # Deploy all functions to Firebase
+firebase deploy --only functions:<name>  # Deploy specific function
+
+# Environment Variables (NEW METHOD - post 2025)
+# Create .env file in functions/ directory with variables
+# DO NOT use: firebase functions:config:set (deprecated!)
 ```
 
 ### Linting & Type Checking
 ```bash
 npm run lint                          # Lint frontend code
-deno lint supabase/functions/         # Lint Edge Functions
-deno check supabase/functions/**/*.ts # Type check Edge Functions
+cd functions && npm run lint         # Lint Cloud Functions
+cd functions && npm run build        # Type check Cloud Functions
 ```
 
 ## Architecture Overview
 
-### Edge Functions Flow
+### Cloud Functions Flow
 ```
 1. mercadopago-checkout → Creates payment preference
 2. mercadopago-webhook → Receives payment notifications
@@ -75,21 +111,43 @@ deno check supabase/functions/**/*.ts # Type check Edge Functions
 External Data (unknown) → Zod Validation → Typed Data → Business Logic
 ```
 
-## Working with Edge Functions
+## Working with Cloud Functions
 
-### Environment Variables
-Each function validates its required environment variables using specific schemas:
-- `CheckoutEnv` for mercadopago-checkout
-- `WebhookEnv` for mercadopago-webhook  
-- `ProcessorEnv` for final-processor
-- `EmailEnv` for email-sender
+### Environment Variables (Updated Method)
 
-### Adding a New Edge Function
-1. Create directory: `supabase/functions/your-function/`
-2. Add `index.ts` with Deno.serve()
-3. Create `deno.json` configuration
-4. Add `.npmrc` if using private npm packages
-5. Update `supabase/config.toml` with JWT verification settings
+⚠️ **IMPORTANT**: Firebase's `functions.config()` is deprecated and will stop working after Dec 31, 2025.
+
+#### New Method (Required):
+1. Create `.env` file in `functions/` directory
+2. Add your environment variables:
+```env
+# functions/.env
+MERCADOPAGO_ACCESS_TOKEN=your_token
+MERCADOPAGO_WEBHOOK_SECRET=your_secret
+AWS_SES_ACCESS_KEY_ID=your_key_id  # Note: _ID suffix is required!
+AWS_SES_SECRET_ACCESS_KEY=your_secret
+AWS_SES_REGION=sa-east-1
+SES_FROM_EMAIL=contact@memoryys.com  # Production email
+FRONTEND_URL=https://memoryys.com     # Production URL
+FRONTEND_URL_DEV=https://moto-sos-guardian-app-78272.web.app  # Dev/Staging
+FUNCTIONS_URL=https://region-project.cloudfunctions.net
+FIREBASE_PROJECT_ID=your-project-id
+```
+3. Access in code using `process.env.VARIABLE_NAME`
+
+#### Old Method (Deprecated - DO NOT USE):
+```bash
+# DON'T DO THIS - Will stop working after Dec 31, 2025:
+firebase functions:config:set key=value  # ❌ DEPRECATED
+```
+
+### Adding a New Cloud Function
+1. Add function to `functions/src/index.ts`
+2. Export it using appropriate trigger type:
+   - `functions.https.onRequest()` for HTTP endpoints
+   - `functions.firestore.document().onCreate()` for Firestore triggers
+   - `functions.pubsub.schedule()` for scheduled functions
+3. Deploy with `firebase deploy --only functions:<name>`
 
 ### Common Patterns
 
@@ -118,9 +176,25 @@ await withRetry(
 );
 ```
 
-## MCP Server Configuration
+## Firebase Configuration
 
-The project uses a Supabase MCP server configured in `.kiro/settings/mcp.json`. This provides direct access to Supabase operations within the development environment.
+The project is configured to use Firebase with project ID `moto-sos-guardian-app-78272`. All Firebase services (Firestore, Functions, Storage, Hosting) are configured in `firebase.json`.
+
+### Project URLs:
+
+#### Production:
+- **Domain**: https://memoryys.com
+- **Email**: contact@memoryys.com
+- **Functions**: https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net
+
+#### Development/Staging:
+- **Firebase Hosting**: https://moto-sos-guardian-app-78272.web.app
+- **Firebase Console**: https://console.firebase.google.com/project/moto-sos-guardian-app-78272
+
+#### Important Notes:
+- Production domain (memoryys.com) should be configured with proper DNS pointing
+- Firebase Hosting URL is used for staging/development
+- All emails are sent from contact@memoryys.com
 
 ## Database Schema
 

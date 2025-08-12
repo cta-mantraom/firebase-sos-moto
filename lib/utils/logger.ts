@@ -4,7 +4,7 @@ interface LogData {
     operation?: string;
     duration?: number;
     error?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 const SENSITIVE_FIELDS = [
@@ -13,10 +13,11 @@ const SENSITIVE_FIELDS = [
     'access_token', 'webhook_secret', 'authorization'
 ];
 
-function maskSensitiveData(data: any): any {
+function maskSensitiveData(data: unknown): unknown {
     if (typeof data !== 'object' || data === null) return data;
 
-    const masked = { ...data };
+    const objData = data as Record<string, unknown>;
+    const masked = { ...objData };
     for (const field of SENSITIVE_FIELDS) {
         if (field in masked) {
             masked[field] = '***MASKED***';

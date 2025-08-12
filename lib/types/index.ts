@@ -7,7 +7,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
 export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
 
 // API Response types
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
     success: boolean;
     data?: T;
     error?: string;
@@ -20,7 +20,7 @@ export interface ErrorResponse {
     error: string;
     correlationId: string;
     timestamp: string;
-    details?: any;
+    details?: unknown;
 }
 
 // Memorial/Profile specific types
@@ -65,7 +65,7 @@ export interface PaymentPreference {
     phone: string;
     planType: 'basic' | 'premium';
     uniqueUrl: string;
-    userData: any;
+    userData: Profile;
 }
 
 // Helper functions for response creation
@@ -78,7 +78,7 @@ export function createSuccessResponse<T>(data: T, correlationId: string): APIRes
     };
 }
 
-export function createErrorResponse(error: string, correlationId: string, details?: any): ErrorResponse {
+export function createErrorResponse(error: string, correlationId: string, details?: unknown): ErrorResponse {
     return {
         success: false,
         error,

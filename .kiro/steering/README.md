@@ -18,6 +18,7 @@
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **DO NOT use `functions.config()`** - deprecated e vai parar de funcionar após 31/12/2025
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -25,6 +26,7 @@
 - Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
+- Usar `.env` files para variáveis de ambiente (NÃO functions.config())
 
 ## 🔍 Detalhes Técnicos e Justificativas Importantes
 
@@ -66,8 +68,10 @@ Isso facilita o deploy independente, controle de dependências e segurança.
 
 ## 🚀 Ações IMEDIATAS Recomendadas
 
-1. **Eliminar todo código do supabase em produção imediatamente ou teste**
-2. **Revisar todos os usos de `any`**, removendo-os e substituindo por validação correta
+1. **✅ CONCLUÍDO: Eliminar todo código do supabase em produção**
+2. **✅ CONCLUÍDO: Revisar todos os usos de `any`**
+3. **✅ CONCLUÍDO: Migração para .env (functions.config deprecado)**
+4. **✅ CONCLUÍDO: URLs de produção configuradas (memoryys.com)**
 
 ---
 
@@ -87,6 +91,35 @@ Isso facilita o deploy independente, controle de dependências e segurança.
 > **Manutenção da estrutura modular, clara e possível de deploy na vercel**
 >
 > **O cumprimento estrito destas regras é FUNDAMENTAL para garantir a qualidade, segurança e manutenibilidade do sistema.**
+
+---
+
+## 🔧 Environment Variables & Configuration
+
+### ⚠️ IMPORTANTE: functions.config() DEPRECADO
+Firebase's `functions.config()` será descontinuado em **31/12/2025**. Usamos `.env` files agora.
+
+### Configuração Atual (.env):
+```env
+# MercadoPago
+MERCADOPAGO_ACCESS_TOKEN=token_produção
+MERCADOPAGO_WEBHOOK_SECRET=secret_webhook
+
+# AWS SES
+AWS_SES_ACCESS_KEY_ID=key_id     # Note: _ID é obrigatório!
+AWS_SES_SECRET_ACCESS_KEY=secret_key
+AWS_SES_REGION=sa-east-1
+
+# URLs Produção
+SES_FROM_EMAIL=contact@memoryys.com
+FRONTEND_URL=https://memoryys.com
+```
+
+### URLs por Ambiente:
+- **Produção**: https://memoryys.com
+- **Email**: contact@memoryys.com  
+- **Staging**: https://moto-sos-guardian-app-78272.web.app
+- **Functions**: https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net
 
 ---
 

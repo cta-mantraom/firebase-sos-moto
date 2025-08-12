@@ -7,7 +7,8 @@ export class FirebaseService {
       logInfo('Fetching profile via REST API', { correlationId, uniqueUrl });
       
       // Use Firebase REST API instead of Admin SDK for Vercel Edge Functions
-      const projectId = process.env.FIREBASE_PROJECT_ID;
+      // Project ID is hardcoded for this specific project
+      const projectId = 'moto-sos-guardian-app-78272';
       const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/user_profiles/${uniqueUrl}`;
       
       const response = await fetch(url, {
@@ -34,14 +35,34 @@ export class FirebaseService {
         name: fields.name?.stringValue || '',
         phone: fields.phone?.stringValue || '',
         blood_type: fields.bloodType?.stringValue || null,
-        allergies: fields.allergies?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
-        medications: fields.medications?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
-        medical_conditions: fields.medicalConditions?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
-        emergency_contacts: fields.emergencyContacts?.arrayValue?.values?.map((v: any) => ({
-          name: v.mapValue?.fields?.name?.stringValue || '',
-          phone: v.mapValue?.fields?.phone?.stringValue || '',
-          relationship: v.mapValue?.fields?.relationship?.stringValue || '',
-        })) || [],
+        allergies: fields.allergies?.arrayValue?.values?.map((v: unknown) => {
+          const value = v as { stringValue?: string };
+          return value.stringValue || '';
+        }).filter(Boolean) || [],
+        medications: fields.medications?.arrayValue?.values?.map((v: unknown) => {
+          const value = v as { stringValue?: string };
+          return value.stringValue || '';
+        }).filter(Boolean) || [],
+        medical_conditions: fields.medicalConditions?.arrayValue?.values?.map((v: unknown) => {
+          const value = v as { stringValue?: string };
+          return value.stringValue || '';
+        }).filter(Boolean) || [],
+        emergency_contacts: fields.emergencyContacts?.arrayValue?.values?.map((v: unknown) => {
+          const contact = v as {
+            mapValue?: {
+              fields?: {
+                name?: { stringValue?: string };
+                phone?: { stringValue?: string };
+                relationship?: { stringValue?: string };
+              };
+            };
+          };
+          return {
+            name: contact.mapValue?.fields?.name?.stringValue || '',
+            phone: contact.mapValue?.fields?.phone?.stringValue || '',
+            relationship: contact.mapValue?.fields?.relationship?.stringValue || '',
+          };
+        }) || [],
         age: parseInt(fields.age?.integerValue || '0'),
         email: fields.email?.stringValue || '',
         health_plan: fields.healthPlan?.stringValue || null,

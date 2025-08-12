@@ -4,10 +4,15 @@
 
 ```
 ├── src/                    # Frontend React application
-├── api/                    # Vercel API routes (TypeScript)
-├── supabase/              # Supabase configuration and Edge Functions
+├── api/                    # Vercel API routes (TypeScript) 
+├── functions/              # Firebase Cloud Functions
+│   ├── src/                # TypeScript source
+│   ├── .env                # Environment variables (NOT committed)
+│   └── .env.example        # Template for env vars
 ├── lib/                   # Shared utilities and configurations
 ├── public/                # Static assets
+├── firebase.json          # Firebase configuration
+├── firestore.rules        # Firestore security rules
 └── .kiro/                 # Kiro IDE configuration and steering
 ```
 
@@ -95,9 +100,10 @@ lib/
 
 ### Service Organization
 
-- External services (MercadoPago, AWS SES, QStash) in `services/external/`
-- Internal business logic in `services/internal/`
+- External services (MercadoPago, AWS SES) in dedicated modules
+- Internal business logic in `functions/src/`
 - Clear separation of concerns
+- Environment variables in `.env` files (NOT functions.config())
 
 ### Frontend Routing
 
@@ -115,7 +121,8 @@ lib/
 
 - **NEVER modify anything in `tests/` or `test-integration/` directories**
 - **NEVER use `any` type in production code**
-- **NEVER use `import_map.json` in Supabase Functions**
+- **NEVER use `import_map.json` in Cloud Functions**
+- **NEVER use `functions.config()` - DEPRECATED after Dec 31, 2025**
 
 ### Required Practices
 
@@ -124,3 +131,5 @@ lib/
 - Use TypeScript path aliases: `@/` for `src/`, `@/lib/` for `lib/`
 - Follow modular architecture with clear separation of concerns
 - Use Firestore security rules for data access control
+- Use `.env` files for environment variables (NO functions.config())
+- Never commit `.env` files - use `.env.example` as template

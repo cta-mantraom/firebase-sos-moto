@@ -71,6 +71,7 @@ export class FirebaseService {
         plan_type: (fields.planType?.stringValue as 'basic' | 'premium') || 'basic',
         created_at: fields.createdAt?.timestampValue || new Date().toISOString(),
         qr_code_data: fields.qrCodeData?.stringValue || null,
+        qr_code_image_url: fields.qrCodeImageUrl?.stringValue || null,
       };
       
       logInfo('Profile fetched successfully from Firebase', { correlationId, uniqueUrl });

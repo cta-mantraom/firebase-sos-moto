@@ -41,6 +41,7 @@ export interface MemorialData {
     created_at: string;
     unique_url?: string;
     qr_code_data?: string;
+    qr_code_image_url?: string;
 }
 
 export interface EmergencyContact {

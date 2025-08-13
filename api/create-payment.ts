@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import QRCode from 'qrcode';
@@ -13,6 +14,7 @@ if (!getApps().length) {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
+    storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
   });
 }
 
@@ -24,6 +26,31 @@ const sesClient = new SESv2Client({
     secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
   },
 });
+
+// Firebase Storage upload function for QR code images
+async function uploadQRCodeToStorage(imageBuffer: Buffer, profileId: string): Promise<string> {
+  try {
+    const bucket = getStorage().bucket();
+    const fileName = `qr-codes/${profileId}.png`;
+    const file = bucket.file(fileName);
+    
+    await file.save(imageBuffer, {
+      metadata: {
+        contentType: 'image/png',
+        cacheControl: 'public, max-age=31536000', // 1 year cache
+      },
+    });
+    
+    // Make file publicly readable
+    await file.makePublic();
+    
+    // Return public URL
+    return `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+  } catch (error) {
+    console.error('Error uploading QR code to Firebase Storage:', error);
+    throw new Error('Failed to upload QR code image');
+  }
+}
 
 // Validation Schema
 const PaymentSchema = z.object({
@@ -187,13 +214,22 @@ export async function processApprovedPayment(profileId: string, paymentData: unk
       width: 300,
       margin: 2,
     });
+    
+    // Generate QR code as image buffer and upload to Firebase Storage
+    const qrCodeImageBuffer = await QRCode.toBuffer(memorialUrl, {
+      width: 300,
+      margin: 2,
+      type: 'png',
+    });
+    const qrCodeImageUrl = await uploadQRCodeToStorage(qrCodeImageBuffer, profileId);
 
     // Create user profile
     const userProfile = {
       uniqueUrl: profileId,
       ...pendingData,
       paymentId: payment.id,
-      qrCodeData: qrCodeDataUrl,
+      qrCodeData: qrCodeDataUrl,          // Data URL for inline display
+      qrCodeImageUrl: qrCodeImageUrl,     // Public image URL from Firebase Storage
       memorialUrl,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -205,7 +241,8 @@ export async function processApprovedPayment(profileId: string, paymentData: unk
       db.collection("memorial_pages").doc(profileId).set({
         profileId,
         memorialUrl,
-        qrCodeData: qrCodeDataUrl,
+        qrCodeData: qrCodeDataUrl,          // Data URL for inline display
+        qrCodeImageUrl: qrCodeImageUrl,     // Public image URL from Firebase Storage
         isActive: true,
         createdAt: new Date(),
       }),
@@ -228,7 +265,8 @@ export async function processApprovedPayment(profileId: string, paymentData: unk
       await redis.setex(`qr_code:${profileId}`, 86400, JSON.stringify({
         profileId,
         memorialUrl,
-        qrCodeData: qrCodeDataUrl,
+        qrCodeData: qrCodeDataUrl,          // Data URL for inline display
+        qrCodeImageUrl: qrCodeImageUrl,     // Public image URL from Firebase Storage
         name: pendingData.name,
         cached_at: new Date().toISOString(),
       }));

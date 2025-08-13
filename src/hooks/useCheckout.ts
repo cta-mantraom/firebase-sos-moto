@@ -45,13 +45,31 @@ export const useCheckout = (): UseCheckoutReturn => {
         timestamp: new Date().toISOString()
       });
 
-      const response = await fetch('/api/create-payment', {
+      const response = await fetch('https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net/createCheckout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Correlation-ID': correlationId // Correlation ID conforme documentação
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          planType: data.selectedPlan,
+          userData: {
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            age: data.age,
+            bloodType: data.bloodType,
+            allergies: data.allergies || [],
+            medications: data.medications || [],
+            medicalConditions: data.medicalConditions || [],
+            healthPlan: data.healthPlan,
+            preferredHospital: data.preferredHospital,
+            medicalNotes: data.medicalNotes,
+            emergencyContacts: data.emergencyContacts,
+            planType: data.selectedPlan,
+            planPrice: data.selectedPlan === 'basic' ? 55 : 85
+          }
+        }),
       });
 
       if (!response.ok) {

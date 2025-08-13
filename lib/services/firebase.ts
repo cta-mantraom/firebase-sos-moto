@@ -1,5 +1,5 @@
-import { MemorialData } from '../types/index.js';
-import { logInfo, logError } from '../utils/logger.js';
+import { MemorialData } from '../types/index';
+import { logInfo, logError } from '../utils/logger';
 
 export class FirebaseService {
   async getProfile(uniqueUrl: string, correlationId: string): Promise<MemorialData | null> {

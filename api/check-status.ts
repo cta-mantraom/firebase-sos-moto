@@ -1,36 +1,26 @@
-// Vercel Edge Function para verificar status do processamento
-export const config = {
-  runtime: 'edge',
-};
+// Vercel Function para verificar status do processamento
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS'
-};
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const uniqueUrl = req.query.id as string;
 
-export default async function handler(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const uniqueUrl = url.searchParams.get('id');
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return res.status(200).end();
   }
 
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     if (!uniqueUrl || typeof uniqueUrl !== 'string') {
-      return new Response(JSON.stringify({ error: 'O parâmetro "id" é obrigatório' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return res.status(400).json({ error: 'O parâmetro "id" é obrigatório' });
     }
 
     // Use as variáveis de ambiente corretas do Vercel
@@ -39,10 +29,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!redisUrl || !redisToken) {
       console.error('Variáveis de ambiente do Redis não encontradas');
-      return new Response(JSON.stringify({ error: 'Configuração interna do servidor incompleta' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return res.status(500).json({ error: 'Configuração interna do servidor incompleta' });
     }
 
     // Status check initiated
@@ -55,32 +42,20 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!redisResponse.ok) {
       console.error('Erro ao conectar com Redis:', redisResponse.status);
-      return new Response(JSON.stringify({ status: 'processando' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return res.status(200).json({ status: 'processando' });
     }
 
     const redisData = await redisResponse.json();
     // Redis response processed
 
     if (redisData.result) {
-      return new Response(JSON.stringify({ status: 'pronto' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return res.status(200).json({ status: 'pronto' });
     } else {
-      return new Response(JSON.stringify({ status: 'processando' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return res.status(200).json({ status: 'processando' });
     }
 
   } catch (error) {
     console.error('Erro em check-status:', error);
-    return new Response(JSON.stringify({ status: 'processando' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return res.status(200).json({ status: 'processando' });
   }
 }

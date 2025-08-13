@@ -1,6 +1,6 @@
 // lib/types/index.ts - Centralized type definitions
 import { z } from 'zod';
-import { ProfileSchema, CreatePaymentSchema } from '../utils/validation.js';
+import { ProfileSchema, CreatePaymentSchema } from '../utils/validation';
 
 // Core types from validation schemas
 export type Profile = z.infer<typeof ProfileSchema>;

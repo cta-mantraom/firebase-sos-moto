@@ -13,8 +13,8 @@ const SENSITIVE_FIELDS = [
     'access_token', 'webhook_secret', 'authorization'
 ];
 
-function maskSensitiveData(data: unknown): unknown {
-    if (typeof data !== 'object' || data === null) return data;
+function maskSensitiveData(data: unknown): Record<string, unknown> {
+    if (typeof data !== 'object' || data === null) return {};
 
     const objData = data as Record<string, unknown>;
     const masked = { ...objData };

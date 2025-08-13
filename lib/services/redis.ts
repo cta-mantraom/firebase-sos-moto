@@ -1,6 +1,6 @@
 // lib/services/redis.ts - Redis cache client (Node.js environment)
-import { logInfo, logError, logWarning } from '../utils/logger.js';
-import { env } from '../config/env.js';
+import { logInfo, logError, logWarning } from '../utils/logger';
+import { env } from '../config/env';
 
 class RedisService {
     private baseUrl: string;

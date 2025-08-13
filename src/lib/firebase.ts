@@ -1,8 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { getStorage } from "firebase/storage";
-import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,15 +13,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize services
+// Only Firestore needed for frontend
 export const db = getFirestore(app);
-export const functions = getFunctions(app);
-export const storage = getStorage(app);
-export const auth = getAuth(app);
-
-// Connect to emulators in development
-if (import.meta.env.DEV) {
-  connectFunctionsEmulator(functions, "localhost", 5001);
-}
 
 export default app;

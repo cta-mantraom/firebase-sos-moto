@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Payment } from '@mercadopago/sdk-react';
 import { initMercadoPago } from '@mercadopago/sdk-react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+// Removed Firebase Functions - using Vercel API directly
 import { toast } from '@/hooks/use-toast';
 import { UserProfile } from '@/schemas/profile';
 
@@ -22,26 +21,18 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Initialize MercadoPago SDK
-    const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
-    if (publicKey) {
-      initMercadoPago(publicKey, { locale: 'pt-BR' });
-    }
-
-    // Create payment preference
-    createPreference();
-  }, [userData, planType]);
-
-  const createPreference = async () => {
+  const createPreference = React.useCallback(async () => {
     try {
       setLoading(true);
       
-      // Call Firebase Function to create preference
-      const createCheckout = httpsCallable(functions, 'createCheckout');
-      const result = await createCheckout({
-        planType,
-        userData: {
+      // Call Vercel API to create preference
+      const response = await fetch('/api/create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selectedPlan: planType,
           name: userData.name,
           email: userData.email,
           phone: userData.phone,
@@ -54,11 +45,14 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           preferredHospital: userData.preferredHospital,
           medicalNotes: userData.medicalNotes,
           emergencyContacts: userData.emergencyContacts,
-          planPrice: planType === 'premium' ? 85.00 : 55.00,
-        },
+        }),
       });
 
-      const data = result.data as { preferenceId: string; checkoutUrl: string };
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to create payment`);
+      }
+
+      const data = await response.json();
       setPreferenceId(data.preferenceId);
       
     } catch (error) {
@@ -72,7 +66,18 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [planType, userData, onError]);
+
+  useEffect(() => {
+    // Initialize MercadoPago SDK
+    const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
+    if (publicKey) {
+      initMercadoPago(publicKey, { locale: 'pt-BR' });
+    }
+
+    // Create payment preference
+    createPreference();
+  }, [createPreference]);
 
   if (loading) {
     return (

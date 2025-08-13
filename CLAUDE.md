@@ -91,26 +91,65 @@ cd functions && npm run build        # Type check Cloud Functions
 
 ## Architecture Overview
 
-### Cloud Functions Flow
+### Production Flow (memoryys.com)
 
 ```
-1. mercadopago-checkout → Creates payment preference
-2. mercadopago-webhook → Receives payment notifications
-   ↓ (validates HMAC signature)
-   ↓ (delegates to processor via QStash)
-3. final-processor → Processes approved payments
-   ↓ (creates user profile)
-   ↓ (enqueues email job)
-4. email-sender → Sends confirmation emails with QR code
+1. Frontend (React + MercadoPago SDK) → Collects user data
+2. /api/create-payment → Creates MercadoPago preference + saves pending_profile
+3. MercadoPago → /api/mercadopago-webhook → Validates payment
+4. Webhook → QStash → Enqueues profile processing job  
+5. QStash → /api/process-profile → Creates profile + generates QR code
+6. process-profile → Redis → Caches QR code for fast access
+7. process-profile → QStash → Enqueues email job
+8. QStash → /api/send-email → AWS SES → Sends confirmation email
 ```
+
+### Service Responsibilities
+
+**🔵 Frontend (React)**
+- User data collection with form validation
+- MercadoPago SDK integration (`@mercadopago/sdk-react`)
+- Calls `/api/create-payment` only
+
+**🟢 Vercel APIs (`memoryys.com/api/*`)**
+- `create-payment`: MercadoPago preference + Firestore pending_profile
+- `mercadopago-webhook`: Payment validation + QStash job enqueue
+- `process-profile`: Profile creation + QR generation + Redis cache
+- `send-email`: AWS SES email sending
+- `get-profile`: Profile retrieval with Redis cache-first
+- `check-status`: Redis-based status checking
+
+**🟡 Firestore (Database)**
+- `pending_profiles`: Awaiting payment confirmation
+- `user_profiles`: Active user profiles  
+- `memorial_pages`: Generated memorial pages
+- `payments_log`: Payment transaction logs
+
+**🔴 Redis (Cache & Performance)**
+- `qr_code:{id}`: Cached QR codes for fast memorial page loading
+- 24h TTL for automatic cleanup
+
+**🟣 QStash (Async Queue System)**
+- Async profile processing after payment approval
+- Email job queuing with retry logic (3 retries, exponential backoff)
+- Decouples webhook response from heavy processing
+
+**🔶 External Services**
+- **MercadoPago**: Payment processing with React SDK
+- **AWS SES**: Transactional email delivery
+- **Firestore**: Document database  
+- **Upstash Redis**: Serverless cache
+- **Upstash QStash**: Serverless message queue
 
 ### Key Architectural Decisions
 
-1. **Type Safety Architecture**: Centralized schemas in `_shared/schemas/` with validation at system boundaries
-2. **Service Layer Pattern**: External services (APIs) separated from internal domain services
-3. **Correlation ID Tracking**: All requests tracked with correlation IDs for debugging
-4. **Retry Logic**: Exponential backoff for external service calls
+1. **Unified Domain**: All services under `memoryys.com` (Vercel)
+2. **Type Safety**: Zod validation at system boundaries 
+3. **Async Processing**: QStash for non-blocking operations
+4. **Cache-First**: Redis for fast QR code access
 5. **HMAC Validation**: Webhook security with signature verification
+6. **Correlation ID Tracking**: Request tracing across services
+7. **Graceful Degradation**: Fallbacks if Redis/QStash fails
 
 ### Data Flow Pattern
 

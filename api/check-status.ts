@@ -45,7 +45,7 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    console.log(`Verificando status para: ${uniqueUrl}`);
+    // Status check initiated
 
     const redisResponse = await fetch(`${redisUrl}/get/qr_code:${uniqueUrl}`, {
       headers: {
@@ -62,7 +62,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const redisData = await redisResponse.json();
-    console.log('Redis response:', redisData);
+    // Redis response processed
 
     if (redisData.result) {
       return new Response(JSON.stringify({ status: 'pronto' }), {

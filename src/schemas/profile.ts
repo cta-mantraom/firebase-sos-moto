@@ -5,6 +5,7 @@ export const EmergencyContactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   phone: z.string().min(1, "Telefone é obrigatório"),
   relationship: z.string().min(1, "Parentesco é obrigatório"),
+  isMain: z.boolean().default(false),
 });
 
 // User profile schema

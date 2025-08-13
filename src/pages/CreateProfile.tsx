@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { QRCodePreview } from '@/components/QRCodePreview';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
-import { useCheckout } from '@/hooks/useCheckout';
+import { MercadoPagoCheckout } from '@/components/MercadoPagoCheckout';
 import { ArrowLeft, Heart, User, Phone, AlertTriangle, QrCode, CreditCard } from 'lucide-react';
 import { FormData, Plan, CheckoutData } from '@/types';
 
@@ -41,7 +41,7 @@ const CreateProfile: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { createCheckout, isLoading: checkoutLoading } = useCheckout();
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData(prev => ({
@@ -70,44 +70,29 @@ const CreateProfile: React.FC = () => {
     formData.contatoPrimarioTelefone
   );
 
-  const handleConfirmPayment = async () => {
+  const handleConfirmPayment = () => {
     if (!isFormValid) return;
+    setShowConfirmModal(false);
+    setShowCheckout(true);
+  };
 
-    try {
-      const checkoutData: CheckoutData = {
-        name: formData.nomeCompleto,
-        email: formData.email,
-        phone: formData.telefone,
-        age: parseInt(formData.idade),
-        selectedPlan,
-        bloodType: formData.tipoSanguineo || undefined,
-        allergies: formData.alergias ? [formData.alergias] : undefined,
-        medications: formData.medicamentos ? [formData.medicamentos] : undefined,
-        medicalConditions: formData.condicoesMedicas ? [formData.condicoesMedicas] : undefined,
-        emergencyContacts: formData.contatoPrimarioNome ? [
-          {
-            name: formData.contatoPrimarioNome,
-            phone: formData.contatoPrimarioTelefone,
-            relationship: formData.contatoPrimarioRelacao || 'Não informado'
-          },
-          ...(formData.contatoSecundarioNome ? [{
-            name: formData.contatoSecundarioNome,
-            phone: formData.contatoSecundarioTelefone,
-            relationship: formData.contatoSecundarioRelacao || 'Não informado'
-          }] : [])
-        ] : undefined
-      };
+  const handlePaymentSuccess = (paymentData: unknown) => {
+    console.log('Payment successful:', paymentData);
+    toast({
+      title: "Pagamento realizado com sucesso!",
+      description: "Você receberá um email de confirmação em breve.",
+    });
+    navigate('/success');
+  };
 
-      await createCheckout(checkoutData);
-      setShowConfirmModal(false);
-    } catch (error) {
-      console.error('Erro ao processar checkout:', error);
-      toast({
-        title: "Erro ao processar pagamento",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive"
-      });
-    }
+  const handlePaymentError = (error: Error) => {
+    console.error('Payment error:', error);
+    toast({
+      title: "Erro no pagamento",
+      description: "Tente novamente em alguns instantes.",
+      variant: "destructive"
+    });
+    setShowCheckout(false);
   };
 
   const plans: Plan[] = [
@@ -538,8 +523,50 @@ const CreateProfile: React.FC = () => {
           }] : undefined,
           selectedPlan
         }}
-        isLoading={isSubmitting || checkoutLoading}
+        isLoading={isSubmitting}
       />
+
+      {/* MercadoPago Checkout */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Pagamento</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCheckout(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <MercadoPagoCheckout
+              userData={{
+                name: formData.nomeCompleto,
+                email: formData.email,
+                phone: formData.telefone,
+                age: parseInt(formData.idade) || 0,
+                bloodType: formData.tipoSanguineo,
+                allergies: formData.alergias ? [formData.alergias] : [],
+                medications: formData.medicamentos ? [formData.medicamentos] : [],
+                medicalConditions: formData.condicoesMedicas ? [formData.condicoesMedicas] : [],
+                healthPlan: formData.planoSaude,
+                preferredHospital: formData.hospitalPreferencia,
+                medicalNotes: formData.observacoesMedicas,
+                emergencyContacts: formData.contatoPrimarioNome ? [{
+                  name: formData.contatoPrimarioNome,
+                  phone: formData.contatoPrimarioTelefone,
+                  relationship: formData.contatoPrimarioRelacao || 'Não informado',
+                  isMain: true,
+                }] : [],
+              }}
+              planType={selectedPlan}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

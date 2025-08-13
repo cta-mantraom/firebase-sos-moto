@@ -1,8 +1,8 @@
 # 🚀 Moto SOS Guardian App
 
-**Projeto migrado para Firebase com MercadoPago SDK React - Arquitetura modular e enterprise-ready.**
+**Sistema de emergência unificado em memoryys.com - Vercel + Firestore + MercadoPago**
 
-> **✅ Status Atual:** Migração para Firebase completa com MercadoPago SDK React integrado, mantendo segurança de tipos e estrutura modular
+> **✅ Status Atual:** Arquitetura simplificada e production-ready, sem over-engineering, com fluxo unificado em memoryys.com
 
 ---
 
@@ -115,38 +115,38 @@ SES_FROM_EMAIL=contact@memoryys.com
 FRONTEND_URL=https://memoryys.com
 ```
 
-### URLs por Ambiente:
-- **Produção**: https://memoryys.com
-- **Email**: contact@memoryys.com  
+### URLs Unificadas:
+- **Produção**: https://memoryys.com (Vercel)
+- **Email**: contact@memoryys.com
 - **Staging**: https://moto-sos-guardian-app-78272.web.app
-- **Functions**: https://southamerica-east1-moto-sos-guardian-app-78272.cloudfunctions.net
 
 ---
 
-## 🛠️ Stack Tecnológica
+## 🏗️ Arquitetura Simplificada
 
-Este projeto é construído com:
+### Frontend (React - memoryys.com)
+- **Vite + React + TypeScript**
+- **MercadoPago Checkout Pro SDK**
+- **shadcn-ui + Tailwind CSS**
+- **Apenas Firestore client** (sem Functions)
 
-### Frontend
-- **Vite** - Build tool e dev server
-- **TypeScript** - Linguagem principal com tipagem forte
-- **React** - Framework frontend
-- **shadcn-ui** - Componentes UI modernos
-- **Tailwind CSS** - Framework CSS utilitário
-- **@mercadopago/sdk-react** - SDK React oficial do MercadoPago
+### Backend (Vercel APIs - memoryys.com/api/*)
+- **3 APIs Vercel Functions:**
+  - `create-payment` - MercadoPago + Firestore + QR + Email
+  - `mercadopago-webhook` - Webhook + processamento
+  - `get-profile` - Busca perfis (Redis cache)
+  - `check-status` - Status via Redis
 
-### Backend
-- **Firebase** - Backend-as-a-Service
-  - Firestore - Banco de dados NoSQL
-  - Cloud Functions - Funções serverless
-  - Firebase Storage - Armazenamento de arquivos
-  - Firebase Hosting - Hospedagem do frontend
-- **Node.js** - Runtime para Cloud Functions
-- **TypeScript** - Tipagem forte em todo o backend
+### Banco de Dados (Firestore)
+- `pending_profiles` - Pagamentos pendentes
+- `user_profiles` - Perfis ativos
+- `memorial_pages` - Páginas memoriais
+- `payments_log` - Log de transações
 
 ### Serviços Externos
-- **MercadoPago** - Processamento de pagamentos
-- **AWS SES** - Envio de emails
+- **MercadoPago** - Checkout Pro
+- **AWS SES** - Emails transacionais
+- **Redis** - Cache opcional (QR codes)
 - **QRCode** - Geração de códigos QR
 
 ### Principais Dependências

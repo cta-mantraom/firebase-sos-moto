@@ -60,6 +60,38 @@ export function transformApiToProfile(apiData: z.infer<typeof CreatePaymentSchem
     };
 }
 
+// HMAC validation for MercadoPago webhooks
+import { createHmac, timingSafeEqual } from 'crypto';
+
+export function validateHMACSignature(
+  requestId: string,
+  signature: string,
+  secret: string
+): boolean {
+  try {
+    const parts = signature.split(',');
+    
+    for (const part of parts) {
+      const [key, value] = part.split('=');
+      if (key && key.trim() === 'v1') {
+        const expectedSignature = createHmac('sha256', secret)
+          .update(requestId)
+          .digest('hex');
+        
+        return timingSafeEqual(
+          Buffer.from(expectedSignature),
+          Buffer.from(value || '')
+        );
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('HMAC validation error:', error);
+    return false;
+  }
+}
+
 // Types exportados
 export type Profile = z.infer<typeof ProfileSchema>;
 export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;

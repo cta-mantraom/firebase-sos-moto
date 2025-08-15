@@ -1,0 +1,66 @@
+Pix
+Server-Side
+
+Ao finalizar a inclusão do formulário de pagamento, é preciso enviar o e-mail do comprador, o tipo e o número do documento, o meio de pagamento utilizado (pix) e o detalhe do valor.
+
+Importante
+Além disso, você deverá enviar obrigatoriamente o atributo X-Idempotency-Key. Seu preenchimento é importante para garantir a execução e reexecução de requisições de forma segura, sem o risco de realizar a mesma ação mais de uma vez por engano. Para fazé-lo, atualize nossa biblioteca de SDK ou gere um UUID V4 e envie-o no header de suas chamadas.
+Para configurar pagamento com Pix, envie um POST ao endpoint /v1/payments e execute a requisição ou, se preferir, faça a requisição utilizando nossos SDKs.
+
+import mercadopago
+sdk = mercadopago.SDK("ENV_ACCESS_TOKEN")
+
+request_options = mercadopago.config.RequestOptions()
+request_options.custom_headers = {
+    'x-idempotency-key': '<SOME_UNIQUE_VALUE>'
+}
+
+payment_data = {
+    "transaction_amount": 100,
+    "payment_method_id": "pix",
+    "payer": {
+        "email": "PAYER_EMAIL_HERE",
+    }
+}
+
+payment_response = sdk.payment().create(payment_data, request_options)
+payment = payment_response["response"]
+A resposta mostrará o estado pendente do pagamento e todas as informações que você precisa para mostrar ao comprador. O valor transaction_data retornará os dados para código QR.
+
+{
+  ...,
+  "id": 5466310457,
+  "status": "pending",
+  "status_detail": "pending_waiting_transfer",
+  ...,
+  "transaction_details": {
+      "net_received_amount": 0,
+      "total_paid_amount": 100,
+      "overpaid_amount": 0,
+      "external_resource_url": null,
+      "installment_amount": 0,
+      "financial_institution": null
+  },
+  "point_of_interaction": {
+      "type": "PIX",
+      "sub_type": null,
+      "application_data": {
+        "name": "NAME_SDK",
+        "version": "VERSION_NUMBER"
+      },
+      "transaction_data": {
+        "qr_code_base64": "iVBORw0KGgoAAAANSUhEUgAABRQAAAUUCAYAAACu5p7oAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAIABJREFUeJzs2luO3LiWQNFmI+Y/Zd6vRt36KGNXi7ZOBtcagHD4kNLeiLX33v8DAAAAABD879sDAAAAAAA/h6AIAAAAAGSCIgAAAACQCYoAAAAAQCYoAgAAAACZoAgAAAAAZIIiAAAAAJAJigAAAABAJigCAAAAAJmgCAAAAABkgiIAAAAAkAmKAAAAAEAmKAIAAAAAmaAIAAAAAGSCIgAAAACQCYoAAAAAQCYoAgAAAACZoAgAAAAAZIIiAAAAAJAJigAAAABAJigCA...",
+        "qr_code": "00020126600014br.gov.bcb.pix0117john@yourdomain.com0217additional data520400005303986540510.005802BR5913Maria Silva6008Brasilia62070503***6304E2CA",
+        "ticket_url": "https://www.mercadopago.com.br/payments/123456789/ticket?caller_id=123456&hash=123e4567-e89b-12d3-a456-426655440000"
+      }
+  }
+  ...,
+}
+Mostre o status do pagamento
+Após criar o pagamento pelo backend utilizando a SDK do Mercado Pago, utilize o id recebido na resposta para instanciar o Status Screen Brick e mostrar para o comprador.
+
+Além de exibir o status do pagamento, o Status Screen Brick também exibirá o código Pix para copiar e colar e o QR Code para o comprador escanear e pagar. Saiba como é simples integrar clicando aqui.
+
+Importante
+Caso você tenha utilizado as credenciais de produção de um usuário de teste para gerar o pagamento com Pix, ocorrerá um erro de visualização ao clicar no botão que leva a página do QR Code. Para visualizá-la corretamente, remova o trecho /sandbox da URL da página aberta.
+payment-submission-pix-status

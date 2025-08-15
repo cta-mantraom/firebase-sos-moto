@@ -1,5 +1,71 @@
 # Documentação Técnica - Sistema SOS Moto
 
+---
+
+## ⚠️ Regras CRÍTICAS para a Refatoração
+
+> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+
+### **🚫 Proibições Absolutas:**
+
+- **NUNCA usar `any`** em nenhuma situação no código de produção
+- **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+
+### **✅ Práticas Obrigatórias:**
+
+- Usar `unknown` **SOMENTE** para dados brutos/exteriores recebidos na fronteira do sistema (entrada de dados), antes da validação
+- Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
+- Após validação, trabalhar apenas com tipos claros, específicos e definidos
+- Manutenção da estrutura modular e clara, desacoplada, é prioridade
+- Usar `.env` files para variáveis de ambiente
+
+## 🔍 Detalhes Técnicos e Justificativas Importantes
+
+### **Sobre Tipos e Validação**
+
+Dados recebidos em cada função (ex: webhook, checkout) quando necessário usar `unknown` devem ser inicialmente tipados
+
+Esses dados brutos são imediatamente validados com schemas fortes (Zod), convertendo para tipos definidos.
+
+Código interno trabalha somente com esses tipos validados.
+
+Isso garante robustez, segurança, e elimina bugs silenciosos.
+
+### **Sobre Código de Testes em Produção**
+
+Sempre analise se há identificação de código de teste misturado em código de produção não pode ter código de teste misturado com código de produção
+
+**Deve ser removido imediatamente.**
+
+Nenhum teste novo será criado nem modificado nesta fase.
+
+## 🎯 Benefícios Esperados da Refatoração
+
+- ✅ **Segurança máxima de tipos**, com validação rigorosa
+- ✅ **Código limpo, modular**, com responsabilidades claras
+- ✅ **Remoção completa de código de testes em produção**
+- ✅ **Configuração correta do mercado pago sdk react para cada função relacionada com pagamento**
+- ✅ **Melhor garantia de deploys estáveis e previsíveis**
+- ✅ **Estrutura preparada para escalabilidade e manutenção facilitada**
+
+## ⚠️ AVISO IMPORTANTE
+
+> **Durante esta fase de refatoração, é expressamente proibido o uso do tipo `any` em qualquer código de produção.**
+>
+> quando for necessário usar `unknown` Use somente para representar dados externos não validados, validando-os imediatamente com schemas (Zod).
+>
+> **Jamais trabalhe com `any` para dados genéricos.**
+>
+> **É expressamente proibido criar, modificar ou excluir qualquer arquivo nos diretórios `tests/` e seus subdiretórios.**
+>
+> **Código de teste presente em produção deve ser removido — testes não serão criados/modificados nesta etapa.**
+>
+> **Manutenção da estrutura modular, clara e possível de deploy na vercel**
+>
+> **O cumprimento estrito destas regras é FUNDAMENTAL para garantir a qualidade, segurança e manutenibilidade do sistema.**
+
+---
+
 ## 1. Visão Geral do Produto
 
 O SOS Moto é uma plataforma de emergência médica para motociclistas que permite criar perfis médicos digitais acessíveis via QR Code. O sistema processa pagamentos via MercadoPago, gera QR Codes únicos e disponibiliza informações médicas críticas para socorristas em situações de emergência.

@@ -1,24 +1,24 @@
 # Product Overview
 
-## Moto SOS Guardian App
+## SOS Moto Guardian
 
-A motorcycle emergency assistance application that provides SOS services for riders. The app allows users to create profiles, make payments for services, and access emergency assistance features.
+A motorcycle safety and emergency response platform that provides riders with digital emergency profiles and medical information access. The application enables motorcyclists to create comprehensive emergency profiles containing personal, medical, and emergency contact information that can be accessed by first responders in case of accidents.
 
 ### Key Features
 
-- User profile creation and management
-- Payment processing via MercadoPago
-- Emergency SOS functionality
-- Memorial/tribute pages for users
-- QR code generation for quick access
+- **Emergency Profile Creation**: Comprehensive forms for personal and medical information
+- **Payment Integration**: MercadoPago integration for subscription plans (Basic/Premium)
+- **QR Code Generation**: Digital emergency cards with QR codes for quick access
+- **Memorial Pages**: Tribute pages for deceased riders
+- **Multi-plan Support**: Basic (R$55) and Premium (R$85) subscription tiers
 
-### Target Users
+### Target Market
 
-- Motorcycle riders seeking emergency assistance services
-- Users who want quick access to SOS features during rides
+Brazilian motorcycle riders seeking enhanced safety and emergency preparedness solutions.
 
 ### Business Model
 
-- Payment-based service activation
-- Integration with MercadoPago for Brazilian market
-- Email notifications and confirmations via AWS SES
+Subscription-based service with two tiers:
+
+- Basic Plan: R$55 - Essential emergency profile features
+- Premium Plan: R$85 - Advanced features and enhanced protection

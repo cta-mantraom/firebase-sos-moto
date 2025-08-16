@@ -19,77 +19,58 @@
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
 
-## 🔍 Detalhes Técnicos e Justificativas Importantes
-
-### **Sobre Tipos e Validação**
-
-Dados recebidos em cada função (ex: webhook, checkout) quando necessário usar `unknown` devem ser inicialmente tipados
-
-Esses dados brutos são imediatamente validados com schemas fortes (Zod), convertendo para tipos definidos.
-
-Código interno trabalha somente com esses tipos validados.
-
-Isso garante robustez, segurança, e elimina bugs silenciosos.
-
-### **Sobre Código de Testes em Produção**
-
-Sempre analise se há identificação de código de teste misturado em código de produção não pode ter código de teste misturado com código de produção
-
-**Deve ser removido imediatamente.**
-
-Nenhum teste novo será criado nem modificado nesta fase.
-
-## 🎯 Benefícios Esperados da Refatoração
-
-- ✅ **Segurança máxima de tipos**, com validação rigorosa
-- ✅ **Código limpo, modular**, com responsabilidades claras
-- ✅ **Remoção completa de código de testes em produção**
-- ✅ **Configuração correta do mercado pago sdk react para cada função relacionada com pagamento**
-- ✅ **Melhor garantia de deploys estáveis e previsíveis**
-- ✅ **Estrutura preparada para escalabilidade e manutenção facilitada**
-
-## ⚠️ AVISO IMPORTANTE
-
-> **Durante esta fase de refatoração, é expressamente proibido o uso do tipo `any` em qualquer código de produção.**
->
-> quando for necessário usar `unknown` Use somente para representar dados externos não validados, validando-os imediatamente com schemas (Zod).
->
-> **Jamais trabalhe com `any` para dados genéricos.**
->
-> **É expressamente proibido criar, modificar ou excluir qualquer arquivo nos diretórios `tests/` e seus subdiretórios.**
->
-> **Código de teste presente em produção deve ser removido — testes não serão criados/modificados nesta etapa.**
->
-> **Manutenção da estrutura modular, clara e possível de deploy na vercel**
->
-> **O cumprimento estrito destas regras é FUNDAMENTAL para garantir a qualidade, segurança e manutenibilidade do sistema.**
-
 ---
 
 ## 1. Visão Geral
 
-Este documento detalha a implementação completa da integração com MercadoPago no sistema SOS Moto, utilizando o SDK React oficial e seguindo as melhores práticas de segurança e aprovação de pagamentos. A integração suporta exclusivamente pagamentos via cartão de crédito/débito e PIX.
+Este documento detalha a implementação completa da integração com MercadoPago no sistema SOS Moto, utilizando o SDK React oficial (`@mercadopago/sdk-react`) com Payment Brick e seguindo as melhores práticas de segurança. A integração suporta **exclusivamente** pagamentos via **cartão de crédito/débito** e **PIX**.
 
-**Pré-requisito:** O arquivo `api/create-payment.ts` deve estar desacoplado de outras funcionalidades antes de iniciar esta implementação.
+### Arquitetura da Integração MercadoPago
+
+```mermaid
+graph TD
+    A[Frontend - MercadoPagoCheckout.tsx] --> B[Payment Brick SDK]
+    A --> C[api/create-payment.ts]
+    C --> D[MercadoPago API - Preferences]
+    E[MercadoPago] --> F[api/mercadopago-webhook.ts]
+    F --> G[lib/services/payment/mercadopago.service.ts]
+    F --> H[QStash Queue]
+    H --> I[api/processors/final-processor.ts]
+
+    subgraph "Responsabilidades MercadoPago"
+        B
+        D
+        E
+        G
+    end
+```
+
+### Fluxo de Dados Específico MercadoPago
+
+1. **Frontend**: `MercadoPagoCheckout.tsx` → Payment Brick → `create-payment.ts`
+2. **Criação**: `create-payment.ts` → MercadoPago Preferences API
+3. **Pagamento**: Usuario → MercadoPago → Webhook
+4. **Webhook**: `mercadopago-webhook.ts` → `mercadopago.service.ts` → QStash
+5. **Processamento**: QStash → `final-processor.ts` (fora do escopo MercadoPago)
 
 ## 2. Tecnologias e SDK
 
-* **SDK Oficial:** `@mercadopago/sdk-react` (versão mais recente)
+- **SDK Oficial:** `@mercadopago/sdk-react` (versão mais recente)
 
-* **Métodos de Pagamento:** Cartão de crédito/débito e PIX
+- **Métodos de Pagamento:** Cartão de crédito/débito e PIX
 
-* **Arquitetura:** Client-Side com Payment Brick + Server-Side para processamento
+- **Arquitetura:** Client-Side com Payment Brick + Server-Side para processamento
 
 ## 3. Configuração do Payment Brick
 
 ### 3.1 Inicialização do SDK
 
 ```javascript
-import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 
 // Inicializar o SDK com chave pública
-initMercadoPago('YOUR_PUBLIC_KEY', {
-  locale: 'pt-BR'
+initMercadoPago("YOUR_PUBLIC_KEY", {
+  locale: "pt-BR",
 });
 ```
 
@@ -101,7 +82,10 @@ Para melhorar a aprovação e segurança dos pagamentos, é obrigatório impleme
 
 ```javascript
 // Adicionar script do Device ID no HTML
-<script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
+<script
+  src="https://www.mercadopago.com/v2/security.js"
+  view="checkout"
+></script>;
 
 // Obter Device ID
 const deviceId = window.MP_DEVICE_SESSION_ID;
@@ -123,55 +107,55 @@ const PaymentBrick = () => {
 
   const customization = {
     paymentMethods: {
-      creditCard: 'all',
-      debitCard: 'all',
-      ticket: 'all', // Para PIX
-      bankTransfer: 'all', // Para PIX
-      mercadoPago: 'wallet_purchase', // Carteira MP
+      creditCard: "all",
+      debitCard: "all",
+      ticket: "all", // Para PIX
+      bankTransfer: "all", // Para PIX
+      mercadoPago: "wallet_purchase", // Carteira MP
     },
     visual: {
       style: {
-        theme: 'default' // Manter estilo padrão
-      }
-    }
+        theme: "default", // Manter estilo padrão
+      },
+    },
   };
 
   const onSubmit = async ({ selectedPaymentMethod, formData }) => {
     // Adicionar Device ID aos dados
     const paymentData = {
       ...formData,
-      device_id: window.MP_DEVICE_SESSION_ID
+      device_id: window.MP_DEVICE_SESSION_ID,
     };
-    
+
     // Processar pagamento
     return new Promise((resolve, reject) => {
-      fetch('/api/create-payment', {
-        method: 'POST',
+      fetch("/api/create-payment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(paymentData)
+        body: JSON.stringify(paymentData),
       })
-      .then(response => response.json())
-      .then(result => {
-        if (result.error) {
-          reject();
-        } else {
-          resolve();
-        }
-      })
-      .catch(() => reject());
+        .then((response) => response.json())
+        .then((result) => {
+          if (result.error) {
+            reject();
+          } else {
+            resolve();
+          }
+        })
+        .catch(() => reject());
     });
   };
 
   const onReady = () => {
     // Callback executado quando o Brick está pronto
-    console.log('Payment Brick ready');
+    console.log("Payment Brick ready");
   };
 
   const onError = (error) => {
     // Tratamento de erros específicos
-    console.error('Payment error:', error);
+    console.error("Payment error:", error);
   };
 
   return (
@@ -188,11 +172,11 @@ const PaymentBrick = () => {
 
 **Referências:**
 
-* `documentMp/INTEGRAÇÃO BRICKS/Funcionalidades avançadas/Inicializar dados nos Bricks.md` - Pré-preenchimento de dados
+- `documentMp/INTEGRAÇÃO BRICKS/Funcionalidades avançadas/Inicializar dados nos Bricks.md` - Pré-preenchimento de dados
 
-* `documentMp/INTEGRAÇÃO BRICKS/Funcionalidades avançadas/Meio de pagamento padrão.md` - Configuração de métodos de pagamento
+- `documentMp/INTEGRAÇÃO BRICKS/Funcionalidades avançadas/Meio de pagamento padrão.md` - Configuração de métodos de pagamento
 
-* `documentMp/Brick de Pagamento Github/Documentação do Fluxo de Convidados.md` - Documentação completa do Payment Brick
+- `documentMp/Brick de Pagamento Github/Documentação do Fluxo de Convidados.md` - Documentação completa do Payment Brick
 
 ### 3.4 Gerenciamento de Unmount (Obrigatório)
 
@@ -235,28 +219,30 @@ Para pagamentos com cartão, envie um POST para `/v1/payments` com os dados cole
 const paymentData = {
   transaction_amount: amount,
   token: formData.token,
-  description: 'SOS Moto - Plano Premium',
+  description: "SOS Moto - Plano Premium",
   installments: formData.installments,
   payment_method_id: formData.payment_method_id,
   payer: {
     email: formData.payer.email,
-    identification: formData.payer.identification
+    identification: formData.payer.identification,
   },
   additional_info: {
-    items: [{
-      id: planId,
-      title: planTitle,
-      quantity: 1,
-      unit_price: amount
-    }],
+    items: [
+      {
+        id: planId,
+        title: planTitle,
+        quantity: 1,
+        unit_price: amount,
+      },
+    ],
     payer: {
       first_name: userData.name,
       phone: {
-        number: userData.phone
-      }
-    }
+        number: userData.phone,
+      },
+    },
   },
-  device_id: formData.device_id // Obrigatório para segurança
+  device_id: formData.device_id, // Obrigatório para segurança
 };
 ```
 
@@ -269,15 +255,15 @@ Para pagamentos PIX, é obrigatório enviar o e-mail do comprador:
 ```javascript
 const pixPaymentData = {
   transaction_amount: amount,
-  description: 'SOS Moto - Plano Premium',
-  payment_method_id: 'pix',
+  description: "SOS Moto - Plano Premium",
+  payment_method_id: "pix",
   payer: {
     email: formData.payer.email, // Obrigatório para PIX
     identification: {
       type: formData.payer.identification.type,
-      number: formData.payer.identification.number
-    }
-  }
+      number: formData.payer.identification.number,
+    },
+  },
 };
 ```
 
@@ -289,9 +275,9 @@ Todos os requests devem incluir o header `X-Idempotency-Key`:
 
 ```javascript
 const headers = {
-  'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-  'Content-Type': 'application/json',
-  'X-Idempotency-Key': crypto.randomUUID() // Obrigatório
+  Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+  "Content-Type": "application/json",
+  "X-Idempotency-Key": crypto.randomUUID(), // Obrigatório
 };
 ```
 
@@ -304,7 +290,7 @@ Para reservar valores no cartão sem capturar imediatamente:
 ```javascript
 const reservePayment = {
   ...paymentData,
-  capture: false // Apenas reserva, não captura
+  capture: false, // Apenas reserva, não captura
 };
 ```
 
@@ -357,15 +343,15 @@ PUT /v1/payments/{payment_id}
 
 **Responsabilidades:**
 
-* Inicialização do SDK React do MercadoPago
+- Inicialização do SDK React do MercadoPago
 
-* Configuração do Payment Brick com valores corretos (55.00 ou 85.00)
+- Configuração do Payment Brick com valores corretos (55.00 ou 85.00)
 
-* Implementação do Device ID obrigatório
+- Implementação do Device ID obrigatório
 
-* Callbacks onSubmit, onReady e onError
+- Callbacks onSubmit, onReady e onError
 
-* Gerenciamento de unmount do Brick
+- Gerenciamento de unmount do Brick
 
 **Implementação atual:**
 
@@ -380,104 +366,187 @@ initialization={{
 }}
 ```
 
-**Melhorias necessárias:**
+**Implementação atual conforme Payment Brick:**
 
-* Adicionar callback onReady
+```typescript
+export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
+  userData,
+  planType,
+  onSuccess,
+  onError,
+}) => {
+  const [preferenceId, setPreferenceId] = useState<string | null>(null);
 
-* Implementar Device ID (window\.MP\_DEVICE\_SESSION\_ID)
+  // Inicialização do SDK
+  useEffect(() => {
+    const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
+    if (publicKey) {
+      initMercadoPago(publicKey, { locale: "pt-BR" });
+    }
+  }, []);
 
-* Configurar unmount no useEffect cleanup
+  // Cleanup obrigatório
+  useEffect(() => {
+    return () => {
+      if (window.paymentBrickController) {
+        window.paymentBrickController.unmount();
+      }
+    };
+  }, []);
+
+  return (
+    <Payment
+      initialization={{
+        amount: planType === "premium" ? 85.0 : 55.0,
+        preferenceId: preferenceId,
+        payer: {
+          email: userData.email, // Pré-preenchimento obrigatório
+        },
+      }}
+      customization={{
+        paymentMethods: {
+          creditCard: "all",
+          debitCard: "all",
+          ticket: "all", // PIX
+          bankTransfer: "all", // PIX
+          mercadoPago: "all",
+        },
+      }}
+      onSubmit={async (paymentData) => {
+        onSuccess(paymentData);
+      }}
+      onReady={() => {
+        console.log("Payment Brick ready");
+      }}
+      onError={(error) => {
+        onError(new Error("Payment failed"));
+      }}
+    />
+  );
+};
+```
+
+**Características implementadas:**
+
+- ✅ Callback `onReady` implementado
+- ✅ Unmount automático no cleanup
+- ✅ Pré-preenchimento de email
+- ✅ Suporte a cartão e PIX
+- ✅ Valores corretos (55.00/85.00)
 
 ### 7.2 Backend - create-payment.ts
 
-**Responsabilidades:**
+**Responsabilidades EXCLUSIVAS:**
 
-* Criação de preferências de pagamento no MercadoPago
-
-* Processamento de pagamentos aprovados (processApprovedPayment)
-
-* Headers obrigatórios (X-Idempotency-Key)
+- ✅ Validação de dados de entrada com Zod
+- ✅ Criação de preferências MercadoPago
+- ✅ Salvamento de perfil pendente no Firestore
+- ✅ Headers obrigatórios (X-Idempotency-Key)
+- ❌ **NÃO processa pagamentos aprovados** (isso é feito via QStash → final-processor)
 
 **Valores corretos implementados:**
 
 ```javascript
 const PLAN_PRICES = {
-  basic: { title: "SOS Motoboy - Plano Básico", unit_price: 55.0 },
-  premium: { title: "SOS Motoboy - Plano Premium", unit_price: 85.0 }
+  basic: { title: "SOS Moto Guardian - Plano Básico", unit_price: 55.0 },
+  premium: { title: "SOS Moto Guardian - Plano Premium", unit_price: 85.0 },
 };
 ```
 
-### 7.3 Backend - mercadopago.service.ts (Nova Arquitetura)
+**Fluxo correto:**
 
-**Responsabilidades:**
+1. Recebe dados do formulário
+2. Valida com Zod
+3. Cria preferência MercadoPago
+4. Salva pending_profile
+5. Retorna preferenceId para o frontend
 
-* Encapsular toda lógica específica do MercadoPago
+### 7.3 Backend - lib/services/payment/mercadopago.service.ts
 
-* Criação e gerenciamento de preferências
+**Responsabilidades EXCLUSIVAS:**
 
-* Validação de webhooks HMAC
+- ✅ Encapsular toda lógica específica do MercadoPago
+- ✅ Criação e gerenciamento de preferências
+- ✅ Validação de webhooks HMAC
+- ✅ Gerenciamento de headers obrigatórios (X-Idempotency-Key)
+- ✅ Integração com APIs do MercadoPago
+- ✅ Validação de Device ID
+- ✅ Schemas Zod para validação de dados
 
-* Gerenciamento de headers obrigatórios
-
-* Integração com APIs do MercadoPago
-
-* Validação de Device ID
-
-**Implementação proposta:**
+**Implementação atual:**
 
 ```typescript
-class MercadoPagoService {
-  async createPreference(data: PaymentData): Promise<PreferenceResponse> {
-    // Criação de preferência com headers obrigatórios
-    // Validação de Device ID
-    // Configuração de back_urls e notification_url
+export class MercadoPagoService {
+  constructor(config: MercadoPagoConfig) {
+    this.config = config;
+    this.baseUrl = config.baseUrl || "https://api.mercadopago.com";
   }
-  
-  async validateWebhook(signature: string, requestId: string): Promise<boolean> {
-    // Validação HMAC obrigatória
-    // Verificação de headers x-signature e x-request-id
+
+  async createPreference(data: PreferenceData): Promise<PreferenceResponse> {
+    // Validação com Zod
+    const validatedData = PreferenceDataSchema.parse(data);
+    // Headers obrigatórios incluindo X-Idempotency-Key
+    // Chamada para /checkout/preferences
   }
-  
+
+  async validateWebhook(
+    signature: string,
+    requestId: string,
+    dataId: string
+  ): Promise<boolean> {
+    // Validação HMAC completa conforme documentação oficial
+    // Formato: id:[data.id];request-id:[x-request-id];ts:[timestamp];
+  }
+
   async getPaymentDetails(paymentId: string): Promise<PaymentDetails> {
-    // Busca detalhes do pagamento via API
-    // Headers de autenticação
+    // Busca detalhes via /v1/payments/{paymentId}
+    // Validação de resposta com Zod
   }
-  
-  private generateIdempotencyKey(): string {
-    // Geração de X-Idempotency-Key único
+
+  async createPayment(data: CreatePaymentData): Promise<PaymentDetails> {
+    // Para pagamentos diretos (cartão/PIX)
+    // Validação de Device ID
   }
-  
-  private validateDeviceId(deviceId: string): boolean {
-    // Validação do MP_DEVICE_SESSION_ID
-  }
+
+  async capturePayment(
+    paymentId: string,
+    amount?: number
+  ): Promise<PaymentDetails>;
+  async cancelPayment(paymentId: string): Promise<PaymentDetails>;
 }
 ```
 
 **Relação com outros arquivos:**
 
-* **create-payment.ts**: Utiliza MercadoPagoService.createPreference()
-* **mercadopago-webhook.ts**: Utiliza MercadoPagoService.validateWebhook() e getPaymentDetails()
-* **MercadoPagoCheckout.tsx**: Fornece Device ID que é validado pelo service
+- **create-payment.ts**: Usa `createPreference()` para criar preferências
+- **mercadopago-webhook.ts**: Usa `validateWebhook()` e `getPaymentDetails()`
+- **payment.processor.ts**: Usa `getPaymentDetails()` para reprocessamento
+- **MercadoPagoCheckout.tsx**: Fornece Device ID validado pelo service
 
-**Benefícios da separação:**
+**Schemas Zod implementados:**
 
-* Centralização da lógica do MercadoPago
-* Reutilização entre diferentes endpoints
-* Facilita testes unitários
-* Melhora manutenibilidade
-* Abstrai complexidade das APIs
+- `PreferenceDataSchema` - Validação de dados de preferência
+- `PaymentDetailsSchema` - Validação de resposta de pagamento
+- `CreatePaymentSchema` - Validação de criação de pagamento
 
 ### 7.4 Backend - mercadopago-webhook.ts
 
-**Responsabilidades:**
+**Responsabilidades EXCLUSIVAS:**
 
-* Validação de assinatura HMAC obrigatória
+- ✅ Validação de assinatura HMAC obrigatória via `mercadopago.service.ts`
+- ✅ Recebimento de notificações MercadoPago
+- ✅ Logs de auditoria via `PaymentRepository`
+- ✅ Enfileiramento de jobs via QStash (apenas para pagamentos aprovados)
+- ❌ **NÃO processa pagamentos diretamente** (apenas enfileira)
 
-* Processamento de notificações de webhook
+**Fluxo correto:**
 
-* Logs de auditoria no Firestore
-
-* Retry logic
+1. Recebe webhook do MercadoPago
+2. Valida HMAC com `mercadoPagoService.validateWebhook()`
+3. Busca detalhes com `mercadoPagoService.getPaymentDetails()`
+4. Salva log via `paymentRepository.savePaymentLog()`
+5. Se aprovado: enfileira job via `queueService.enqueueProcessingJob()`
+6. Retorna 200 OK
 
 ## 8. Implementação Completa de Webhooks
 
@@ -500,25 +569,25 @@ Todos os webhooks do MercadoPago incluem assinatura HMAC nos headers `x-signatur
 
 ```javascript
 const validateHMACSignature = (requestId, signature, secret) => {
-  const parts = signature.split(',');
-  const ts = parts.find(part => part.startsWith('ts='))?.split('=')[1];
-  const hash = parts.find(part => part.startsWith('v1='))?.split('=')[1];
-  
+  const parts = signature.split(",");
+  const ts = parts.find((part) => part.startsWith("ts="))?.split("=")[1];
+  const hash = parts.find((part) => part.startsWith("v1="))?.split("=")[1];
+
   // Formato: id:[data.id];request-id:[x-request-id];ts:[timestamp];
   const manifest = `id:${requestId};request-id:${requestId};ts:${ts};`;
-  const hmac = crypto.createHmac('sha256', secret);
+  const hmac = crypto.createHmac("sha256", secret);
   hmac.update(manifest);
-  const sha = hmac.digest('hex');
-  
+  const sha = hmac.digest("hex");
+
   return sha === hash;
 };
 ```
 
 **Headers obrigatórios:**
 
-* `x-signature`: Contém timestamp e hash (formato: `ts=1704908010,v1=hash`)
+- `x-signature`: Contém timestamp e hash (formato: `ts=1704908010,v1=hash`)
 
-* `x-request-id`: ID único da requisição
+- `x-request-id`: ID único da requisição
 
 ### 8.3 Estrutura de Notificações
 
@@ -541,11 +610,11 @@ As notificações chegam no formato JSON com a seguinte estrutura:
 
 **Campos importantes:**
 
-* `type`: Tipo de notificação ("payment" para pagamentos)
+- `type`: Tipo de notificação ("payment" para pagamentos)
 
-* `action`: Ação específica ("payment.updated", "payment.created")
+- `action`: Ação específica ("payment.updated", "payment.created")
 
-* `data.id`: ID do pagamento para buscar detalhes completos
+- `data.id`: ID do pagamento para buscar detalhes completos
 
 ### 8.4 Processamento de Eventos payment.updated
 
@@ -554,7 +623,7 @@ Apenas eventos `payment.updated` devem ser processados para evitar duplicações
 ```javascript
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = crypto.randomUUID();
-  
+
   try {
     // Aceitar apenas POST
     if (req.method !== 'POST') {
@@ -564,7 +633,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validar headers obrigatórios
     const signature = req.headers['x-signature'] as string;
     const requestId = req.headers['x-request-id'] as string;
-    
+
     if (!signature || !requestId) {
       return res.status(401).json({ error: 'Missing signature headers' });
     }
@@ -620,21 +689,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       processedAt: new Date(),
     });
 
-    // Processar pagamento aprovado
+    // Enfileirar processamento para pagamentos aprovados (FLUXO ASSÍNCRONO)
     if (payment.status === 'approved' && payment.external_reference) {
       const profileId = payment.external_reference;
-      
+
       try {
-        const { processApprovedPayment } = await import('./create-payment');
-        await processApprovedPayment(profileId, payment);
-        
-        console.log(`Profile processed successfully for ${profileId}`);
+        // IMPORTANTE: Apenas enfileirar job, NÃO processar diretamente
+        const jobId = await queueService.enqueueProcessingJob({
+          jobType: 'PROCESS_PROFILE',
+          uniqueUrl: profileId,
+          paymentId: payment.id.toString(),
+          planType: payment.transaction_amount === 85 ? 'premium' : 'basic',
+          profileData: {
+            paymentId: payment.id,
+            status: payment.status,
+            amount: payment.transaction_amount,
+            payerEmail: payment.payer.email,
+            metadata: payment.metadata || {}
+          },
+          correlationId,
+          retryCount: 0,
+          maxRetries: 5
+        });
+
+        console.log(`Processing job enqueued successfully: ${jobId} for ${profileId}`);
       } catch (error) {
-        console.error('Failed to process profile:', error);
-        
+        console.error('Failed to enqueue processing job:', error);
+
         // Marcar como falha para retry manual
         await db.collection('pending_profiles').doc(profileId).update({
-          status: 'payment_approved_processing_failed',
+          status: 'payment_approved_enqueue_failed',
           error: (error as Error).message,
           correlationId,
           updatedAt: new Date(),
@@ -660,28 +744,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 O MercadoPago espera resposta HTTP 200/201 em até **22 segundos**:
 
-* **Timeout:** 22 segundos para confirmação
+- **Timeout:** 22 segundos para confirmação
 
-* **Retry:** A cada 15 minutos se não receber resposta
+- **Retry:** A cada 15 minutos se não receber resposta
 
-* **Máximo:** 3 tentativas, depois intervalo estendido
+- **Máximo:** 3 tentativas, depois intervalo estendido
 
 ```javascript
 // Resposta obrigatória
-return res.status(200).json({ status: 'processed' });
+return res.status(200).json({ status: "processed" });
 ```
 
 ### 8.6 Monitoramento de Webhooks
 
 O painel do MercadoPago oferece monitoramento completo:
 
-* **Dashboard:** Visualização de eventos e status de entrega
+- **Dashboard:** Visualização de eventos e status de entrega
 
-* **Logs:** Histórico completo de notificações enviadas
+- **Logs:** Histórico completo de notificações enviadas
 
-* **Filtros:** Por status (sucesso/falha) e período
+- **Filtros:** Por status (sucesso/falha) e período
 
-* **Detalhes:** Request/response completos para debugging
+- **Detalhes:** Request/response completos para debugging
 
 **Acesso:** Suas integrações > Webhooks > Painel de notificações
 
@@ -692,8 +776,8 @@ O painel do MercadoPago oferece monitoramento completo:
 | Código | Erro                      | Solução                                 |
 | ------ | ------------------------- | --------------------------------------- |
 | 2006   | Card Token not found      | Verificar se o token do cartão é válido |
-| 3000   | Missing cardholder\_name  | Incluir nome do portador do cartão      |
-| 4020   | Invalid notification\_url | Usar URL HTTPS válida para webhook      |
+| 3000   | Missing cardholder_name   | Incluir nome do portador do cartão      |
+| 4020   | Invalid notification_url  | Usar URL HTTPS válida para webhook      |
 | 4292   | Missing X-Idempotency-Key | Incluir header obrigatório              |
 
 **Referência:** `documentMp/INTEGRAÇÃO BRICKS/Referências de API/Payment/Criar pagamento/erros.md`
@@ -708,7 +792,7 @@ const retryPayment = async (paymentData, maxRetries = 3) => {
       return response;
     } catch (error) {
       if (attempt === maxRetries) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
     }
   }
 };
@@ -722,25 +806,27 @@ Para melhorar a taxa de aprovação, sempre incluir:
 
 ```javascript
 const additional_info = {
-  items: [{
-    id: planId,
-    title: planTitle,
-    quantity: 1,
-    unit_price: amount,
-    description: 'Plano de proteção para motociclistas'
-  }],
+  items: [
+    {
+      id: planId,
+      title: planTitle,
+      quantity: 1,
+      unit_price: amount,
+      description: "Plano de proteção para motociclistas",
+    },
+  ],
   payer: {
     first_name: userData.name,
     last_name: userData.lastName,
     phone: {
       area_code: userData.areaCode,
-      number: userData.phone
+      number: userData.phone,
     },
     address: {
       street_name: userData.address,
       street_number: userData.number,
-      zip_code: userData.zipCode
-    }
+      zip_code: userData.zipCode,
+    },
   },
   shipments: {
     receiver_address: {
@@ -748,9 +834,9 @@ const additional_info = {
       state_name: userData.state,
       city_name: userData.city,
       street_name: userData.address,
-      street_number: userData.number
-    }
-  }
+      street_number: userData.number,
+    },
+  },
 };
 ```
 
@@ -760,11 +846,11 @@ const additional_info = {
 
 O Device ID é obrigatório para:
 
-* Identificação única do dispositivo
+- Identificação única do dispositivo
 
-* Prevenção contra fraudes
+- Prevenção contra fraudes
 
-* Melhoria na taxa de aprovação
+- Melhoria na taxa de aprovação
 
 ## 11. Configurações de Segurança
 
@@ -778,13 +864,13 @@ MERCADOPAGO_WEBHOOK_SECRET=your_webhook_secret
 
 ### 11.2 Validações Obrigatórias
 
-* Validação de assinatura HMAC no webhook
+- Validação de assinatura HMAC no webhook
 
-* Verificação de origem das requisições
+- Verificação de origem das requisições
 
-* Sanitização de dados de entrada
+- Sanitização de dados de entrada
 
-* Logs de auditoria para todas as transações
+- Logs de auditoria para todas as transações
 
 ## 12. Monitoramento e Logs
 
@@ -792,75 +878,193 @@ MERCADOPAGO_WEBHOOK_SECRET=your_webhook_secret
 
 ```javascript
 // Log de criação de pagamento
-console.log('Payment created:', {
+console.log("Payment created:", {
   paymentId: payment.id,
   status: payment.status,
   amount: payment.transaction_amount,
   method: payment.payment_method_id,
-  correlationId: correlationId
+  correlationId: correlationId,
 });
 
 // Log de webhook recebido
-console.log('Webhook received:', {
+console.log("Webhook received:", {
   type: req.body.type,
   action: req.body.action,
   paymentId: req.body.data.id,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 });
 ```
 
 ### 12.2 Métricas Importantes
 
-* Taxa de aprovação por método de pagamento
+- Taxa de aprovação por método de pagamento
 
-* Tempo de processamento de webhooks
+- Tempo de processamento de webhooks
 
-* Erros por código de status
+- Erros por código de status
 
-* Volume de transações por período
+- Volume de transações por período
 
 ## 13. Checklist de Implementação
 
-* [ ] SDK React do MercadoPago configurado
+- [ ] SDK React do MercadoPago configurado
 
-* [ ] Device ID implementado
+- [ ] Device ID implementado
 
-* [ ] Payment Brick com pré-preenchimento de email
+- [ ] Payment Brick com pré-preenchimento de email
 
-* [ ] Callback onReady implementado
+- [ ] Callback onReady implementado
 
-* [ ] Unmount do Brick configurado
+- [ ] Unmount do Brick configurado
 
-* [ ] Headers obrigatórios (X-Idempotency-Key)
+- [ ] Headers obrigatórios (X-Idempotency-Key)
 
-* [ ] Webhook com validação HMAC
+- [ ] Webhook com validação HMAC
 
-* [ ] Tratamento de erros específicos
+- [ ] Tratamento de erros específicos
 
-* [ ] Informações adicionais para aprovação
+- [ ] Informações adicionais para aprovação
 
-* [ ] Logs e monitoramento configurados
+- [ ] Logs e monitoramento configurados
 
-* [ ] Variáveis de ambiente seguras
+- [ ] Variáveis de ambiente seguras
 
-* [ ] Testes em ambiente sandbox
+- [ ] Testes em ambiente sandbox
 
-## 14. Referências da Documentação Oficial
+## 14. Arquivos MercadoPago no Projeto
+
+### Estrutura Completa de Arquivos Relacionados ao MercadoPago
+
+```
+├── api/
+│   ├── create-payment.ts              # Criação de preferências
+│   ├── mercadopago-webhook.ts         # Recebimento de webhooks
+│   └── processors/
+│       ├── final-processor.ts         # Processamento final de pagamentos aprovados
+│       └── email-sender.ts            # Envio de emails de confirmação/falha
+├── lib/
+│   ├── config/
+│   │   └── env.ts                     # Configurações de ambiente (MERCADOPAGO_*)
+│   ├── domain/payment/
+│   │   ├── payment.entity.ts          # Entidade Payment com métodos MercadoPago
+│   │   ├── payment.types.ts           # Tipos MercadoPago (MercadoPagoPayment, etc.)
+│   │   └── payment.validators.ts      # Validadores com schemas MercadoPago
+│   ├── repositories/
+│   │   └── payment.repository.ts      # Repository com métodos findByExternalId
+│   ├── schemas/
+│   │   └── payment.ts                 # Schemas Zod para webhooks MercadoPago
+│   ├── services/
+│   │   ├── payment/
+│   │   │   ├── mercadopago.service.ts # Service principal MercadoPago
+│   │   │   └── payment.processor.ts   # Processamento (usa mercadopago.service)
+│   │   ├── notification/
+│   │   │   ├── email.service.ts       # Templates de email para pagamentos
+│   │   │   └── queue.service.ts       # Enfileiramento de jobs de pagamento
+│   │   └── queue/
+│   │       ├── qstash.service.ts      # Publicação de jobs de processamento
+│   │       └── job.processor.ts       # Processador base para jobs
+│   ├── types/
+│   │   ├── api.types.ts               # Schemas de webhook MercadoPago
+│   │   ├── index.ts                   # PaymentPreference interface
+│   │   └── queue.types.ts             # Tipos de jobs de pagamento
+│   └── utils/
+│       ├── validation.ts              # Validação HMAC para webhooks
+│       └── logger.ts                  # Mascaramento de dados sensíveis
+├── src/
+│   ├── components/
+│   │   ├── MercadoPagoCheckout.tsx    # Payment Brick React
+│   │   └── ConfirmationModal.tsx      # Modal com referência ao MercadoPago
+│   ├── pages/
+│   │   ├── CreateProfile.tsx          # Integração com MercadoPagoCheckout
+│   │   └── Index.tsx                  # Menção de segurança MercadoPago
+│   ├── schemas/
+│   │   └── payment.ts                 # Schemas de webhook (duplicado)
+│   └── types/
+│       └── index.ts                   # CheckoutData interface
+```
+
+### Responsabilidades por Arquivo
+
+| Arquivo                   | Responsabilidade                        | Integração MercadoPago |
+| ------------------------- | --------------------------------------- | ---------------------- |
+| **Frontend**              |                                         |                        |
+| `MercadoPagoCheckout.tsx` | Payment Brick, Device ID, callbacks     | ✅ Direto              |
+| `ConfirmationModal.tsx`   | UI com referência de segurança MP       | ✅ Visual              |
+| `CreateProfile.tsx`       | Integração com checkout                 | ✅ Via componente      |
+| `Index.tsx`               | Menção de segurança                     | ✅ Visual              |
+| **API Endpoints**         |                                         |                        |
+| `create-payment.ts`       | Criação de preferências, validação Zod  | ✅ Direto              |
+| `mercadopago-webhook.ts`  | Webhooks, validação HMAC                | ✅ Via service         |
+| `final-processor.ts`      | Processamento final de pagamentos       | ✅ Via repositories    |
+| `email-sender.ts`         | Templates de email de pagamento         | ✅ Via dados           |
+| **Core Services**         |                                         |                        |
+| `mercadopago.service.ts`  | Todas as APIs MercadoPago               | ✅ Direto              |
+| `payment.processor.ts`    | Processamento de pagamentos             | ✅ Via service         |
+| `email.service.ts`        | Templates para confirmação/falha        | ✅ Via dados           |
+| `queue.service.ts`        | Enfileiramento de jobs de pagamento     | ✅ Via dados           |
+| `qstash.service.ts`       | Publicação de jobs de processamento     | ✅ Via dados           |
+| **Domain & Data**         |                                         |                        |
+| `payment.entity.ts`       | Entidade com métodos MercadoPago        | ✅ Via tipos           |
+| `payment.types.ts`        | Tipos MercadoPago (Payment, Webhook)    | ✅ Direto              |
+| `payment.validators.ts`   | Validadores com schemas MercadoPago     | ✅ Direto              |
+| `payment.repository.ts`   | Métodos findByExternalId (MP ID)        | ✅ Via dados           |
+| **Configuration**         |                                         |                        |
+| `env.ts`                  | Variáveis MERCADOPAGO\_\* com validação | ✅ Direto              |
+| `validation.ts`           | Validação HMAC para webhooks            | ✅ Direto              |
+| **Schemas & Types**       |                                         |                        |
+| `lib/schemas/payment.ts`  | Schemas Zod para webhooks MercadoPago   | ✅ Direto              |
+| `src/schemas/payment.ts`  | Schemas de webhook (duplicado)          | ✅ Direto              |
+| `api.types.ts`            | Schemas de webhook MercadoPago          | ✅ Direto              |
+| `queue.types.ts`          | Tipos de jobs de pagamento              | ✅ Via dados           |
+
+### Fluxo Completo de Dados MercadoPago
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant C as MercadoPagoCheckout.tsx
+    participant CP as create-payment.ts
+    participant MP as MercadoPago API
+    participant W as mercadopago-webhook.ts
+    participant S as mercadopago.service.ts
+    participant Q as QStash
+    participant FP as final-processor.ts
+    participant PR as PaymentRepository
+    participant ES as email-sender.ts
+
+    U->>C: Preenche dados
+    C->>CP: POST /create-payment
+    CP->>MP: Create preference
+    MP-->>CP: preferenceId
+    CP-->>C: preferenceId
+    C->>MP: Payment Brick checkout
+    MP->>W: Webhook notification
+    W->>S: validateWebhook()
+    W->>S: getPaymentDetails()
+    W->>PR: logPaymentEvent()
+    W->>Q: enqueueProcessingJob()
+    Q->>FP: Process approved payment
+    FP->>PR: Update payment status
+    FP->>Q: Enqueue email job
+    Q->>ES: Send confirmation email
+```
+
+## 15. Referências da Documentação Oficial
 
 Todas as funcionalidades implementadas seguem a documentação oficial disponível em:
 
-* `documentMp/INTEGRAÇÃO BRICKS/` - Documentação completa dos Bricks
+- **`.docMp/Notificações/Webhooks.md`** - Configuração e implementação de webhooks
+- **`.docMp/Brick de Pagamento Github/Documentacao-do-Fluxo-de-Convidados.md`** - Payment Brick completo
+- **`documentMp/INTEGRAÇÃO BRICKS/Payment/`** - Específico para Payment Brick
+- **`documentMp/INTEGRAÇÃO BRICKS/Como melhorar a aprovação dos pagamentos/`** - Device ID e otimizações
 
-* `documentMp/INTEGRAÇÃO BRICKS/Payment/` - Específico para Payment Brick
+### Conformidade com Melhores Práticas
 
-* `documentMp/INTEGRAÇÃO BRICKS/Funcionalidades avançadas/` - Recursos avançados
+✅ **Payment Brick Guest Flow** - Implementação completa conforme documentação oficial  
+✅ **Validação HMAC obrigatória** - Webhooks seguem padrão de segurança  
+✅ **Device ID implementado** - Melhoria na taxa de aprovação  
+✅ **Headers obrigatórios** - X-Idempotency-Key em todas as chamadas  
+✅ **Schemas Zod** - Validação rigorosa de todos os dados  
+✅ **Fluxo assíncrono** - Webhook → QStash → Processamento
 
-* `documentMp/INTEGRAÇÃO BRICKS/Gestão de pagamentos/` - Gestão de ciclo de vida
-
-* `documentMp/INTEGRAÇÃO BRICKS/Como melhorar a aprovação dos pagamentos/` - Otimizações
-
-* `documentMp/INTEGRAÇÃO BRICKS/Referências de API/` - Referências técnicas
-
-* `documentMp/Notificações/Webhooks.md` - Configuração e implementação de webhooks
-
-Esta implementação garante conformidade com todas as melhores práticas do MercadoPago, incluindo validação HMAC obrigatória de webhooks, e maximiza a taxa de aprovação de pagamentos no sistema SOS Moto com valores corretos (55.00 básico, 85.00 premium).
+Esta implementação garante conformidade total com as melhores práticas do MercadoPago e maximiza a taxa de aprovação de pagamentos no sistema SOS Moto com valores corretos (R$ 55,00 básico, R$ 85,00 premium).

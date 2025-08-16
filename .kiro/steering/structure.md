@@ -2,134 +2,85 @@
 
 ## Root Directory Organization
 
-```
-├── src/                    # Frontend React application
-├── api/                    # Vercel API routes (TypeScript) 
-├── functions/              # Firebase Cloud Functions
-│   ├── src/                # TypeScript source
-│   ├── .env                # Environment variables (NOT committed)
-│   └── .env.example        # Template for env vars
-├── lib/                   # Shared utilities and configurations
-├── public/                # Static assets
-├── firebase.json          # Firebase configuration
-├── firestore.rules        # Firestore security rules
-└── .kiro/                 # Kiro IDE configuration and steering
-```
+### Configuration Files
 
-## Frontend Structure (`src/`)
+- `package.json` - Dependencies and npm scripts
+- `tsconfig.json` - TypeScript configuration with path aliases
+- `vite.config.ts` - Build tool configuration
+- `tailwind.config.ts` - Design system configuration
+- `components.json` - shadcn/ui component configuration
+- `firebase.json` - Firebase services setup
+- `vercel.json` - Deployment and API routing
+- `.env.local` - Environment variables (not committed)
 
-```
-src/
-├── components/            # Reusable UI components (shadcn/ui based)
-├── pages/                 # Route components
-├── hooks/                 # Custom React hooks
-├── integrations/          # External service integrations
-├── lib/                   # Frontend utilities
-├── types/                 # TypeScript type definitions
-├── App.tsx               # Main application component
-├── main.tsx              # Application entry point
-└── index.css             # Global styles
-```
+### Source Code Structure
 
-## Backend Structure (`functions/`)
+#### `/src` - Frontend Application
 
-```
-functions/
-├── src/
-│   ├── schemas/          # Zod validation schemas
-│   ├── webhooks/         # Webhook handlers
-│   │   └── mercadopago.ts
-│   ├── payments/         # Payment processing
-│   │   ├── checkout.ts   # Create payment preference
-│   │   └── processor.ts  # Process approved payments
-│   ├── emails/           # Email services
-│   │   └── sender.ts     # Send confirmation emails
-│   ├── utils/            # Utility functions
-│   │   └── crypto.ts     # HMAC validation, UUID generation
-│   └── index.ts          # Main exports
-├── lib/                  # Compiled JavaScript (generated)
-├── package.json          # Dependencies
-├── tsconfig.json         # TypeScript configuration
-└── .eslintrc.js          # ESLint configuration
-```
+- `main.tsx` - Application entry point
+- `App.tsx` - Root component with routing and providers
+- `index.css` - Global styles and CSS variables
+- `/components` - Reusable UI components
+- `/pages` - Route components (Index, CreateProfile, Success, Failure, Memorial, NotFound)
+- `/hooks` - Custom React hooks
+- `/lib` - Frontend utilities and configurations
+- `/schemas` - Frontend validation schemas
+- `/types` - TypeScript type definitions
 
-## Firebase Configuration Files
+#### `/api` - Backend API Functions
 
-```
-/
-├── firebase.json         # Firebase project configuration
-├── firestore.rules       # Firestore security rules
-├── firestore.indexes.json # Firestore indexes
-└── storage.rules         # Storage security rules
-```
+- `create-payment.ts` - Payment creation endpoint
+- `mercadopago-webhook.ts` - Payment webhook handler
+- `get-profile.ts` - Profile retrieval endpoint
+- `check-status.ts` - Status checking endpoint
+- `/processors` - Background job processors
+- `tsconfig.json` - API-specific TypeScript config
 
-## API Routes (`api/`)
+#### `/lib` - Shared Backend Logic
 
-```
-api/
-├── check-status.ts       # Health check endpoint
-├── create-payment.ts     # Payment creation API
-├── get-profile.ts        # Profile retrieval API
-└── tsconfig.json        # TypeScript configuration for API
-```
+- `/config` - Configuration utilities
+- `/domain` - Business logic and domain models
+- `/repositories` - Data access layer
+- `/schemas` - Validation schemas
+- `/services` - External service integrations
+- `/types` - Shared type definitions
+- `/utils` - Utility functions and helpers
 
-## Shared Libraries (`lib/`)
+### Path Aliases
 
-```
-lib/
-├── config/              # Configuration files
-├── services/            # Shared service implementations
-├── types/               # Common type definitions
-└── utils/               # Utility functions
-```
+- `@/*` - Maps to `./src/*`
+- `@/lib/*` - Maps to `./lib/*`
 
-## Key Architectural Patterns
+## Architectural Patterns
 
-### Firebase Cloud Functions
+### Frontend Architecture
 
-- All functions exported from single `index.ts` entry point
-- Shared code organized in logical directories (schemas, utils, etc.)
-- Firestore triggers for reactive processing
-- HTTP functions with CORS support for API endpoints
+- **Component-based**: React components with TypeScript
+- **Route-based pages**: Each route has its own page component
+- **Shared UI components**: Reusable components in `/src/components`
+- **Custom hooks**: Business logic abstracted into hooks
+- **Form validation**: React Hook Form + Zod schemas
 
-### Type Safety
+### Backend Architecture
 
-- Use `unknown` for external data, validate immediately with Zod schemas
-- Never use `any` in production code
-- All external APIs validated at boundaries
+- **Serverless functions**: Each API endpoint is a separate function
+- **Shared libraries**: Common logic in `/lib` directory
+- **Repository pattern**: Data access abstracted in repositories
+- **Service layer**: External integrations in services
+- **Domain-driven**: Business logic organized by domain
 
-### Service Organization
+### Data Flow
 
-- External services (MercadoPago, AWS SES) in dedicated modules
-- Internal business logic in `functions/src/`
-- Clear separation of concerns
-- Environment variables in `.env` files (NOT functions.config())
+1. Frontend forms collect user data
+2. API functions validate and process requests
+3. Data stored in Firebase Firestore
+4. Background processors handle async operations
+5. Webhooks update payment status
 
-### Frontend Routing
+## File Naming Conventions
 
-```
-/ → Index (landing page)
-/create → CreateProfile (user registration)
-/success → Success (payment success)
-/failure → Failure (payment failure)
-/memorial/:id → Memorial (tribute pages)
-```
-
-## Critical Rules
-
-### Prohibited Areas
-
-- **NEVER modify anything in `tests/` or `test-integration/` directories**
-- **NEVER use `any` type in production code**
-- **NEVER use `import_map.json` in Cloud Functions**
-- **NEVER use `functions.config()` - DEPRECATED after Dec 31, 2025**
-
-### Required Practices
-
-- All Cloud Functions must be TypeScript with strict mode enabled
-- Validate all external data with Zod schemas immediately at boundaries
-- Use TypeScript path aliases: `@/` for `src/`, `@/lib/` for `lib/`
-- Follow modular architecture with clear separation of concerns
-- Use Firestore security rules for data access control
-- Use `.env` files for environment variables (NO functions.config())
-- Never commit `.env` files - use `.env.example` as template
+- **Components**: PascalCase (e.g., `CreateProfile.tsx`)
+- **API functions**: kebab-case (e.g., `create-payment.ts`)
+- **Utilities**: camelCase (e.g., `logger.ts`)
+- **Types**: PascalCase interfaces/types
+- **Constants**: UPPER_SNAKE_CASE

@@ -191,13 +191,37 @@ graph TD
 | /memorial/:id | Página memorial com dados médicos |
 | /404 | Página não encontrada |
 
-### 4.4 APIs Vercel Functions
+### 4.4 Estado Real da Implementação
 
-#### 4.4.1 API de Criação de Pagamento (Atualizada)
+#### 4.4.1 ✅ APIs Implementadas Corretamente
 
+**API de Criação de Pagamento**
 ```
 POST /api/create-payment
 ```
+- Validação Zod completa
+- Headers obrigatórios (X-Idempotency-Key)
+- Integração correta com MercadoPago Preferences API
+- Salva pending_profile no Firestore
+- Retorna preferenceId para Payment Brick
+
+#### 4.4.2 ⚠️ Problemas Críticos Identificados
+
+**Webhook MercadoPago (NECESSITA CORREÇÃO)**
+```
+POST /api/mercadopago-webhook
+```
+- ❌ NÃO usa MercadoPagoService (chama API direta)
+- ❌ Processamento SÍNCRONO (deveria ser apenas enfileiramento)
+- ❌ Código duplicado com final-processor
+- ✅ Validação HMAC implementada
+- ✅ Enfileiramento QStash implementado
+
+**Frontend MercadoPagoCheckout.tsx (NECESSITA CORREÇÃO)**
+- ❌ Device ID OBRIGATÓRIO não implementado
+- ❌ Reduz taxa de aprovação significativamente
+- ✅ Payment Brick corretamente integrado
+- ✅ Validação de erros implementada
 
 **Melhorias Implementadas:**
 - Desacoplamento de outras funcionalidades

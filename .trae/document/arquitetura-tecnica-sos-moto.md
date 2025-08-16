@@ -68,53 +68,105 @@ Nenhum teste novo será criado nem modificado nesta fase.
 
 ## 1. Arquitetura do Sistema
 
+### 1.1 Arquitetura Modular Implementada
+
 ```mermaid
 graph TD
     A[Navegador do Usuário] --> B[Frontend React/Vite]
     B --> C[Vercel Functions APIs]
-    C --> D[Firebase Firestore]
-    C --> E[Firebase Storage]
-    C --> F[Upstash Redis]
-    C --> G[MercadoPago API]
-    C --> H[AWS SES]
+    C --> D[Domain Layer]
+    C --> E[Service Layer]
+    C --> F[Repository Layer]
+    C --> G[Processors Layer]
     
-    subgraph "Camada Frontend"
+    E --> H[Firebase Firestore]
+    E --> I[Firebase Storage]
+    E --> J[Upstash Redis]
+    E --> K[MercadoPago API]
+    E --> L[QStash Queue]
+    E --> M[AWS SES]
+    
+    subgraph "Frontend Layer"
         B
     end
     
-    subgraph "Camada de APIs (Vercel)"
+    subgraph "API Layer (Vercel)"
         C
     end
     
-    subgraph "Camada de Dados"
+    subgraph "Business Logic (lib/)"
         D
         E
-    end
-    
-    subgraph "Camada de Cache"
         F
+        G
     end
     
-    subgraph "Serviços Externos"
-        G
+    subgraph "External Services"
         H
+        I
+        J
+        K
+        L
+        M
     end
+```
+
+### 1.2 Estrutura Modular Detalhada
+
+```mermaid
+graph TD
+    A[lib/] --> B[domain/]
+    A --> C[services/]
+    A --> D[repositories/]
+    A --> E[types/]
+    A --> F[utils/]
+    A --> G[config/]
+    A --> H[schemas/]
+    
+    B --> B1[profile/]
+    B --> B2[payment/]
+    B --> B3[notification/]
+    
+    C --> C1[payment/]
+    C --> C2[profile/]
+    C --> C3[notification/]
+    C --> C4[queue/]
+    C --> C5[storage/]
+    
+    D --> D1[profile.repository.ts]
+    D --> D2[payment.repository.ts]
 ```
 
 ## 2. Descrição das Tecnologias
 
+### 2.1 Stack Principal
 - **Frontend**: React@18 + Vite + TailwindCSS + shadcn/ui + @mercadopago/sdk-react (Payment Brick)
-- **Backend**: Vercel Functions (Node.js)
+- **Backend**: Vercel Functions (Node.js) com arquitetura modular
 - **Banco de Dados**: Firebase Firestore
 - **Storage**: Firebase Storage
 - **Cache**: Upstash Redis (REST API)
-- **Pagamentos**: MercadoPago API + SDK React oficial (Payment Brick exclusivo)
-- **Segurança**: Device ID obrigatório, validação HMAC, headers X-Idempotency-Key
+- **Filas**: QStash (Upstash) para processamento assíncrono
+- **Pagamentos**: MercadoPago API + SDK React oficial (Payment Brick)
 - **Email**: AWS SES v2
-- **Validação**: Zod
+- **Validação**: Zod schemas em todas as fronteiras
 - **QR Code**: qrcode + qrcode.react
 - **Logs**: Sistema customizado com correlationId
-- **Referência**: Consulte `mercadopago-integration-guide.md` para implementação completa
+
+### 2.2 Arquitetura Modular (lib/)
+- **Domain Layer**: Entidades de negócio (Profile, Payment, Notification)
+- **Service Layer**: Lógica de negócio e integração com serviços externos
+- **Repository Layer**: Acesso a dados com padrão Repository
+- **Types**: Definições TypeScript centralizadas
+- **Utils**: Utilitários compartilhados (logger, validation, ids)
+- **Config**: Configurações de ambiente
+- **Schemas**: Validação Zod para todas as entradas
+
+### 2.3 Segurança Implementada
+- **Device ID**: OBRIGATÓRIO para MercadoPago (melhora aprovação)
+- **Validação HMAC**: Webhooks MercadoPago com assinatura secreta
+- **Headers Obrigatórios**: X-Idempotency-Key, X-Correlation-Id
+- **Validação Zod**: Todas as entradas validadas na fronteira
+- **Tipos Seguros**: Proibido uso de `any`, `unknown` apenas na fronteira
 
 ## 3. Definições de Rotas
 
@@ -127,22 +179,43 @@ graph TD
 | /memorial/:id | Página memorial com informações médicas (acesso via QR Code) |
 | /404 | Página não encontrada |
 
-## 4. Definições de APIs
+## 4. Fluxo de Processamento Real vs Documentado
 
-### 4.1 APIs Principais
+### 4.1 ⚠️ PROBLEMAS CRÍTICOS IDENTIFICADOS
 
-#### Criação de Pagamento (Atualizada)
+**INCONSISTÊNCIA ARQUITETURAL:**
+- **Documentado**: Fluxo assíncrono com QStash
+- **Implementado**: Webhook processa SÍNCRONAMENTE
+- **Problema**: Webhook não usa MercadoPagoService (chama API direta)
+- **Duplicação**: processApprovedPayment em 2 lugares
+
+### 4.2 Fluxo Atual Implementado (SÍNCRONO)
+
+```mermaid
+graph TD
+    A[MercadoPago] --> B[api/mercadopago-webhook.ts]
+    B --> C[Validação HMAC]
+    B --> D[Busca Payment Details - API DIRETA]
+    B --> E[Salva Log - PaymentRepository]
+    B --> F[Enfileira Job - QStash]
+    F --> G[api/processors/final-processor.ts]
+    G --> H[Processamento Completo]
+```
+
+### 4.3 APIs Implementadas
+
+#### Criação de Pagamento
 ```
 POST /api/create-payment
 ```
 
-**Melhorias Implementadas:**
-- Desacoplamento de outras funcionalidades
+**Status**: ✅ IMPLEMENTADO CORRETAMENTE
 - Headers obrigatórios (`X-Idempotency-Key`)
-- Suporte exclusivo a cartão de crédito/débito e PIX
-- Device ID obrigatório para segurança
-- Informações adicionais para aprovação
-- Pré-preenchimento automático de email no checkout
+- Validação Zod completa
+- Suporte a cartão de crédito/débito e PIX
+- ⚠️ **FALTA**: Device ID obrigatório no frontend
+- Salva pending_profile no Firestore
+- Retorna preferenceId para Payment Brick
 
 **Request:**
 | Parâmetro | Tipo | Obrigatório | Descrição |
@@ -192,12 +265,32 @@ POST /api/create-payment
 }
 ```
 
-#### Webhook MercadoPago (Atualizado)
+#### Webhook MercadoPago
 ```
 POST /api/mercadopago-webhook
 ```
 
-**Melhorias de Segurança Implementadas:**
+**Status**: ⚠️ PARCIALMENTE IMPLEMENTADO - NECESSITA CORREÇÕES
+
+**Implementado Corretamente:**
+- Validação HMAC com assinatura secreta
+- Parsing com MercadoPagoWebhookSchema (Zod)
+- Log de pagamentos via PaymentRepository
+- Enfileiramento de jobs via QStash
+
+**❌ PROBLEMAS CRÍTICOS:**
+- Webhook NÃO usa MercadoPagoService (chama API direta)
+- Processamento SÍNCRONO (deveria ser apenas enfileiramento)
+- Código duplicado com final-processor
+
+**Correções Necessárias:**
+```typescript
+// ATUAL (INCORRETO):
+const payment = await fetch('https://api.mercadopago.com/v1/payments/...');
+
+// DEVERIA SER:
+const payment = await mercadoPagoService.getPaymentDetails(webhookData.data.id);
+```
 - Validação obrigatória de assinatura HMAC
 - Verificação de headers `x-signature` e `x-request-id`
 - Processamento apenas de notificações `payment.updated`

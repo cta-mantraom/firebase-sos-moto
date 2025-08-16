@@ -23,7 +23,19 @@
 
 ## 1. Visão Geral
 
-Este documento detalha a implementação completa da integração com MercadoPago no sistema SOS Moto, utilizando o SDK React oficial (`@mercadopago/sdk-react`) com Payment Brick e seguindo as melhores práticas de segurança. A integração suporta **exclusivamente** pagamentos via **cartão de crédito/débito** e **PIX**.
+Este documento detalha a implementação completa da integração com MercadoPago no sistema SOS Moto, utilizando o SDK React oficial (`@mercadopago/sdk-react`) com Payment Brick e seguindo as melhores práticas de segurança. A integração suporta pagamentos via **cartão de crédito/débito**, **PIX** e **boleto**.
+
+### ⚠️ PROBLEMAS CRÍTICOS NA IMPLEMENTAÇÃO ATUAL
+
+**Device ID OBRIGATÓRIO não implementado:**
+- MercadoPagoCheckout.tsx NÃO implementa Device ID
+- Reduz significativamente a taxa de aprovação
+- Viola práticas de segurança do MercadoPago
+
+**Webhook com problemas arquiteturais:**
+- Não usa MercadoPagoService (chama API direta)
+- Processamento síncrono vs documentação assíncrona
+- Código duplicado entre webhook e processor
 
 ### Arquitetura da Integração MercadoPago
 
@@ -76,22 +88,45 @@ initMercadoPago("YOUR_PUBLIC_KEY", {
 
 **Referência:** Consulte `documentMp/INTEGRAÇÃO BRICKS/Customizações gerais/definir tema.md` para configurações de tema.
 
-### 3.2 Implementação do Device ID (Obrigatório)
+### 3.2 Implementação do Device ID (OBRIGATÓRIO - FALTANDO)
 
-Para melhorar a aprovação e segurança dos pagamentos, é obrigatório implementar o Device ID:
+⚠️ **PROBLEMA CRÍTICO**: Device ID NÃO está implementado no MercadoPagoCheckout.tsx atual
+
+**Implementação Correta Necessária:**
 
 ```javascript
-// Adicionar script do Device ID no HTML
+// 1. Adicionar script no index.html
 <script
   src="https://www.mercadopago.com/v2/security.js"
   view="checkout"
-></script>;
+></script>
 
-// Obter Device ID
-const deviceId = window.MP_DEVICE_SESSION_ID;
+// 2. No MercadoPagoCheckout.tsx - ADICIONAR:
+useEffect(() => {
+  // Aguardar carregamento do script de segurança
+  const checkDeviceId = () => {
+    if (window.MP_DEVICE_SESSION_ID) {
+      setDeviceId(window.MP_DEVICE_SESSION_ID);
+    } else {
+      setTimeout(checkDeviceId, 100);
+    }
+  };
+  checkDeviceId();
+}, []);
+
+// 3. Incluir no payload do create-payment:
+const paymentData = {
+  ...formData,
+  deviceId: window.MP_DEVICE_SESSION_ID, // OBRIGATÓRIO
+};
 ```
 
-**Referência:** Consulte `documentMp/INTEGRAÇÃO BRICKS/Como melhorar a aprovação dos pagamentos/melhorara a aprovacao.md` para detalhes sobre Device ID.
+**Impacto da Ausência:**
+- Redução significativa na taxa de aprovação
+- Maior risco de fraude
+- Violação das práticas recomendadas do MercadoPago
+
+**Referência:** Consulte `.docMp/INTEGRAÇÃO BRICKS/Como melhorar a aprovação dos pagamentos/melhorara a aprovacao.md`
 
 ### 3.3 Configuração do Payment Brick
 

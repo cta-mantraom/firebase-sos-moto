@@ -7,6 +7,7 @@ import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { ProcessingJobDataSchema } from '../../lib/types/queue.types';
 import { Profile } from '../../lib/domain/profile/profile.entity';
+import { BloodType } from '../../lib/domain/profile/profile.types';
 import { ProfileRepository } from '../../lib/repositories/profile.repository';
 import { Payment } from '../../lib/domain/payment/payment.entity';
 import { PaymentRepository } from '../../lib/repositories/payment.repository';
@@ -199,7 +200,7 @@ async function createProfile(
         address: addressData,
       },
       {
-        bloodType: profileData.bloodType as string | undefined,
+        bloodType: profileData.bloodType as BloodType | undefined,
         allergies: Array.isArray(profileData.allergies) ? profileData.allergies as string[] : [],
         medications: Array.isArray(profileData.medications) ? profileData.medications as string[] : [],
         medicalConditions: Array.isArray(profileData.medicalConditions) ? profileData.medicalConditions as string[] : [],

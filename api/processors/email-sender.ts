@@ -357,23 +357,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`Unknown email template: ${jobData.template}`);
     }
 
-    // Generate email content
-    const templateData = {
+    // Generate email content based on template type
+    let templateData: PaymentConfirmationData | PaymentFailureData | WelcomeData | ProfileCreatedData;
+    
+    // Base template data
+    const baseData = {
       userName: jobData.name,
       userEmail: jobData.email,
       timestamp: new Date(),
-      ...jobData.templateData,
     };
 
-    const htmlContent = template.generateHtml(templateData as PaymentConfirmationData | PaymentFailureData | WelcomeData);
-    const textContent = template.generateText(templateData as PaymentConfirmationData | PaymentFailureData | WelcomeData);
+    // Add template-specific data
+    switch (jobData.template) {
+      case 'confirmation':
+        templateData = {
+          ...baseData,
+          paymentId: jobData.templateData.paymentId || '',
+          amount: jobData.templateData.amount || 0,
+          planType: jobData.templateData.planType,
+          memorialUrl: jobData.templateData.memorialUrl,
+          qrCodeUrl: jobData.templateData.qrCodeUrl,
+        } as PaymentConfirmationData;
+        break;
+      case 'failure':
+        templateData = {
+          ...baseData,
+          paymentId: jobData.templateData.paymentId || '',
+          reason: 'Payment processing failed', // Default reason
+          retryUrl: undefined,
+        } as PaymentFailureData;
+        break;
+      case 'welcome':
+        templateData = {
+          ...baseData,
+          memorialUrl: jobData.templateData.memorialUrl,
+          planType: jobData.templateData.planType,
+          features: [],
+        } as WelcomeData;
+        break;
+      default:
+        templateData = {
+          ...baseData,
+          ...jobData.templateData,
+        };
+    }
+
+    const htmlContent = template.generateHtml(templateData);
+    const textContent = template.generateText(templateData);
 
     // Create email entity
     const email = new Email({
       to: [jobData.email],
       subject: template.subject,
-      template: EmailTemplate.PAYMENT_CONFIRMATION, // Map from job template
-      templateData,
+      template: jobData.template === 'confirmation' ? EmailTemplate.PAYMENT_CONFIRMATION :
+               jobData.template === 'failure' ? EmailTemplate.PAYMENT_FAILURE :
+               jobData.template === 'welcome' ? EmailTemplate.WELCOME :
+               EmailTemplate.PAYMENT_CONFIRMATION,
+      templateData: {
+        ...templateData,
+        paymentId: templateData.paymentId || jobData.templateData.paymentId,
+      },
       config: {
         from: process.env.SES_FROM_EMAIL || 'noreply@sosmoto.com',
       },

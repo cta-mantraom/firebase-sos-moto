@@ -5,7 +5,6 @@ import {
   ProfileStatus,
   PlanType,
   ProfileSearchFilters,
-  ProfileQueryData,
 } from '../domain/profile/profile.types';
 import { logInfo, logError } from '../utils/logger';
 
@@ -173,7 +172,7 @@ export class ProfileRepository {
    * Searches profiles with filters and pagination
    */
   async search(
-    queryData: ProfileQueryData,
+    queryData: ProfileSearchFilters,
     correlationId?: string
   ): Promise<{ profiles: Profile[]; total: number; hasMore: boolean }> {
     try {
@@ -741,7 +740,7 @@ export class ProfileRepository {
     }
   }
 
-  private buildCountQuery(queryData: ProfileQueryData): Query {
+  private buildCountQuery(queryData: ProfileSearchFilters): Query {
     let query: Query = this.profilesCollection;
 
     if (queryData.status) {

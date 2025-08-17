@@ -22,7 +22,7 @@ export class Email {
   private readonly _templateData: TemplateData;
   private _status: EmailStatus;
   private readonly _config: EmailConfig;
-  private readonly _options?: EmailOptions;
+  private _options?: EmailOptions;
   private _messageId?: string;
   private _sentAt?: Date;
   private _failedAt?: Date;

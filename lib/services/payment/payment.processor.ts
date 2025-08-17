@@ -104,14 +104,16 @@ export class PaymentProcessor {
       }
 
       // Salvar log de pagamento
-      await this.paymentRepository.savePaymentLog({
-        paymentId: paymentData.id.toString(),
-        externalReference: uniqueUrl,
-        status: paymentData.status,
-        statusDetail: paymentData.status_detail || '',
-        amount: paymentData.transaction_amount,
-        paymentMethodId: paymentData.payment_method_id,
-        payerEmail: paymentData.payer.email,
+      await this.paymentRepository.savePaymentLog(
+        paymentData.id.toString(),
+        'payment_webhook_received',
+        {
+          externalReference: uniqueUrl,
+          status: paymentData.status,
+          statusDetail: paymentData.status_detail || '',
+          amount: paymentData.transaction_amount,
+          paymentMethodId: paymentData.payment_method_id,
+          payerEmail: paymentData.payer.email,
         correlationId,
         processedAt: new Date(),
         metadata: {
@@ -153,12 +155,14 @@ export class PaymentProcessor {
       });
 
       // Salvar erro no log de pagamento
-      await this.paymentRepository.savePaymentLog({
+      await this.paymentRepository.savePaymentLog(
         paymentId,
-        externalReference: paymentData.external_reference || '',
-        status: 'processing_failed',
-        statusDetail: (error as Error).message,
-        amount: paymentData.transaction_amount,
+        'processing_failed',
+        {
+          externalReference: paymentData.external_reference || '',
+          status: 'processing_failed',
+          statusDetail: (error as Error).message,
+          amount: paymentData.transaction_amount,
         paymentMethodId: paymentData.payment_method_id,
         payerEmail: paymentData.payer.email,
         correlationId,
@@ -194,12 +198,14 @@ export class PaymentProcessor {
       const paymentDetails = await this.mercadoPagoService.getPaymentDetails(paymentId);
 
       // Salvar log de falha
-      await this.paymentRepository.savePaymentLog({
+      await this.paymentRepository.savePaymentLog(
         paymentId,
-        externalReference: paymentDetails.external_reference || '',
-        status: 'failed',
-        statusDetail: error.message,
-        amount: paymentDetails.transaction_amount,
+        'payment_failed',
+        {
+          externalReference: paymentDetails.external_reference || '',
+          status: 'failed',
+          statusDetail: error.message,
+          amount: paymentDetails.transaction_amount,
         paymentMethodId: paymentDetails.payment_method_id,
         payerEmail: paymentDetails.payer.email,
         correlationId,

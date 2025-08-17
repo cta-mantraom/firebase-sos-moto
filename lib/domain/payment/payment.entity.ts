@@ -482,7 +482,10 @@ export class Payment {
         email: mpPayment.payer.email || '',
         name: mpPayment.payer.first_name || '',
         surname: mpPayment.payer.last_name,
-        identification: mpPayment.payer.identification,
+        identification: mpPayment.payer.identification ? {
+          type: mpPayment.payer.identification.type || '',
+          number: mpPayment.payer.identification.number || ''
+        } : undefined,
       },
       metadata: mpPayment.metadata,
     });

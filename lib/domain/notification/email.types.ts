@@ -148,7 +148,7 @@ export interface EmailData {
 export interface EmailEvent {
   id: string;
   emailId: string;
-  type: 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'failed';
+  type: 'sending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'failed';
   timestamp: Date;
   details?: Record<string, unknown>;
 }

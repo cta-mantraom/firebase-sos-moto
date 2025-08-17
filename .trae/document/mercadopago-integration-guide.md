@@ -6,6 +6,76 @@
 
 > **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
+### **🏗️ ARQUITETURA SERVERLESS (VERCEL FUNCTIONS) - REGRAS FUNDAMENTAIS**
+
+#### **1. Princípios Serverless para MercadoPago:**
+
+**⚠️ REGRA CRÍTICA: FUNCTIONS SÃO STATELESS**
+- Cada webhook/endpoint é COMPLETAMENTE ISOLADO
+- NÃO existe estado compartilhado entre execuções
+- Cada função deve inicializar Firebase com Factory Pattern
+- Timeout webhook: 22 segundos (limite crítico)
+
+**Factory Pattern Obrigatório:**
+```typescript
+// api/mercadopago-webhook.ts
+import { getFirebaseApp } from '@/lib/services/firebase';
+const app = getFirebaseApp(); // Cada função inicializa
+```
+
+#### **2. Estrutura MercadoPago Serverless:**
+
+**📁 api/ - Endpoints MercadoPago:**
+- `api/create-payment.ts` → Endpoint de criação
+- `api/mercadopago-webhook.ts` → Webhook receiver
+- `api/processors/final-processor.ts` → Worker assíncrono
+- DEVEM validar entrada com Zod
+- DEVEM delegar para MercadoPagoService
+
+**📁 lib/services/payment/ - Lógica MercadoPago:**
+- `mercadopago.service.ts` → Toda lógica de API
+- `payment.processor.ts` → Processamento de eventos
+- NÃO são endpoints acessíveis
+- Contêm validação HMAC e Device ID
+
+#### **3. Integração QStash para MercadoPago:**
+
+```typescript
+// Webhook enfileira job assíncrono
+const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+await qstash.publishJSON({
+  url: `${process.env.VERCEL_URL}/api/processors/final-processor`,
+  body: { paymentId, correlationId },
+});
+```
+
+#### **4. Event-Driven Pattern MercadoPago:**
+
+**Fluxo Obrigatório:**
+1. Webhook → Validação HMAC → MercadoPagoService
+2. Service → PaymentRepository.saveLog → Enfileirar Job
+3. Worker → Processar Pagamento → Criar Perfil
+4. NÃO processar síncronamente no webhook!
+
+**Separação Crítica:**
+- `mercadopago-webhook.ts` → Recebe EVENTO (enfileira)
+- `final-processor.ts` → Processa JOB (cria perfil)
+- Esta separação é ARQUITETURA CORRETA!
+
+#### **5. Variáveis MercadoPago Críticas:**
+```bash
+# MercadoPago
+MERCADOPAGO_ACCESS_TOKEN=
+MERCADOPAGO_PUBLIC_KEY=
+MERCADOPAGO_WEBHOOK_SECRET= # Para HMAC
+
+# Vercel Serverless
+VERCEL_URL= # Para workers QStash
+QSTASH_TOKEN= # Para enfileiramento
+```
+
+---
+
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
@@ -15,6 +85,9 @@
 - **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
 - **NUNCA processar pagamentos** sem Device ID obrigatório
 - **NUNCA usar API MercadoPago diretamente** nos endpoints (usar MercadoPagoService)
+- **NUNCA processar síncronamente** em webhooks MercadoPago
+- **NUNCA assumir estado** entre invocações de webhook
+- **NUNCA mover final-processor** de api/processors/
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -29,6 +102,9 @@
 - **Device ID obrigatório** em todos os pagamentos
 - **Validação HMAC obrigatória** em webhooks
 - **Usar MercadoPagoService** para todas as chamadas de API
+- **SEMPRE usar Factory Pattern** para Firebase
+- **SEMPRE enfileirar jobs** via QStash
+- **SEMPRE manter workers** como endpoints
 
 ---
 

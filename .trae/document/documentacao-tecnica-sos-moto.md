@@ -6,6 +6,104 @@
 
 > **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
+### **🏗️ ARQUITETURA SERVERLESS (VERCEL FUNCTIONS) - REGRAS FUNDAMENTAIS**
+
+#### **1. Princípios Serverless Obrigatórios:**
+
+**⚠️ REGRA CRÍTICA: FUNCTIONS SÃO STATELESS**
+- Cada invocação de função é COMPLETAMENTE ISOLADA
+- NÃO existe estado compartilhado entre execuções
+- NÃO existe memória persistente entre chamadas
+- Cada função deve inicializar seus próprios recursos
+
+**Factory Pattern Obrigatório para Firebase:**
+```typescript
+// ✅ CORRETO - lib/services/firebase.ts
+export function getFirebaseApp() {
+  if (!getApps().length) {
+    return initializeApp({...});
+  }
+  return getApps()[0];
+}
+
+// api/any-endpoint.ts
+const app = getFirebaseApp(); // Cada função inicializa
+```
+
+#### **2. Estrutura de Pastas Serverless:**
+
+**📁 api/ - Endpoints & Workers:**
+- TODOS arquivos em api/ são ENDPOINTS públicos
+- DEVEM validar entrada com Zod
+- DEVEM delegar lógica para lib/services/
+- NÃO devem conter lógica de negócio complexa
+- Workers PRECISAM ser endpoints para receber webhooks
+
+**📁 lib/ - Lógica de Negócio:**
+- NÃO são endpoints acessíveis
+- Contêm TODA lógica de negócio
+- São importados pelos endpoints
+- Devem ser PUROS e TESTÁVEIS
+- Schemas Zod APENAS em lib/types/ ou lib/schemas/
+
+#### **3. Integração Vercel Marketplace:**
+
+**Upstash Redis (via Vercel Integration):**
+```typescript
+import { Redis } from '@upstash/redis';
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+```
+
+**QStash (via Vercel Integration):**
+```typescript
+import { Client } from '@upstash/qstash';
+const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+
+// Workers DEVEM ser endpoints em api/processors/
+await qstash.publishJSON({
+  url: `${process.env.VERCEL_URL}/api/processors/final-processor`,
+  body: jobData,
+});
+```
+
+#### **4. Padrões de Processamento Assíncrono:**
+
+**Event-Driven Pattern Obrigatório:**
+1. Evento → Validação → Service → Enfileirar Job
+2. Worker → Processar Job → Atualizar Estado
+3. NÃO processar síncronamente em webhooks
+
+**Separação de Responsabilidades:**
+- payment.processor.ts → Processa EVENTO (enfileira job)
+- final-processor.ts → Processa JOB (cria perfil)
+- NÃO é duplicação, é arquitetura correta!
+
+#### **5. Timeouts Vercel:**
+- API Routes: 10 segundos (Pro: 60s)
+- Edge Functions: 30 segundos
+- Background Functions: 15 minutos (Enterprise)
+
+#### **6. Variáveis de Ambiente Críticas:**
+```bash
+# Vercel Marketplace (automáticas)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+QSTASH_TOKEN=
+QSTASH_CURRENT_SIGNING_KEY=
+QSTASH_NEXT_SIGNING_KEY=
+
+# Configurar manualmente
+VERCEL_URL= # Base URL para workers
+FIREBASE_PROJECT_ID=
+MERCADOPAGO_WEBHOOK_SECRET=
+AWS_SES_REGION=sa-east-1
+```
+
+---
+
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
@@ -13,6 +111,11 @@
 - **NUNCA misturar** código de teste com código de produção
 - **NUNCA implementar funcionalidades** sem definir interfaces primeiro
 - **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
+- **NUNCA assumir estado** entre invocações de função
+- **NUNCA processar síncronamente** em webhooks
+- **NUNCA mover workers** de api/processors/
+- **NUNCA definir schemas duplicados**
+- **NUNCA colocar lógica de negócio** em api/
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -24,6 +127,10 @@
 - **Definir interfaces antes da implementação** (Interface-First Development)
 - **Documentar dependências** antes de usar
 - **Validar exportações** antes de importar
+- **SEMPRE validar dados externos** com Zod
+- **SEMPRE usar helpers** para inicialização
+- **SEMPRE manter workers** como endpoints em api/processors/
+- **SEMPRE usar types** de lib/types/
 
 ---
 

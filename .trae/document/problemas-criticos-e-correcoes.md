@@ -2,13 +2,63 @@
 
 ---
 
-## ⚠️ Regras CRÍTICAS Arquiteturais
+## 🏗️ REGRAS CRÍTICAS SERVERLESS (VERCEL FUNCTIONS)
 
+> **ARQUITETURA SERVERLESS - REGRAS FUNDAMENTAIS**
 > **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
+
+### **⚠️ PRINCÍPIOS SERVERLESS OBRIGATÓRIOS:**
+
+#### **1. Stateless & Isolation (CRÍTICO)**
+- **REGRA CRÍTICA:** Functions são COMPLETAMENTE STATELESS
+- **NÃO existe estado compartilhado** entre execuções
+- **NÃO existe memória persistente** entre chamadas
+- Cada função deve **inicializar seus próprios recursos**
+
+#### **2. Factory Pattern para Inicialização**
+```typescript
+// ✅ CORRETO - Firebase Helper
+export function getFirebaseApp() {
+  if (!getApps().length) {
+    return initializeApp({...});
+  }
+  return getApps()[0];
+}
+```
+
+#### **3. Workers como Endpoints (OBRIGATÓRIO)**
+- `api/processors/email-sender.ts` → **DEVE** ser endpoint (QStash precisa URL)
+- `api/processors/final-processor.ts` → **DEVE** ser endpoint (processa jobs)
+- **NÃO** mover para lib/services/ (quebraria funcionalidade)
+
+### **🎯 ARQUITETURA EXEMPLAR: Event-Driven Pattern**
+
+#### **✅ SEPARAÇÃO CORRETA (NÃO É DUPLICAÇÃO):**
+
+**PaymentProcessor (Service Layer):**
+- **Responsabilidade:** Processar EVENTO de pagamento
+- **Ação:** Validar → Registrar → Enfileirar Job
+- **Localização:** `lib/services/payment/payment.processor.ts`
+
+**FinalProcessor (Worker Function):**
+- **Responsabilidade:** Executar JOB completo
+- **Ação:** Criar perfil → QR Code → Cache → Email
+- **Localização:** `api/processors/final-processor.ts`
+
+**✅ FLUXO CORRETO:**
+```
+Webhook → PaymentProcessor → Enfileira Job → FinalProcessor → Perfil Criado
+```
+
+**✅ ISSO É ARQUITETURA SERVERLESS PERFEITA!**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
+- **NUNCA assumir estado** entre invocações de função
+- **NUNCA processar síncronamente** em webhooks
+- **NUNCA mover workers** de api/processors/ para lib/
+- **NUNCA definir schemas duplicados**
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
 - **NUNCA misturar** código de teste com código de produção
 - **NUNCA implementar funcionalidades** sem definir interfaces primeiro
@@ -16,6 +66,10 @@
 
 ### **✅ Práticas Obrigatórias:**
 
+- **SEMPRE** usar Factory Pattern para inicialização
+- **SEMPRE** manter workers como endpoints
+- **SEMPRE** separar Event Handler de Task Worker
+- **SEMPRE** validar dados externos com Zod
 - Usar `unknown` **SOMENTE** para dados brutos/exteriores recebidos na fronteira do sistema (entrada de dados), antes da validação
 - Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
@@ -76,10 +130,11 @@
 ## 1. Resumo Executivo
 
 Após análise detalhada da implementação atual vs documentação, foram identificados **problemas críticos** que afetam:
-- **Performance**: Processamento síncrono no webhook
 - **Segurança**: Device ID obrigatório não implementado
-- **Manutenibilidade**: Código duplicado e violação da arquitetura modular
+- **Arquitetura**: Webhook não usa MercadoPagoService (chama API direta)
 - **Taxa de Aprovação**: Práticas MercadoPago não seguidas
+
+**NOTA IMPORTANTE:** A separação entre PaymentProcessor e FinalProcessor é arquitetura serverless CORRETA, não duplicação.
 
 ## 2. Problemas Críticos Identificados
 
@@ -165,16 +220,18 @@ graph TD
     B --> C[Processa Assíncronamente]
 ```
 
-### 2.4 🟡 MÉDIO: Código Duplicado
+### 2.3 ✅ ESCLARECIMENTO: Separação PaymentProcessor vs FinalProcessor
 
-**Problema:**
-- Lógica `processApprovedPayment` duplicada
-- Webhook + final-processor fazem processamento similar
-- Viola princípio DRY
+**NÃO É DUPLICAÇÃO - É ARQUITETURA SERVERLESS CORRETA:**
+- `PaymentProcessor` (Service Layer): Processa EVENTO de pagamento → Enfileira Job
+- `FinalProcessor` (Worker Function): Processa JOB completo → Cria perfil
+- Esta separação segue Event-Driven Pattern obrigatório para Serverless Functions
+- Cada componente tem responsabilidade específica e bem definida
 
-**Arquivos Afetados:**
-- `api/mercadopago-webhook.ts`
-- `api/processors/final-processor.ts`
+**Justificativa Arquitetural:**
+- Event Handler ≠ Task Worker (princípio fundamental Serverless)
+- Desacoplamento necessário para escalabilidade
+- Conformidade total com padrões Vercel Functions
 
 ## 3. Plano de Correção Prioritário
 
@@ -193,22 +250,12 @@ graph TD
 
 ### 3.2 Prioridade MÉDIA (Próxima Sprint)
 
-3. **Definir Arquitetura Final**
-   - Decidir: Processamento síncrono OU assíncrono
-   - Atualizar documentação para refletir decisão
-   - **Impacto**: Clareza arquitetural
-
-4. **Eliminar Código Duplicado**
-   - Centralizar lógica de processamento
-   - Criar serviço compartilhado
-   - **Impacto**: Manutenibilidade
-
-### 3.3 Prioridade BAIXA (Backlog)
-
-5. **Otimizações de Performance**
+3. **Otimizações de Performance**
    - Cache de validações
    - Otimização de queries
    - **Impacto**: Performance marginal
+
+
 
 ## 4. Métricas de Sucesso
 
@@ -220,7 +267,7 @@ graph TD
 ### 4.2 Após Correções
 - Taxa de aprovação: ~85-90% (com Device ID)
 - Tempo de processamento: Consistente (arquitetura definida)
-- Manutenibilidade: Alta (arquitetura modular respeitada)
+- Manutenibilidade: Alta (arquitetura serverless exemplar mantida)
 
 ## 5. Riscos e Mitigações
 
@@ -259,10 +306,15 @@ graph TD
 
 ## 7. Conclusão
 
-A implementação atual está **90% conforme** com a arquitetura documentada, mas os **10% restantes são críticos** para:
-- Taxa de aprovação de pagamentos
-- Segurança e prevenção de fraude
-- Manutenibilidade do código
-- Consistência arquitetural
+A implementação atual demonstra **arquitetura serverless exemplar** com separação correta entre Event Handler e Task Worker. Os problemas identificados são específicos e focados:
 
-As correções propostas são **essenciais** e devem ser implementadas com **prioridade alta** para garantir o sucesso do produto.
+**Problemas Reais a Corrigir:**
+- Device ID obrigatório não implementado (impacto: taxa de aprovação)
+- Webhook não usa MercadoPagoService (impacto: consistência arquitetural)
+
+**Arquitetura Validada como Correta:**
+- Separação PaymentProcessor vs FinalProcessor é padrão serverless exemplar
+- Event-Driven Pattern implementado corretamente
+- Responsabilidades bem definidas e desacopladas
+
+As correções propostas são **específicas e essenciais** para otimizar taxa de aprovação e manter consistência arquitetural.

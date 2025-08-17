@@ -6,6 +6,93 @@
 
 > **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
+### **🏗️ ARQUITETURA SERVERLESS (VERCEL FUNCTIONS) - REGRAS FUNDAMENTAIS**
+
+#### **1. Princípios Serverless para Produto:**
+
+**⚠️ REGRA CRÍTICA: FUNCTIONS SÃO STATELESS**
+- Cada funcionalidade é COMPLETAMENTE ISOLADA
+- NÃO existe estado compartilhado entre execuções
+- Cada função deve inicializar seus próprios recursos
+- Timeouts Vercel: API Routes (10s), Edge Functions (30s)
+
+**Factory Pattern Obrigatório:**
+```typescript
+// Todas as funcionalidades devem usar
+import { getFirebaseApp } from '@/lib/services/firebase';
+const app = getFirebaseApp(); // Cada função inicializa
+```
+
+#### **2. Estrutura de Funcionalidades Serverless:**
+
+**📁 api/ - Endpoints de Funcionalidades:**
+- `api/create-payment.ts` → Criação de perfil
+- `api/get-profile.ts` → Busca de perfil
+- `api/check-status.ts` → Verificação de status
+- `api/processors/` → Workers assíncronos
+- DEVEM validar entrada com Zod
+- DEVEM delegar lógica para lib/services/
+
+**📁 lib/ - Lógica de Funcionalidades:**
+- `lib/services/profile/` → Lógica de perfis
+- `lib/services/payment/` → Lógica de pagamentos
+- `lib/services/notification/` → Lógica de notificações
+- `lib/repositories/` → Acesso a dados
+- NÃO são endpoints acessíveis
+- Contêm TODA lógica de negócio
+
+#### **3. Integração Serverless por Funcionalidade:**
+
+**Redis Cache (Upstash):**
+```typescript
+// Para cache de perfis e status
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+```
+
+**QStash Queue (Upstash):**
+```typescript
+// Para processamento assíncrono
+const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+await qstash.publishJSON({
+  url: `${process.env.VERCEL_URL}/api/processors/final-processor`,
+  body: jobData,
+});
+```
+
+#### **4. Event-Driven Pattern por Funcionalidade:**
+
+**Fluxo de Criação de Perfil:**
+1. Formulário → Validação → create-payment.ts
+2. Payment → Webhook → Enfileirar Job
+3. Worker → Processar → Criar Perfil
+4. NÃO processar síncronamente!
+
+**Fluxo de Acesso a Perfil:**
+1. QR Code → get-profile.ts
+2. Cache Redis → Firestore (fallback)
+3. Retorno otimizado < 2 segundos
+
+#### **5. Checklist Serverless por Funcionalidade:**
+
+**Para toda funcionalidade em api/:**
+- É um endpoint acessível via HTTP?
+- Valida entrada com Zod?
+- Delega lógica para lib/services/?
+- Inicializa Firebase com helper?
+- Retorna respostas padronizadas?
+
+**Para toda funcionalidade em lib/:**
+- Contém apenas lógica de negócio?
+- Não expõe endpoints HTTP?
+- Exports bem definidos?
+- Tipos TypeScript completos?
+- Sem duplicação de schemas?
+
+---
+
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
@@ -14,6 +101,10 @@
 - **NUNCA implementar funcionalidades** sem definir interfaces primeiro
 - **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
 - **NUNCA adicionar funcionalidades** sem validação de impacto arquitetural
+- **NUNCA assumir estado** entre invocações de função
+- **NUNCA processar síncronamente** em webhooks
+- **NUNCA mover workers** de api/processors/
+- **NUNCA definir schemas duplicados**
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -26,6 +117,10 @@
 - **Documentar dependências** antes de usar
 - **Validar exportações** antes de importar
 - **Validar impacto arquitetural** antes de adicionar funcionalidades
+- **SEMPRE validar dados externos** com Zod
+- **SEMPRE usar Factory Pattern** para inicialização
+- **SEMPRE manter workers** como endpoints
+- **SEMPRE usar types** de lib/types/
 
 ---
 

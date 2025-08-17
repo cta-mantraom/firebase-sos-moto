@@ -2,13 +2,101 @@
 
 ---
 
-## ⚠️ Regras CRÍTICAS Arquiteturais
+## 🏗️ REGRAS CRÍTICAS SERVERLESS (VERCEL FUNCTIONS)
 
+> **ARQUITETURA SERVERLESS - REGRAS FUNDAMENTAIS**
 > **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
+
+### **⚠️ PRINCÍPIOS SERVERLESS OBRIGATÓRIOS:**
+
+#### **1.1 Stateless & Isolation (CRÍTICO)**
+- **REGRA CRÍTICA:** Functions são COMPLETAMENTE STATELESS
+- Cada invocação de função é ISOLADA
+- **NÃO existe estado compartilhado** entre execuções
+- **NÃO existe memória persistente** entre chamadas
+- Cada função deve **inicializar seus próprios recursos**
+
+#### **1.2 Inicialização de Recursos (Factory Pattern)**
+```typescript
+// ✅ CORRETO - Factory Pattern para Firebase
+// lib/services/firebase.ts
+export function getFirebaseApp() {
+  if (!getApps().length) {
+    return initializeApp({...});
+  }
+  return getApps()[0];
+}
+
+// api/any-endpoint.ts
+const app = getFirebaseApp(); // Cada função inicializa
+
+// ❌ INCORRETO - Tentar centralizar estado
+// NÃO funcionará em Serverless
+```
+
+### **📁 ESTRUTURA DE PASTAS E RESPONSABILIDADES SERVERLESS**
+
+#### **2.1 Pasta api/ - Endpoints & Workers**
+```
+📁 api/
+├── *.ts              → HTTP Endpoints (rotas acessíveis)
+└── processors/       → Workers assíncronos (recebem jobs)
+    ├── email-sender.ts    → DEVE ser endpoint (QStash precisa URL)
+    └── final-processor.ts → DEVE ser endpoint (processa jobs)
+```
+
+**⚠️ REGRAS OBRIGATÓRIAS:**
+- **TODOS** arquivos em api/ são ENDPOINTS públicos
+- **DEVEM** validar entrada com Zod
+- **DEVEM** delegar lógica para lib/services/
+- **NÃO devem** conter lógica de negócio complexa
+- **Workers PRECISAM** ser endpoints para receber webhooks
+
+#### **2.2 Pasta lib/ - Lógica de Negócio**
+```
+📁 lib/
+├── domain/          → Entidades e interfaces de domínio
+├── services/        → Lógica de negócio e integrações
+├── repositories/    → Acesso a dados
+├── types/          → TypeScript types e schemas Zod
+├── utils/          → Utilitários compartilhados
+└── config/         → Configurações e variáveis
+```
+
+**⚠️ REGRAS OBRIGATÓRIAS:**
+- **NÃO são** endpoints acessíveis
+- Contêm **TODA** lógica de negócio
+- São **importados** pelos endpoints
+- Devem ser **PUROS e TESTÁVEIS**
+- Schemas Zod **APENAS** em lib/types/ ou lib/schemas/
+
+### **🔄 PADRÕES DE PROCESSAMENTO ASSÍNCRONO**
+
+#### **3.1 Event-Driven Pattern (OBRIGATÓRIO)**
+**FLUXO CORRETO:**
+```
+1. Evento → Validação → Service → Enfileirar Job
+2. Worker → Processar Job → Atualizar Estado
+3. NÃO processar síncronamente em webhooks
+```
+
+**SEPARAÇÃO DE RESPONSABILIDADES (NÃO É DUPLICAÇÃO):**
+- `payment.processor.ts` → Processa EVENTO (enfileira job)
+- `final-processor.ts` → Processa JOB (cria perfil)
+- **✅ ISSO É ARQUITETURA CORRETA!**
+
+#### **3.2 Timeouts Vercel**
+- **API Routes:** 10 segundos (Pro: 60s)
+- **Edge Functions:** 30 segundos
+- **Background Functions:** 15 minutos (Enterprise)
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
+- **NUNCA assumir estado** entre invocações de função
+- **NUNCA processar síncronamente** em webhooks
+- **NUNCA definir schemas duplicados**
+- **NUNCA colocar lógica de negócio** em api/
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
 - **NUNCA misturar** código de teste com código de produção
 - **NUNCA implementar funcionalidades** sem definir interfaces primeiro
@@ -16,6 +104,10 @@
 
 ### **✅ Práticas Obrigatórias:**
 
+- **SEMPRE** usar helpers para inicialização
+- **SEMPRE** validar dados externos com Zod
+- **SEMPRE** manter workers como endpoints em api/processors/
+- **SEMPRE** usar types de lib/types/
 - Usar `unknown` **SOMENTE** para dados brutos/exteriores recebidos na fronteira do sistema (entrada de dados), antes da validação
 - Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos

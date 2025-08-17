@@ -321,6 +321,43 @@ export interface MercadoPagoPayment {
   tags?: string[];
 }
 
+// Payment Entity (Following strict typing rules)
+export interface Payment {
+  id: string;
+  paymentId: string; // MercadoPago payment ID
+  status: PaymentStatus;
+  statusDetail?: string;
+  externalReference: string; // Profile/reference ID
+  amount: number;
+  currency: string;
+  paymentMethodId?: string;
+  paymentTypeId?: string;
+  customerEmail?: string;
+  customerId?: string;
+  correlationId: string;
+  deviceId?: string; // CRITICAL for fraud prevention
+  createdAt: Date;
+  updatedAt?: Date;
+  processedAt?: Date;
+  metadata?: Record<string, unknown>; // Fixed: using unknown instead of any
+}
+
+// Payment log data for audit trail
+export interface PaymentLogData {
+  paymentId: string;
+  status: string;
+  statusDetail?: string;
+  externalReference?: string;
+  customerData?: {
+    email?: string;
+    identification?: unknown; // Raw data from MercadoPago
+  };
+  amount: number;
+  correlationId: string;
+  processedAt: Date;
+  webhookData?: unknown; // Raw webhook payload
+}
+
 // Payment Data
 export interface PaymentData {
   id: string;

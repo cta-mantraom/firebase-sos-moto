@@ -5,6 +5,13 @@ import { initMercadoPago } from '@mercadopago/sdk-react';
 import { toast } from '@/hooks/use-toast';
 import { UserProfile } from '@/schemas/profile';
 
+// Extended window interface for MercadoPago Device ID
+declare global {
+  interface Window {
+    MP_DEVICE_SESSION_ID?: string;
+  }
+}
+
 interface MercadoPagoCheckoutProps {
   userData: UserProfile;
   planType: 'basic' | 'premium';
@@ -20,12 +27,20 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 }) => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   const createPreference = React.useCallback(async () => {
     try {
       setLoading(true);
       
-      // Call Vercel API to create preference
+      // Wait for Device ID to be available (CRITICAL for approval rate)
+      if (!window.MP_DEVICE_SESSION_ID) {
+        console.warn('Device ID not yet available, waiting...');
+        // Wait a bit more for device ID
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Call Vercel API to create preference with Device ID
       const response = await fetch('/api/create-payment', {
         method: 'POST',
         headers: {
@@ -45,6 +60,8 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           preferredHospital: userData.preferredHospital,
           medicalNotes: userData.medicalNotes,
           emergencyContacts: userData.emergencyContacts,
+          // CRITICAL: Include Device ID for improved approval rate
+          deviceId: window.MP_DEVICE_SESSION_ID || null,
         }),
       });
 
@@ -75,15 +92,30 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       initMercadoPago(publicKey, { locale: 'pt-BR' });
     }
 
-    // Create payment preference
-    createPreference();
+    // Wait for Device ID to be loaded (CRITICAL for fraud prevention)
+    const checkDeviceId = () => {
+      if (window.MP_DEVICE_SESSION_ID) {
+        setDeviceId(window.MP_DEVICE_SESSION_ID);
+        console.log('Device ID loaded:', window.MP_DEVICE_SESSION_ID);
+        // Create payment preference after Device ID is ready
+        createPreference();
+      } else {
+        // Retry after 100ms
+        setTimeout(checkDeviceId, 100);
+      }
+    };
+    
+    // Start checking for Device ID
+    checkDeviceId();
   }, [createPreference]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-3">Preparando checkout...</span>
+        <span className="ml-3">
+          {!deviceId ? 'Carregando segurança...' : 'Preparando checkout...'}
+        </span>
       </div>
     );
   }
@@ -108,6 +140,9 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         initialization={{
           amount: planType === 'premium' ? 85.00 : 55.00,
           preferenceId: preferenceId,
+          payer: {
+            email: userData.email, // Pre-fill email for better UX
+          },
         }}
         customization={{
           paymentMethods: {

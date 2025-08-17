@@ -126,10 +126,43 @@ export const CreateProfileSchema = z.object({
   message: 'Invalid profile configuration',
 });
 
+// Base schemas without effects for partial operations
+const BasePersonalDataSchema = PersonalDataSchema.extend({
+  cpf: z.string(),
+  phone: z.string(),
+  address: z.object({
+    street: z.string()
+      .min(3, 'Street name must have at least 3 characters')
+      .max(100, 'Street name too long'),
+    number: z.string()
+      .min(1, 'Street number is required')
+      .max(10, 'Street number too long'),
+    neighborhood: z.string()
+      .min(2, 'Neighborhood must have at least 2 characters')
+      .max(50, 'Neighborhood name too long'),
+    city: z.string()
+      .min(2, 'City must have at least 2 characters')
+      .max(50, 'City name too long'),
+    state: z.string()
+      .length(2, 'State must be exactly 2 characters')
+      .toUpperCase(),
+    zipCode: z.string()
+      .regex(/^\d{5}-?\d{3}$/, 'Invalid ZIP code format'),
+    complement: z.string()
+      .max(100, 'Complement too long')
+      .optional(),
+  }),
+});
+
+const BaseMedicalDataSchema = MedicalDataSchema.extend({
+  bloodType: z.nativeEnum(BloodType),
+  organDonor: z.boolean().default(false),
+});
+
 // Profile update validation
 export const UpdateProfileSchema = z.object({
-  personalData: ExtendedPersonalDataSchema.partial().optional(),
-  medicalData: ExtendedMedicalDataSchema.partial().optional(),
+  personalData: BasePersonalDataSchema.partial().optional(),
+  medicalData: BaseMedicalDataSchema.partial().optional(),
   emergencyContacts: z.array(ExtendedEmergencyContactSchema)
     .min(1, 'At least 1 emergency contact is required')
     .max(3, 'Maximum 3 emergency contacts allowed')
@@ -370,7 +403,7 @@ export class ProfileValidators {
       
       if (profile.vehicleData) {
         vehicleFields.forEach(field => {
-          const value = getNestedValue(profile.vehicleData, field);
+          const value = getNestedValue(profile.vehicleData as Record<string, unknown>, field);
           if (value && value !== '') {
             completedFields++;
           } else {
@@ -691,10 +724,12 @@ function validateProfileCreation(data: {
   
   // Validate emergency contacts don't conflict with personal data
   const personalPhone = data.personalData.phone;
-  for (const contact of data.emergencyContacts) {
-    if (contact.phone === personalPhone) {
-      return false;
-    }
+  const hasPhoneConflict = data.emergencyContacts.some(
+    contact => contact.phone === personalPhone
+  );
+  
+  if (hasPhoneConflict) {
+    return false;
   }
   
   return true;
@@ -703,15 +738,16 @@ function validateProfileCreation(data: {
 /**
  * Validates profile update rules
  */
-function validateProfileUpdate(data: {
-  personalData?: Partial<PersonalData>;
-  vehicleData?: VehicleData;
-  emergencyContacts?: EmergencyContact[];
-}): boolean {
+function validateProfileUpdate(data: unknown): boolean {
+  const typedData = data as {
+    personalData?: Partial<PersonalData>;
+    vehicleData?: VehicleData;
+    emergencyContacts?: EmergencyContact[];
+  };
   // If updating phone and emergency contacts, ensure no conflicts
-  if (data.personalData?.phone && data.emergencyContacts) {
-    for (const contact of data.emergencyContacts) {
-      if (contact.phone === data.personalData.phone) {
+  if (typedData.personalData?.phone && typedData.emergencyContacts) {
+    for (const contact of typedData.emergencyContacts) {
+      if (contact.phone === typedData.personalData.phone) {
         return false;
       }
     }

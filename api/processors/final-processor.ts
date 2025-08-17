@@ -200,7 +200,7 @@ async function createProfile(
         address: addressData,
       },
       {
-        bloodType: profileData.bloodType as BloodType | undefined,
+        bloodType: (profileData.bloodType as BloodType) || BloodType.O_POSITIVE,
         allergies: Array.isArray(profileData.allergies) ? profileData.allergies as string[] : [],
         medications: Array.isArray(profileData.medications) ? profileData.medications as string[] : [],
         medicalConditions: Array.isArray(profileData.medicalConditions) ? profileData.medicalConditions as string[] : [],

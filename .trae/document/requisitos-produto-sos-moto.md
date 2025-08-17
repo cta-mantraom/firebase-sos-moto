@@ -1,15 +1,19 @@
-# Documento de Requisitos de Produto - SOS Moto
+# Requisitos de Produto - Sistema SOS Moto
 
 ---
 
-## ⚠️ Regras CRÍTICAS para a Refatoração
+## ⚠️ Regras CRÍTICAS Arquiteturais
 
-> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+> **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **NUNCA misturar** código de teste com código de produção
+- **NUNCA implementar funcionalidades** sem definir interfaces primeiro
+- **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
+- **NUNCA adicionar funcionalidades** sem validação de impacto arquitetural
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -18,6 +22,129 @@
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
+- **Definir interfaces antes da implementação** (Interface-First Development)
+- **Documentar dependências** antes de usar
+- **Validar exportações** antes de importar
+- **Validar impacto arquitetural** antes de adicionar funcionalidades
+
+---
+
+## 🔄 Fluxos Obrigatórios por Funcionalidade
+
+### **Funcionalidade: Criação de Perfil**
+
+**Arquivos Relacionados Obrigatórios:**
+- `src/pages/Index.tsx` - Formulário de entrada
+- `lib/schemas/profile.ts` - Validação Zod
+- `api/create-payment.ts` - Endpoint de criação
+- `lib/services/profile/profile.service.ts` - Lógica de negócio
+- `lib/repositories/profile.repository.ts` - Persistência
+
+**Validações Obrigatórias:**
+- Dados validados com Zod antes do processamento
+- Device ID coletado obrigatoriamente
+- Correlação ID gerado para tracking
+- Pending profile salvo antes da criação de pagamento
+
+**Comunicação Entre Arquivos:**
+- Index.tsx → profile.schema (validação)
+- Index.tsx → create-payment.ts (API call)
+- create-payment.ts → profile.service.ts (lógica)
+- profile.service.ts → profile.repository.ts (persistência)
+
+### **Funcionalidade: Processamento de Pagamento**
+
+**Arquivos Relacionados Obrigatórios:**
+- `src/components/MercadoPagoCheckout.tsx` - Device ID collection
+- `api/mercadopago-webhook.ts` - Webhook processing
+- `lib/services/payment/mercadopago.service.ts` - API integration
+- `lib/repositories/payment.repository.ts` - Payment logging
+- `api/processors/final-processor.ts` - Async processing
+
+**Validações Obrigatórias:**
+- Device ID presente em todos os pagamentos
+- HMAC signature validada em webhooks
+- Payment logging via repository (não API direta)
+- Processamento assíncrono via QStash
+
+**Comunicação Entre Arquivos:**
+- MercadoPagoCheckout.tsx → create-payment.ts (com Device ID)
+- mercadopago-webhook.ts → mercadopago.service.ts (não API direta)
+- mercadopago.service.ts → payment.repository.ts (logging)
+- webhook → QStash → final-processor.ts (async)
+
+### **Funcionalidade: Geração de QR Code**
+
+**Arquivos Relacionados Obrigatórios:**
+- `lib/services/profile/qrcode.service.ts` - Geração de QR
+- `lib/services/storage/firebase.service.ts` - Upload de imagem
+- `lib/repositories/profile.repository.ts` - Atualização de perfil
+- `src/pages/Success.tsx` - Exibição do QR
+
+**Validações Obrigatórias:**
+- QR Code gerado apenas após pagamento aprovado
+- Imagem salva no Firebase Storage
+- URL do QR salva no perfil
+- Cache Redis atualizado
+
+**Comunicação Entre Arquivos:**
+- final-processor.ts → qrcode.service.ts (geração)
+- qrcode.service.ts → firebase.service.ts (upload)
+- qrcode.service.ts → profile.repository.ts (atualização)
+- Success.tsx → get-profile.ts (busca)
+
+### **Funcionalidade: Sistema de Email**
+
+**Arquivos Relacionados Obrigatórios:**
+- `lib/services/notification/email.service.ts` - Envio via AWS SES
+- `api/processors/email-sender.ts` - Processamento de templates
+- `lib/domain/notification/email.entity.ts` - Entidade de email
+- `lib/types/queue.types.ts` - JobData interface
+
+**Validações Obrigatórias:**
+- AWS SDK instalado e configurado
+- Templates de email definidos
+- JobData com propriedades obrigatórias (retryCount, maxRetries)
+- Status de email consistentes
+
+**Comunicação Entre Arquivos:**
+- final-processor.ts → QStash → email-sender.ts
+- email-sender.ts → email.service.ts (AWS SES)
+- email.service.ts → email.entity.ts (entidade)
+
+---
+
+## 📋 Checklist de Validação por Funcionalidade
+
+### **Criação de Perfil**
+- [ ] Formulário com validação Zod implementada
+- [ ] Device ID coletado obrigatoriamente
+- [ ] Correlação ID gerado
+- [ ] Pending profile salvo antes do pagamento
+- [ ] Interface ProfileRepository implementada
+- [ ] Comunicação correta entre camadas
+
+### **Processamento de Pagamento**
+- [ ] Device ID presente em todos os pagamentos
+- [ ] HMAC validation implementada
+- [ ] MercadoPagoService usado (não API direta)
+- [ ] PaymentRepository.savePaymentLog implementado
+- [ ] Processamento assíncrono via QStash
+- [ ] Interface PaymentRepository implementada
+
+### **Geração de QR Code**
+- [ ] QR gerado apenas após pagamento aprovado
+- [ ] Firebase Storage configurado e funcionando
+- [ ] Exports corretos em firebase.ts (storage)
+- [ ] Cache Redis atualizado
+- [ ] Interface QRCodeService implementada
+
+### **Sistema de Email**
+- [ ] AWS SDK instalado (@aws-sdk/client-ses)
+- [ ] Templates de email definidos
+- [ ] JobData interface atualizada
+- [ ] Status de email consistentes
+- [ ] Interface EmailService implementada
 
 ## 🔍 Detalhes Técnicos e Justificativas Importantes
 

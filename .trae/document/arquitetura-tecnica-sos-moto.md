@@ -2,14 +2,17 @@
 
 ---
 
-## ⚠️ Regras CRÍTICAS para a Refatoração
+## ⚠️ Regras CRÍTICAS Arquiteturais
 
-> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+> **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **NUNCA misturar** código de teste com código de produção
+- **NUNCA implementar funcionalidades** sem definir interfaces primeiro
+- **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -18,6 +21,137 @@
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
+- **Definir interfaces antes da implementação** (Interface-First Development)
+- **Documentar dependências** antes de usar
+- **Validar exportações** antes de importar
+
+## 🔍 Fluxos Obrigatórios de Implementação
+
+### **🔄 Fluxo para Implementação de Repository**
+
+**Pré-Requisitos Obrigatórios:**
+1. Definir interface completa do Repository
+2. Documentar métodos obrigatórios e opcionais
+3. Especificar tipos de entrada e saída
+4. Validar dependências necessárias
+
+**Sequência Obrigatória:**
+```
+1. Criar interface em lib/domain/[entity]/[entity].repository.interface.ts
+2. Documentar métodos e tipos em documentação técnica
+3. Implementar Repository em lib/repositories/[entity].repository.ts
+4. Validar implementação contra interface
+5. Testar integração com Services
+```
+
+**Arquivos Relacionados Obrigatórios:**
+- `lib/domain/[entity]/[entity].types.ts` - Tipos da entidade
+- `lib/domain/[entity]/[entity].repository.interface.ts` - Interface do repository
+- `lib/repositories/[entity].repository.ts` - Implementação
+- `lib/services/[entity]/[entity].service.ts` - Service que usa o repository
+
+**Validações Obrigatórias:**
+- Interface implementa todos os métodos necessários
+- Tipos de entrada e saída estão corretos
+- Dependências estão instaladas e configuradas
+- Exportações estão corretas
+
+### **🔄 Fluxo para Implementação de Service**
+
+**Pré-Requisitos Obrigatórios:**
+1. Repository interface definida e implementada
+2. Tipos de domínio especificados
+3. Dependências externas documentadas
+4. Contratos de entrada e saída definidos
+
+**Sequência Obrigatória:**
+```
+1. Definir interface do Service em lib/domain/[entity]/[entity].service.interface.ts
+2. Especificar dependências e injeções
+3. Implementar Service em lib/services/[entity]/[entity].service.ts
+4. Validar integração com Repository
+5. Testar casos de uso principais
+```
+
+**Arquivos Relacionados Obrigatórios:**
+- `lib/domain/[entity]/[entity].service.interface.ts` - Interface do service
+- `lib/services/[entity]/[entity].service.ts` - Implementação
+- `lib/repositories/[entity].repository.ts` - Repository usado
+- `api/[endpoint].ts` - Endpoints que usam o service
+
+### **🔄 Fluxo para Implementação de API Endpoint**
+
+**Pré-Requisitos Obrigatórios:**
+1. Service interface definida e implementada
+2. Schemas de validação Zod criados
+3. Tipos de request/response especificados
+4. Tratamento de erros definido
+
+**Sequência Obrigatória:**
+```
+1. Criar schema Zod para validação em lib/schemas/[endpoint].ts
+2. Definir tipos de request/response
+3. Implementar endpoint em api/[endpoint].ts
+4. Validar entrada com Zod
+5. Integrar com Service apropriado
+6. Implementar tratamento de erros
+```
+
+## 🔍 Especificação de Interfaces Obrigatórias
+
+### **PaymentRepository Interface (CRÍTICO - 15 erros prevenidos)**
+
+**Arquivo:** `lib/domain/payment/payment.repository.interface.ts`
+
+**Métodos Obrigatórios:**
+- `savePaymentLog(data: PaymentLogData): Promise<void>`
+- `findByPaymentId(paymentId: string): Promise<Payment | null>`
+- `getPaymentHistory(userId: string): Promise<Payment[]>`
+- `updatePaymentStatus(paymentId: string, status: PaymentStatus): Promise<void>`
+
+**Tipos Relacionados:**
+- `PaymentLogData` - Dados de log de pagamento
+- `Payment` - Entidade de pagamento
+- `PaymentStatus` - Status do pagamento
+
+**Dependências:**
+- Firebase Firestore
+- Redis (cache)
+- Logger utilities
+
+### **ProfileRepository Interface (CRÍTICO - 10 erros prevenidos)**
+
+**Arquivo:** `lib/domain/profile/profile.repository.interface.ts`
+
+**Métodos Obrigatórios:**
+- `findPendingProfile(id: string): Promise<PendingProfile | null>`
+- `save(profile: Profile): Promise<void>`
+- `savePendingProfile(profile: PendingProfile): Promise<void>`
+- `deletePendingProfile(id: string): Promise<void>`
+- `updateStatus(id: string, status: ProfileStatus): Promise<void>`
+- `deleteExpiredPendingProfiles(): Promise<number>`
+
+**Tipos Relacionados:**
+- `PendingProfile` - Perfil pendente
+- `Profile` - Perfil completo
+- `ProfileStatus` - Status do perfil
+
+**Dependências:**
+- Firebase Firestore
+- Redis (cache)
+- Storage service
+
+### **JobData Interface (CRÍTICO - 8 erros prevenidos)**
+
+**Arquivo:** `lib/types/queue.types.ts`
+
+**Propriedades Obrigatórias:**
+- `type: string` - Tipo do job
+- `data: unknown` - Dados do job
+- `retryCount: number` - Contador de tentativas
+- `maxRetries: number` - Máximo de tentativas
+- `correlationId: string` - ID de correlação
+- `createdAt: Date` - Data de criação
 
 ## 🔍 Detalhes Técnicos e Justificativas Importantes
 
@@ -161,7 +295,142 @@ graph TD
 - **Config**: Configurações de ambiente
 - **Schemas**: Validação Zod para todas as entradas
 
-### 2.3 Segurança Implementada
+### 2.3 Mapeamento de Dependências Externas (CRÍTICO - 6 erros prevenidos)
+
+#### **AWS (Email Service)**
+**Arquivos Afetados:**
+- `lib/services/notification/email.service.ts`
+- `api/processors/email-sender.ts`
+
+**Dependências Obrigatórias:**
+- `@aws-sdk/client-ses` (CRÍTICO - ausente causa falha total)
+- Configuração AWS credentials
+- Templates de email definidos
+- Tipos de email status
+
+**Validações Necessárias:**
+- AWS SDK instalado e configurado
+- Credentials válidas
+- Templates existem e são válidos
+- Status de email são consistentes
+
+#### **Firebase (Database & Storage)**
+**Arquivos Afetados:**
+- `lib/services/firebase.ts`
+- `lib/repositories/*.repository.ts`
+- `lib/services/storage/firebase.service.ts`
+- `lib/services/profile/qrcode.service.ts`
+
+**Dependências Obrigatórias:**
+- Firebase Admin SDK
+- Firestore database
+- Firebase Storage
+- Proper exports (db, storage)
+
+**Validações Necessárias:**
+- Firebase configurado e inicializado
+- Database rules configuradas
+- Storage rules configuradas
+- Exports corretos em firebase.ts
+
+**Exports Obrigatórios em `lib/services/firebase.ts`:**
+```typescript
+export { db } from './firebase-config';
+export { storage } from './firebase-config';
+```
+
+#### **QStash (Queue Management)**
+**Arquivos Afetados:**
+- `lib/services/queue/qstash.service.ts`
+- `lib/services/notification/queue.service.ts`
+- `api/processors/*.ts`
+
+**Dependências Obrigatórias:**
+- QStash client
+- JobData interface completa
+- Queue metrics types
+- Message processing types
+
+**Validações Necessárias:**
+- QStash client configurado
+- JobData interface atualizada
+- Message types corretos
+- Queue processing implementado
+
+#### **MercadoPago (Payment Processing)**
+**Arquivos Afetados:**
+- `lib/services/payment/payment.service.ts`
+- `api/create-payment.ts`
+- `api/mercadopago-webhook.ts`
+- `src/components/MercadoPagoCheckout.tsx`
+
+**Dependências Obrigatórias:**
+- MercadoPago SDK
+- Device ID implementation (CRÍTICO para taxa de aprovação)
+- Webhook signature validation
+- Payment logging methods
+
+**Validações Necessárias:**
+- SDK configurado corretamente
+- Device ID implementado no frontend
+- Webhook validation ativa
+- Payment repository methods implementados
+
+### 2.4 Comunicação Entre Arquivos (Matriz de Dependências)
+
+#### **Camada API (api/)**
+**Funcionalidades por Arquivo:**
+- `create-payment.ts`: 1 endpoint, validação Zod, integração PaymentService
+- `mercadopago-webhook.ts`: 1 webhook, validação MercadoPago, processamento assíncrono
+- `get-profile.ts`: 1 endpoint, validação Zod, integração ProfileService
+- `check-status.ts`: 1 endpoint, validação simples, consulta status
+
+**Comunicação Obrigatória:**
+- API → Services (sempre através de interface)
+- API → Schemas (validação Zod obrigatória)
+- API → Types (tipagem de request/response)
+
+**Dependências Obrigatórias:**
+- Zod schemas para validação
+- Service interfaces
+- Error handling utilities
+- Logger utilities
+
+#### **Camada Services (lib/services/)**
+**Funcionalidades por Arquivo:**
+- `payment/payment.service.ts`: Orquestração de pagamentos, integração MercadoPago, logging
+- `profile/profile.service.ts`: Gestão de perfis, validação, persistência
+- `notification/email.service.ts`: Envio de emails, templates, AWS SES
+- `queue/qstash.service.ts`: Gerenciamento de filas, QStash integration
+
+**Comunicação Obrigatória:**
+- Services → Repositories (sempre através de interface)
+- Services → Domain Entities (manipulação de dados)
+- Services → External APIs (MercadoPago, AWS, QStash)
+
+**Dependências Obrigatórias:**
+- Repository interfaces
+- Domain types
+- External SDK clients
+- Configuration utilities
+
+#### **Camada Repositories (lib/repositories/)**
+**Funcionalidades por Arquivo:**
+- `payment.repository.ts`: CRUD pagamentos, queries específicas, logging
+- `profile.repository.ts`: CRUD perfis, queries complexas, cache
+
+**Comunicação Obrigatória:**
+- Repositories → Database (Firebase/Firestore)
+- Repositories → Cache (Redis)
+- Repositories → Storage (Firebase Storage)
+
+**Dependências Obrigatórias:**
+- Firebase SDK
+- Redis client
+- Domain types
+- Query utilities
+
+### 2.5 Segurança Implementada
 - **Device ID**: OBRIGATÓRIO para MercadoPago (melhora aprovação)
 - **Validação HMAC**: Webhooks MercadoPago com assinatura secreta
 - **Headers Obrigatórios**: X-Idempotency-Key, X-Correlation-Id

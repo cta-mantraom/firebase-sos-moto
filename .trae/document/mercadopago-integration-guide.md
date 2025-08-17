@@ -2,14 +2,19 @@
 
 ---
 
-## ⚠️ Regras CRÍTICAS para a Refatoração
+## ⚠️ Regras CRÍTICAS Arquiteturais
 
-> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+> **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **NUNCA misturar** código de teste com código de produção
+- **NUNCA implementar funcionalidades** sem definir interfaces primeiro
+- **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
+- **NUNCA processar pagamentos** sem Device ID obrigatório
+- **NUNCA usar API MercadoPago diretamente** nos endpoints (usar MercadoPagoService)
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -18,6 +23,50 @@
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
+- **Definir interfaces antes da implementação** (Interface-First Development)
+- **Documentar dependências** antes de usar
+- **Validar exportações** antes de importar
+- **Device ID obrigatório** em todos os pagamentos
+- **Validação HMAC obrigatória** em webhooks
+- **Usar MercadoPagoService** para todas as chamadas de API
+
+---
+
+## 🔄 Fluxo Obrigatório de Implementação MercadoPago
+
+### **Pré-Requisitos Críticos:**
+1. **MercadoPagoService interface** definida e implementada
+2. **PaymentRepository interface** definida e implementada
+3. **Device ID collection** implementado no frontend
+4. **Webhook validation** com HMAC configurada
+5. **Schemas Zod** para validação de dados
+
+### **Sequência Obrigatória para Payment Processing:**
+```
+1. Frontend coleta Device ID obrigatório
+2. Validação Zod de dados de entrada
+3. Criação de preferência via MercadoPagoService
+4. Salvamento de pending_profile via ProfileRepository
+5. Retorno de preferenceId para Payment Brick
+6. Webhook processa via MercadoPagoService (não API direta)
+7. Logging via PaymentRepository.savePaymentLog
+8. Processamento assíncrono via QStash
+```
+
+### **Arquivos Relacionados Obrigatórios:**
+- `lib/services/payment/mercadopago.service.ts` - Interface MercadoPago
+- `lib/repositories/payment.repository.ts` - Logging de pagamentos
+- `src/components/MercadoPagoCheckout.tsx` - Device ID collection
+- `api/create-payment.ts` - Endpoint de criação
+- `api/mercadopago-webhook.ts` - Webhook processing
+- `lib/schemas/payment.ts` - Validação Zod
+
+### **Validações Obrigatórias:**
+- Device ID presente em todos os pagamentos
+- HMAC signature válida em webhooks
+- Dados validados com Zod antes do processamento
+- MercadoPagoService usado (não API direta)
+- PaymentRepository.savePaymentLog implementado
 
 ---
 

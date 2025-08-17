@@ -1,15 +1,18 @@
-# Problemas Críticos e Correções Necessárias - SOS Moto
+# Problemas Críticos e Padrões Preventivos - SOS Moto
 
 ---
 
-## ⚠️ Regras CRÍTICAS para a Refatoração
+## ⚠️ Regras CRÍTICAS Arquiteturais
 
-> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+> **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **NUNCA misturar** código de teste com código de produção
+- **NUNCA implementar funcionalidades** sem definir interfaces primeiro
+- **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -18,6 +21,55 @@
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
+- **Definir interfaces antes da implementação** (Interface-First Development)
+- **Documentar dependências** antes de usar
+- **Validar exportações** antes de importar
+
+---
+
+## 🛡️ Sistema de Prevenção de Erros (47 erros TypeScript identificados)
+
+### **Análise de Causa Raiz:**
+- **68% Lacunas na Documentação:** 32 erros causados por interfaces não especificadas, tipos não documentados, exportações ausentes
+- **32% Problemas de Implementação:** 15 erros que documentação melhor preveniria
+
+### **Categorias Críticas e Prevenção:**
+
+#### **1. Interfaces de Repository Não Especificadas (15 erros - 32%)**
+**Erros Prevenidos:** savePaymentLog, findPendingProfile, save, savePendingProfile, deletePendingProfile, updateStatus, deleteExpiredPendingProfiles, findByPaymentId, getPaymentHistory
+
+**Regras Preventivas:**
+- Toda implementação de Repository DEVE começar pela definição da interface
+- Interface DEVE ser documentada antes da implementação
+- Métodos da interface DEVEM ser validados contra casos de uso
+- Implementação DEVE seguir exatamente a interface definida
+
+#### **2. Tipos de Dados Não Documentados (8 erros - 17%)**
+**Erros Prevenidos:** JobData properties, email templates, QStash types
+
+**Regras Preventivas:**
+- Tipos de dados entre camadas DEVEM ser especificados antes da implementação
+- Contratos de dados DEVEM ser documentados em arquivo específico
+- Validação Zod DEVE ser criada para cada tipo de fronteira
+- Tipos DEVEM ser exportados explicitamente
+
+#### **3. Exportações Não Especificadas (6 erros - 13%)**
+**Erros Prevenidos:** Firebase db/storage, ProfileQueryData, QueryConstraint
+
+**Regras Preventivas:**
+- Módulos DEVEM documentar todas as exportações necessárias
+- Imports DEVEM ser validados antes da implementação
+- Dependências entre módulos DEVEM ser mapeadas
+- Exportações DEVEM seguir padrão consistente
+
+#### **4. Dependências Não Documentadas (3 erros - 6%)**
+**Erros Prevenidos:** AWS SDK, QStash properties
+
+**Regras Preventivas:**
+- Lista completa de dependências DEVE ser documentada
+- Versões específicas DEVEM ser especificadas
+- Configuração DEVE ser documentada para cada dependência
+- Validação de instalação DEVE ser implementada
 
 ---
 

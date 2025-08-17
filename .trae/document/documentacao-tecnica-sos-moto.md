@@ -2,14 +2,17 @@
 
 ---
 
-## ⚠️ Regras CRÍTICAS para a Refatoração
+## ⚠️ Regras CRÍTICAS Arquiteturais
 
-> **DEVE SER REPETIDA EM TODAS DOCUMENTAÇÕES E PASSO A PASSO**
+> **DEVE SER SEGUIDA EM TODA IMPLEMENTAÇÃO**
 
 ### **🚫 Proibições Absolutas:**
 
 - **NUNCA usar `any`** em nenhuma situação no código de produção
 - **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+- **NUNCA misturar** código de teste com código de produção
+- **NUNCA implementar funcionalidades** sem definir interfaces primeiro
+- **NUNCA criar arquivos** sem seguir o fluxo arquitetural obrigatório
 
 ### **✅ Práticas Obrigatórias:**
 
@@ -18,6 +21,99 @@
 - Após validação, trabalhar apenas com tipos claros, específicos e definidos
 - Manutenção da estrutura modular e clara, desacoplada, é prioridade
 - Usar `.env` files para variáveis de ambiente
+- **Definir interfaces antes da implementação** (Interface-First Development)
+- **Documentar dependências** antes de usar
+- **Validar exportações** antes de importar
+
+---
+
+## 📦 Dependências Obrigatórias (CRÍTICO - 3 erros prevenidos)
+
+### **Dependências de Produção**
+
+#### **AWS SDK (CRÍTICO - ausente causa falha total)**
+```bash
+npm install @aws-sdk/client-ses
+```
+**Uso:** Envio de emails via AWS SES
+**Arquivos Afetados:**
+- `lib/services/notification/email.service.ts`
+- `api/processors/email-sender.ts`
+
+**Configuração Obrigatória:**
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- AWS_REGION
+
+#### **Firebase Admin SDK**
+```bash
+npm install firebase-admin
+```
+**Uso:** Database, Storage, Authentication
+**Arquivos Afetados:**
+- `lib/services/firebase.ts`
+- `lib/repositories/*.repository.ts`
+- `lib/services/storage/firebase.service.ts`
+
+#### **QStash Client**
+```bash
+npm install @upstash/qstash
+```
+**Uso:** Queue management e processamento assíncrono
+**Arquivos Afetados:**
+- `lib/services/queue/qstash.service.ts`
+- `lib/services/notification/queue.service.ts`
+
+#### **Redis Client**
+```bash
+npm install @upstash/redis
+```
+**Uso:** Cache e sessões
+**Arquivos Afetados:**
+- `lib/services/redis.ts`
+- `lib/repositories/*.repository.ts`
+
+#### **MercadoPago SDK**
+```bash
+npm install mercadopago
+npm install @mercadopago/sdk-react
+```
+**Uso:** Processamento de pagamentos
+**Arquivos Afetados:**
+- `lib/services/payment/payment.service.ts`
+- `src/components/MercadoPagoCheckout.tsx`
+
+### **Dependências de Desenvolvimento**
+
+#### **TypeScript e Tipos**
+```bash
+npm install -D typescript @types/node
+```
+
+#### **Validação Zod**
+```bash
+npm install zod
+```
+**Uso:** Validação de dados na fronteira
+**Arquivos Afetados:**
+- `lib/schemas/*.ts`
+- Todos os endpoints API
+
+### **Validação de Instalação**
+
+**Checklist Obrigatório:**
+- [ ] AWS SDK instalado e configurado
+- [ ] Firebase Admin SDK configurado
+- [ ] QStash client configurado
+- [ ] Redis client configurado
+- [ ] MercadoPago SDK configurado
+- [ ] Zod schemas implementados
+- [ ] TypeScript strict mode habilitado
+
+**Comando de Verificação:**
+```bash
+npm list @aws-sdk/client-ses firebase-admin @upstash/qstash @upstash/redis mercadopago zod
+```
 
 ## 🔍 Detalhes Técnicos e Justificativas Importantes
 

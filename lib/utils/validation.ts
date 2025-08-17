@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { createHmac, timingSafeEqual } from 'crypto';
+// CORRETO: Import centralized schema from domain layer (no duplicate schemas)
+import { CreatePaymentSchema, type CreatePaymentData } from '../domain/payment/payment.validators';
 
 // Schema principal do perfil (Core Layer - Centralizado)
 export const ProfileSchema = z.object({
@@ -18,26 +21,6 @@ export const ProfileSchema = z.object({
     })).optional()
 });
 
-// Schema para API (compatibilidade com frontend)
-export const CreatePaymentSchema = z.object({
-    name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
-    email: z.string().email("Email inválido"),
-    phone: z.string().regex(/^(\(?[1-9]{2}\)?\s?)?9?[0-9]{4}-?[0-9]{4}$/, "Formato de telefone inválido"),
-    age: z.number().min(18, "Idade mínima é 18 anos").max(120, "Idade máxima é 120 anos"),
-    selectedPlan: z.enum(['basic', 'premium'], {
-        errorMap: () => ({ message: "Plano deve ser 'basic' ou 'premium'" })
-    }),
-    bloodType: z.string().optional(),
-    allergies: z.array(z.string()).optional(),
-    medications: z.array(z.string()).optional(),
-    medicalConditions: z.array(z.string()).optional(),
-    emergencyContacts: z.array(z.object({
-        name: z.string().min(1, "Nome do contato é obrigatório"),
-        phone: z.string().min(1, "Telefone do contato é obrigatório"),
-        relationship: z.string().min(1, "Relacionamento é obrigatório")
-    })).optional()
-});
-
 // Função de validação de UUID
 export function validateUUID(uuid: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,7 +28,7 @@ export function validateUUID(uuid: string): boolean {
 }
 
 // Função para transformar dados da API para o formato do banco
-export function transformApiToProfile(apiData: z.infer<typeof CreatePaymentSchema>): z.infer<typeof ProfileSchema> {
+export function transformApiToProfile(apiData: CreatePaymentData): z.infer<typeof ProfileSchema> {
     return {
         name: apiData.name,
         age: apiData.age,
@@ -56,13 +39,15 @@ export function transformApiToProfile(apiData: z.infer<typeof CreatePaymentSchem
         allergies: apiData.allergies,
         medications: apiData.medications,
         medical_conditions: apiData.medicalConditions,
-        emergency_contacts: apiData.emergencyContacts
+        emergency_contacts: apiData.emergencyContacts?.map(contact => ({
+            name: contact.name,
+            phone: contact.phone,
+            relationship: contact.relationship
+        }))
     };
 }
 
 // HMAC validation for MercadoPago webhooks
-import { createHmac, timingSafeEqual } from 'crypto';
-
 export function validateHMACSignature(
   requestId: string,
   signature: string,
@@ -94,4 +79,4 @@ export function validateHMACSignature(
 
 // Types exportados
 export type Profile = z.infer<typeof ProfileSchema>;
-export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
+// CreatePaymentData now imported from centralized location

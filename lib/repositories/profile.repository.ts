@@ -506,6 +506,176 @@ export class ProfileRepository {
     }
   }
 
+  /**
+   * Saves a profile (alias for create method)
+   */
+  async save(profile: Profile, correlationId?: string): Promise<void> {
+    return this.create(profile, correlationId);
+  }
+
+  /**
+   * Finds a pending profile by unique URL
+   */
+  async findPendingProfile(uniqueUrl: string, correlationId?: string): Promise<Profile | null> {
+    try {
+      logInfo('Finding pending profile', { correlationId, uniqueUrl });
+
+      const doc = await this.pendingProfilesCollection.doc(uniqueUrl).get();
+
+      if (!doc.exists) {
+        logInfo('Pending profile not found', { correlationId, uniqueUrl });
+        return null;
+      }
+
+      const data = doc.data();
+      if (!data) {
+        return null;
+      }
+
+      const profileData = this.mapFirestoreToProfile(data, uniqueUrl);
+      const profile = Profile.fromJSON(profileData);
+
+      logInfo('Pending profile found', { 
+        correlationId, 
+        uniqueUrl,
+        status: profile.status 
+      });
+
+      return profile;
+    } catch (error) {
+      logError('Error finding pending profile', error as Error, { 
+        correlationId, 
+        uniqueUrl 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Saves a pending profile
+   */
+  async savePendingProfile(profile: Profile, correlationId?: string): Promise<void> {
+    try {
+      logInfo('Saving pending profile', { 
+        correlationId, 
+        profileId: profile.uniqueUrl,
+        status: profile.status 
+      });
+
+      const data = this.mapProfileToFirestore(profile.toJSON());
+      await this.pendingProfilesCollection.doc(profile.uniqueUrl).set(data);
+
+      logInfo('Pending profile saved successfully', { 
+        correlationId, 
+        profileId: profile.uniqueUrl 
+      });
+    } catch (error) {
+      logError('Error saving pending profile', error as Error, { 
+        correlationId, 
+        profileId: profile.uniqueUrl 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes a pending profile
+   */
+  async deletePendingProfile(uniqueUrl: string, correlationId?: string): Promise<void> {
+    try {
+      logInfo('Deleting pending profile', { correlationId, uniqueUrl });
+
+      await this.pendingProfilesCollection.doc(uniqueUrl).delete();
+
+      logInfo('Pending profile deleted successfully', { correlationId, uniqueUrl });
+    } catch (error) {
+      logError('Error deleting pending profile', error as Error, { 
+        correlationId, 
+        uniqueUrl 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Updates the status of a single profile
+   */
+  async updateStatus(
+    uniqueUrl: string,
+    status: ProfileStatus,
+    correlationId?: string
+  ): Promise<void> {
+    try {
+      logInfo('Updating profile status', { 
+        correlationId, 
+        uniqueUrl,
+        newStatus: status 
+      });
+
+      await this.profilesCollection.doc(uniqueUrl).update({
+        status,
+        updatedAt: new Date(),
+      });
+
+      logInfo('Profile status updated successfully', { 
+        correlationId, 
+        uniqueUrl,
+        newStatus: status 
+      });
+    } catch (error) {
+      logError('Error updating profile status', error as Error, { 
+        correlationId, 
+        uniqueUrl,
+        status 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes expired pending profiles
+   */
+  async deleteExpiredPendingProfiles(
+    expirationDate: Date,
+    correlationId?: string
+  ): Promise<number> {
+    try {
+      logInfo('Deleting expired pending profiles', { 
+        correlationId, 
+        expirationDate 
+      });
+
+      const querySnapshot = await this.pendingProfilesCollection
+        .where('createdAt', '<', expirationDate)
+        .get();
+
+      let deletedCount = 0;
+      const batch = this.db.batch();
+
+      for (const doc of querySnapshot.docs) {
+        batch.delete(doc.ref);
+        deletedCount++;
+      }
+
+      if (deletedCount > 0) {
+        await batch.commit();
+      }
+
+      logInfo('Expired pending profiles deleted', { 
+        correlationId, 
+        deletedCount 
+      });
+
+      return deletedCount;
+    } catch (error) {
+      logError('Error deleting expired pending profiles', error as Error, { 
+        correlationId, 
+        expirationDate 
+      });
+      throw error;
+    }
+  }
+
   // Private helper methods
 
   private async createMemorialPage(profile: Profile, correlationId?: string): Promise<void> {

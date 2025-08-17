@@ -65,11 +65,15 @@ export abstract class BaseJobProcessor<T extends JobData = JobData> {
     jobData: T,
     context: Partial<JobProcessingContext> = {}
   ): Promise<JobProcessingResult> {
+    // Extract common properties from job data
+    const hasRetryInfo = 'retryCount' in jobData && 'maxRetries' in jobData;
+    const correlationId = 'correlationId' in jobData ? (jobData as any).correlationId : undefined;
+    
     const fullContext: JobProcessingContext = {
       jobId: this.generateJobId(jobData),
-      correlationId: jobData.correlationId || this.generateCorrelationId(),
-      attempt: (jobData.retryCount || 0) + 1,
-      maxRetries: jobData.maxRetries || this.defaultMaxRetries,
+      correlationId: correlationId || this.generateCorrelationId(),
+      attempt: hasRetryInfo ? ((jobData as any).retryCount || 0) + 1 : 1,
+      maxRetries: hasRetryInfo ? ((jobData as any).maxRetries || this.defaultMaxRetries) : this.defaultMaxRetries,
       startTime: new Date(),
       timeout: context.timeout || this.defaultTimeout,
       ...context,
@@ -78,7 +82,7 @@ export abstract class BaseJobProcessor<T extends JobData = JobData> {
     logInfo(`Starting job processing [${this.processorName}]`, {
       correlationId: fullContext.correlationId,
       jobId: fullContext.jobId,
-      jobType: jobData.jobType,
+      jobType: 'jobType' in jobData ? (jobData as any).jobType : 'unknown',
       attempt: fullContext.attempt,
       maxRetries: fullContext.maxRetries,
     });

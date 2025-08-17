@@ -2,29 +2,15 @@ import { z } from 'zod';
 import { logInfo, logError, logWarning } from '../../utils/logger';
 import { QStashService } from '../queue/qstash.service';
 import { generateCorrelationId } from '../../utils/ids';
+// CORRETO: Import centralized schemas from types layer (no duplicate schemas)
+import { 
+  EmailJobDataSchema, 
+  ProcessingJobDataSchema,
+  type EmailJobData,
+  type ProcessingJobData 
+} from '../../types/queue.types';
 
-// Schemas de validação
-const EmailJobDataSchema = z.object({
-  jobType: z.enum(['PAYMENT_CONFIRMATION', 'PAYMENT_FAILED', 'PROFILE_CREATED', 'PROFILE_UPDATED']),
-  to: z.string().email(),
-  subject: z.string(),
-  templateData: z.record(z.unknown()),
-  correlationId: z.string(),
-  retryCount: z.number().default(0),
-  maxRetries: z.number().default(3),
-});
-
-const ProcessingJobDataSchema = z.object({
-  jobType: z.enum(['PROCESS_PROFILE', 'GENERATE_QR_CODE', 'UPDATE_CACHE']),
-  uniqueUrl: z.string(),
-  paymentId: z.string(),
-  planType: z.enum(['basic', 'premium']),
-  profileData: z.record(z.unknown()),
-  correlationId: z.string(),
-  retryCount: z.number().default(0),
-  maxRetries: z.number().default(3),
-});
-
+// Local schemas (not duplicated elsewhere)
 const QueueStatusSchema = z.object({
   jobId: z.string(),
   status: z.enum(['pending', 'processing', 'completed', 'failed', 'cancelled']),
@@ -44,10 +30,6 @@ const JobDataSchema = z.discriminatedUnion('type', [
     data: ProcessingJobDataSchema,
   }),
 ]);
-
-// Tipos derivados
-export type EmailJobData = z.infer<typeof EmailJobDataSchema>;
-export type ProcessingJobData = z.infer<typeof ProcessingJobDataSchema>;
 export type QueueStatus = z.infer<typeof QueueStatusSchema>;
 export type JobData = z.infer<typeof JobDataSchema>;
 

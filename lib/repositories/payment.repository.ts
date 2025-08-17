@@ -622,6 +622,62 @@ export class PaymentRepository {
     }
   }
 
+  /**
+   * Saves a payment log entry for audit trail
+   */
+  async savePaymentLog(
+    paymentId: string,
+    logType: string,
+    logData: Record<string, unknown>,
+    correlationId?: string
+  ): Promise<void> {
+    try {
+      logInfo('Saving payment log', {
+        correlationId,
+        paymentId,
+        logType,
+      });
+
+      await this.logPaymentEvent(paymentId, logType, logData, correlationId);
+
+      logInfo('Payment log saved successfully', {
+        correlationId,
+        paymentId,
+        logType,
+      });
+    } catch (error) {
+      logError('Error saving payment log', error as Error, {
+        correlationId,
+        paymentId,
+        logType,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Finds a payment by payment ID (alias for findById)
+   */
+  async findByPaymentId(paymentId: string, correlationId?: string): Promise<Payment | null> {
+    return this.findById(paymentId, correlationId);
+  }
+
+  /**
+   * Gets payment history for a payment
+   */
+  async getPaymentHistory(
+    paymentId: string,
+    correlationId?: string
+  ): Promise<Array<{
+    id: string;
+    eventType: string;
+    eventData: Record<string, unknown>;
+    timestamp: Date;
+    correlationId?: string;
+  }>> {
+    return this.getPaymentEvents(paymentId, correlationId);
+  }
+
   // Private helper methods
 
   private buildCountQuery(queryData: PaymentQueryData): Query {

@@ -3,6 +3,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { z } from 'zod';
 import { logInfo, logError } from '../lib/utils/logger';
+// CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
+import { CreatePaymentSchema, type CreatePaymentData } from '../lib/domain/payment/payment.validators';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -19,32 +21,6 @@ if (!getApps().length) {
     logError('Error initializing Firebase Admin', error as Error);
   }
 }
-
-// Validation Schema for Payment Creation
-const CreatePaymentSchema = z.object({
-  selectedPlan: z.enum(['basic', 'premium']),
-  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  surname: z.string().min(2, 'Sobrenome deve ter pelo menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  phone: z.string().regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos'),
-  cpf: z.string().regex(/^\d{11}$/, 'CPF deve ter 11 dígitos'),
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato YYYY-MM-DD'),
-  age: z.number().min(1).max(120),
-  bloodType: z.string().optional(),
-  allergies: z.array(z.string()).default([]),
-  medications: z.array(z.string()).default([]),
-  medicalConditions: z.array(z.string()).default([]),
-  healthPlan: z.string().optional(),
-  preferredHospital: z.string().optional(),
-  medicalNotes: z.string().optional(),
-  emergencyContacts: z.array(z.object({
-    name: z.string().min(2),
-    relationship: z.string(),
-    phone: z.string().regex(/^\d{10,11}$/),
-    isPrimary: z.boolean().default(false),
-  })).min(1, 'Pelo menos um contato de emergência é obrigatório').max(3),
-  deviceId: z.string().optional(), // Device ID for fraud prevention
-});
 
 // MercadoPago Preference Response Schema
 const MercadoPagoPreferenceResponseSchema = z.object({
@@ -68,8 +44,6 @@ const PLAN_PRICES = {
     description: "Plano premium com recursos avançados"
   }
 } as const;
-
-type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
 
 /**
  * Create Payment Endpoint

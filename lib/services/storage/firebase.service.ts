@@ -1,12 +1,11 @@
 import { z } from 'zod';
-import { db } from '../firebase';
+import { db } from '../firebase-admin';
 import { logInfo, logError, logWarning } from '../../utils/logger';
 import {
   DocumentData,
   DocumentReference,
   CollectionReference,
   Query,
-  QueryConstraint,
   Timestamp,
   WriteBatch,
   Transaction,

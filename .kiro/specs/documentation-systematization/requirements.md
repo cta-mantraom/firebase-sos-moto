@@ -22,6 +22,25 @@
 
 ---
 
+## Requisitos do Projeto
+
+Este documento define os requisitos para compreensão, análise e otimização do sistema SOS Moto sob diferentes perspectivas de usuários técnicos.
+
+**ESTADO ATUAL**: Sistema 90% implementado com problemas críticos identificados que afetam taxa de aprovação de pagamentos e consistência arquitetural.
+
+### Como Desenvolvedor
+
+**Objetivo**: Compreender a arquitetura e implementar correções críticas
+
+**Necessidades**:
+- Mapear fluxo completo de dados do sistema
+- Identificar pontos de integração entre serviços
+- Compreender padrões arquiteturais utilizados (Domain, Service, Repository, Processors)
+- **CRÍTICO**: Implementar Device ID no MercadoPagoCheckout.tsx (impacto 15-30% na taxa de aprovação)
+- **CRÍTICO**: Refatorar webhook para usar MercadoPagoService (consistência arquitetural)
+- Localizar e corrigir código duplicado entre webhook e final-processor
+- Seguir regras críticas: sem `any`, validação Zod obrigatória, arquitetura modular
+
 ## Introduction
 
 **REANÁLISE DO PROJETO EM PRODUÇÃO**: Este documento foi atualizado após análise completa do código atual do SOS Moto. O projeto está **70% implementado** e em produção, com nova arquitetura parcialmente implementada.

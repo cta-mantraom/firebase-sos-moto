@@ -1,6 +1,6 @@
 # Design Document
 
----
+***
 
 ## ⚠️ Regras CRÍTICAS para o Projeto
 
@@ -8,32 +8,43 @@
 
 ### **🚫 Proibições Absolutas:**
 
-- **NUNCA usar `any`** em nenhuma situação no código de produção
-- **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
-- **NUNCA misturar** código de teste com código de produção
+* **NUNCA usar** **`any`** em nenhuma situação no código de produção
+
+* **É TOTALMENTE PROIBIDO** adicionar, modificar ou excluir qualquer arquivo ou código dentro da pasta `tests/` E `test-integration/` ou seus subdiretórios
+
+* **NUNCA misturar** código de teste com código de produção
 
 ### **✅ Práticas Obrigatórias:**
 
-- Usar `unknown` **SOMENTE** para dados brutos/exteriores recebidos na fronteira do sistema (entrada de dados), antes da validação
-- Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
-- Após validação, trabalhar apenas com tipos claros, específicos e definidos
-- Manutenção da estrutura modular e clara, desacoplada, é prioridade
-- Usar `.env` files para variáveis de ambiente
+* Usar `unknown` **SOMENTE** para dados brutos/exteriores recebidos na fronteira do sistema (entrada de dados), antes da validação
 
----
+* Validar **TODOS** os dados externos imediatamente com schemas definidos, preferencialmente utilizando Zod
+
+* Após validação, trabalhar apenas com tipos claros, específicos e definidos
+
+* Manutenção da estrutura modular e clara, desacoplada, é prioridade
+
+* Usar `.env` files para variáveis de ambiente
+
+***
 
 ## Overview
 
-**REANÁLISE DO SISTEMA EM PRODUÇÃO**: Este documento documenta o estado atual real do SOS Moto (70% implementado) após análise completa do código. O foco é mapear fluxos de dados existentes, identificar orquestradores principais, e otimizar performance/custos mantendo o desacoplamento de serviços.
+**REANÁLISE DO SISTEMA EM PRODUÇÃO**: Este documento documenta o estado atual real do SOS Moto (90% implementado) após análise completa do código. O foco é mapear fluxos de dados existentes, identificar orquestradores principais, e otimizar performance/custos mantendo o desacoplamento de serviços.
 
 **PRINCIPAIS DEPENDÊNCIAS IDENTIFICADAS:**
 
-- **@mercadopago/sdk-react**: ^1.0.4 (Payment Brick)
-- **mercadopago**: ^2.8.0 (Server SDK)
-- **@aws-sdk/client-sesv2**: ^3.849.0 (Email)
-- **qrcode**: ^1.5.4 + **qrcode.react**: ^4.2.0 (QR Generation)
-- **uuid**: ^11.1.0 (ID Generation)
-- **zod**: ^3.23.8 (Validation)
+* **@mercadopago/sdk-react**: ^1.0.4 (Payment Brick)
+
+* **mercadopago**: ^2.8.0 (Server SDK)
+
+* **@aws-sdk/client-sesv2**: ^3.849.0 (Email)
+
+* **qrcode**: ^1.5.4 + **qrcode.react**: ^4.2.0 (QR Generation)
+
+* **uuid**: ^11.1.0 (ID Generation)
+
+* **zod**: ^3.23.8 (Validation)
 
 ## Architecture
 
@@ -85,8 +96,8 @@ sequenceDiagram
 
 ### PONTOS DE PERSISTÊNCIA DE DADOS
 
-| Momento              | Coleção Firebase   | Dados                      | Justificativa                                             |
-| -------------------- | ------------------ | -------------------------- | --------------------------------------------------------- |
+| Momento              | Coleção Firebase   | Dados                      | Justificativa                                            |
+| -------------------- | ------------------ | -------------------------- | -------------------------------------------------------- |
 | **Form Submit**      | `pending_profiles` | Dados completos do usuário | ✅ **CORRETO** - Necessário para processar após pagamento |
 | **Payment Approved** | `user_profiles`    | Profile final + QR Code    | ✅ **CORRETO** - Dados definitivos                        |
 | **Webhook**          | `payments_log`     | Log de auditoria           | ✅ **CORRETO** - Compliance e debugging                   |
@@ -101,15 +112,53 @@ sequenceDiagram
 | **QStash**      | Payment approved + Profile ready | webhook.ts + final-processor.ts        | Processing jobs         |
 | **AWS SES**     | Profile completed                | email-sender.ts                        | Email confirmation      |
 
-### ANÁLISE DE CÓDIGO REDUNDANTE E PROBLEMAS IDENTIFICADOS
+### ✅ IMPLEMENTADOS CORRETAMENTE:
 
-#### 1. **CÓDIGO DUPLICADO IDENTIFICADO**
+* **API Processors**: final-processor.ts, email-sender.ts
 
-**❌ PROBLEMA**: Lógica duplicada entre arquivos
+* **Types, Services, Repositories, Domain** completos
 
-- `create-payment.ts` - Função `processApprovedPayment` (não deveria existir)
-- `final-processor.ts` - Processamento completo (correto)
-- **SOLUÇÃO**: Remover processamento de `create-payment.ts`, manter apenas criação de preferência
+* **Regras críticas respeitadas** (sem `any`)
+
+* **Validação Zod** em todos pontos
+
+* **Arquitetura modular lib/** completamente implementada
+
+### ❌ PROBLEMAS CRÍTICOS IDENTIFICADOS:
+
+#### 1. 🔴 CRÍTICO: Device ID OBRIGATÓRIO não implementado
+
+**Arquivo Afetado:** `src/components/MercadoPagoCheckout.tsx`
+
+* Device ID do MercadoPago NÃO está sendo coletado
+
+* Reduz significativamente a taxa de aprovação de pagamentos (15-30%)
+
+* Viola práticas de segurança recomendadas pelo MercadoPago
+
+#### 2. 🔴 CRÍTICO: Webhook não usa MercadoPagoService
+
+**Arquivo Afetado:** `api/mercadopago-webhook.ts`
+
+* Webhook chama MercadoPago API diretamente
+
+* NÃO usa `MercadoPagoService` implementado
+
+* Viola princípios da arquitetura modular
+
+#### 3. 🟡 MÉDIO: Processamento síncrono vs documentação assíncrona
+
+* **Documentado**: Fluxo totalmente assíncrono via QStash
+
+* **Implementado**: Webhook processa síncronamente + enfileira
+
+#### 4. 🟡 MÉDIO: Código duplicado
+
+* Lógica `processApprovedPayment` duplicada
+
+* Webhook + final-processor fazem processamento similar
+
+* Viola princípio DRY
 
 #### 2. **FLUXOS PARALELOS CORRETOS**
 
@@ -123,26 +172,33 @@ webhook.ts → QStash → final-processor.ts → QStash → email-sender.ts
 
 **✅ IMPLEMENTADO CORRETAMENTE**:
 
-- HMAC validation no webhook
-- Zod validation em todos os pontos de entrada
-- Correlation ID tracking
-- Device ID para MercadoPago
+* HMAC validation no webhook
+
+* Zod validation em todos os pontos de entrada
+
+* Correlation ID tracking
+
+* Device ID para MercadoPago
 
 #### 4. **CACHE E PERFORMANCE**
 
 **✅ ESTRATÉGIA CORRETA**:
 
-- Redis cache com TTL 24h
-- Cache-first strategy no get-profile
-- Graceful degradation (Redis falha → Firebase)
+* Redis cache com TTL 24h
+
+* Cache-first strategy no get-profile
+
+* Graceful degradation (Redis falha → Firebase)
 
 #### 5. **COMPONENTE FRONTEND**
 
 **❌ PROBLEMA IDENTIFICADO**: `src/components/MercadoPagoCheckout.tsx`
 
-- Não implementa Device ID obrigatório
-- Falta callback onReady
-- Não gerencia unmount do Brick
+* Não implementa Device ID obrigatório
+
+* Falta callback onReady
+
+* Não gerencia unmount do Brick
 
 **CORREÇÃO NECESSÁRIA**:
 
@@ -171,21 +227,31 @@ useEffect(() => {
 
 **Key Functions**:
 
-- Parse existing markdown files
-- Extract and consolidate critical rules
-- Generate cross-references and navigation
-- Create role-specific views
-- Maintain consistency across documents
+* Parse existing markdown files
+
+* Extract and consolidate critical rules
+
+* Generate cross-references and navigation
+
+* Create role-specific views
+
+* Maintain consistency across documents
 
 **Input Sources**:
 
-- `.trae/document/requisitos-produto-sos-moto.md`
-- `.trae/document/arquitetura-tecnica-sos-moto.md`
-- `.trae/document/documentacao-tecnica-sos-moto.md`
-- `.trae/document/refatoracao-arquitetural-sos-moto.md`
-- `.trae/document/mercadopago-integration-guide.md`
-- `.trae/documents/analise-corrigida-implementacao.md`
-- `.trae/documents/arquivos-pendentes-implementacao.md`
+* `.trae/document/requisitos-produto-sos-moto.md`
+
+* `.trae/document/arquitetura-tecnica-sos-moto.md`
+
+* `.trae/document/documentacao-tecnica-sos-moto.md`
+
+* `.trae/document/refatoracao-arquitetural-sos-moto.md`
+
+* `.trae/document/mercadopago-integration-guide.md`
+
+* `.trae/documents/analise-corrigida-implementacao.md`
+
+* `.trae/documents/arquivos-pendentes-implementacao.md`
 
 ### Content Consolidation Engine
 
@@ -193,10 +259,13 @@ useEffect(() => {
 
 **Key Functions**:
 
-- Identify duplicate content across documents
-- Merge related sections intelligently
-- Maintain source traceability
-- Generate unified content with proper attribution
+* Identify duplicate content across documents
+
+* Merge related sections intelligently
+
+* Maintain source traceability
+
+* Generate unified content with proper attribution
 
 ### Navigation System
 
@@ -204,11 +273,15 @@ useEffect(() => {
 
 **Key Features**:
 
-- Role-based entry points
-- Topic-based navigation
-- Search functionality (through file structure)
-- Cross-document linking
-- Quick reference sections
+* Role-based entry points
+
+* Topic-based navigation
+
+* Search functionality (through file structure)
+
+* Cross-document linking
+
+* Quick reference sections
 
 ### Validation System
 
@@ -216,10 +289,13 @@ useEffect(() => {
 
 **Key Functions**:
 
-- Verify all critical rules are properly propagated
-- Check for broken internal links
-- Validate code examples for syntax correctness
-- Ensure consistent formatting and structure
+* Verify all critical rules are properly propagated
+
+* Check for broken internal links
+
+* Validate code examples for syntax correctness
+
+* Ensure consistent formatting and structure
 
 ## Data Models
 
@@ -296,35 +372,45 @@ interface CrossReference {
 
 **Missing Critical Rules**: When critical refactoring rules are not properly propagated across documents
 
-- **Detection**: Automated scanning for rule presence in relevant sections
-- **Resolution**: Automatic insertion of missing rules with proper formatting
-- **Logging**: Track which documents required rule insertion
+* **Detection**: Automated scanning for rule presence in relevant sections
+
+* **Resolution**: Automatic insertion of missing rules with proper formatting
+
+* **Logging**: Track which documents required rule insertion
 
 **Broken Cross-References**: When internal links point to non-existent sections
 
-- **Detection**: Link validation during document generation
-- **Resolution**: Update links to correct targets or mark as requiring manual review
-- **Fallback**: Provide alternative navigation paths
+* **Detection**: Link validation during document generation
+
+* **Resolution**: Update links to correct targets or mark as requiring manual review
+
+* **Fallback**: Provide alternative navigation paths
 
 **Content Inconsistencies**: When the same information appears differently across documents
 
-- **Detection**: Content comparison algorithms to identify variations
-- **Resolution**: Flag inconsistencies for manual review and resolution
-- **Standardization**: Apply consistent formatting and terminology
+* **Detection**: Content comparison algorithms to identify variations
+
+* **Resolution**: Flag inconsistencies for manual review and resolution
+
+* **Standardization**: Apply consistent formatting and terminology
 
 ### Generation Process Errors
 
 **Source File Access Issues**: When original `.trae/` files cannot be read
 
-- **Handling**: Graceful degradation with partial documentation generation
-- **Logging**: Clear error messages indicating which sources are unavailable
-- **Recovery**: Retry mechanisms for temporary access issues
+* **Handling**: Graceful degradation with partial documentation generation
+
+* **Logging**: Clear error messages indicating which sources are unavailable
+
+* **Recovery**: Retry mechanisms for temporary access issues
 
 **Output Generation Failures**: When documentation files cannot be created
 
-- **Handling**: Rollback to previous version if available
-- **Logging**: Detailed error information for troubleshooting
-- **Notification**: Alert system administrators of generation failures
+* **Handling**: Rollback to previous version if available
+
+* **Logging**: Detailed error information for troubleshooting
+
+* **Notification**: Alert system administrators of generation failures
 
 ## Testing Strategy
 
@@ -332,60 +418,79 @@ interface CrossReference {
 
 **Critical Rules Propagation Test**
 
-- Verify all critical rules appear in appropriate documents
-- Validate consistent formatting and emphasis
-- Check for complete rule coverage across all relevant sections
+* Verify all critical rules appear in appropriate documents
+
+* Validate consistent formatting and emphasis
+
+* Check for complete rule coverage across all relevant sections
 
 **Cross-Reference Validation Test**
 
-- Verify all internal links resolve correctly
-- Test navigation paths between related documents
-- Validate external links are accessible and current
+* Verify all internal links resolve correctly
+
+* Test navigation paths between related documents
+
+* Validate external links are accessible and current
 
 **Content Completeness Test**
 
-- Ensure all source documents are processed
-- Verify no critical information is lost during consolidation
-- Check that all user roles have appropriate documentation coverage
+* Ensure all source documents are processed
+
+* Verify no critical information is lost during consolidation
+
+* Check that all user roles have appropriate documentation coverage
 
 ### User Experience Testing
 
 **Role-Based Navigation Test**
 
-- Validate each user role can find relevant information efficiently
-- Test onboarding flow for new developers
-- Verify project managers can access status and planning information
+* Validate each user role can find relevant information efficiently
+
+* Test onboarding flow for new developers
+
+* Verify project managers can access status and planning information
 
 **Documentation Usability Test**
 
-- Test document readability and structure
-- Validate code examples are clear and executable
-- Ensure troubleshooting guides are comprehensive and actionable
+* Test document readability and structure
+
+* Validate code examples are clear and executable
+
+* Ensure troubleshooting guides are comprehensive and actionable
 
 ### Integration Testing
 
 **Source Document Processing Test**
 
-- Test parsing of all `.trae/` directory files
-- Validate handling of different markdown formats and structures
-- Test consolidation of overlapping content
+* Test parsing of all `.trae/` directory files
+
+* Validate handling of different markdown formats and structures
+
+* Test consolidation of overlapping content
 
 **Output Generation Test**
 
-- Verify all target documentation files are created correctly
-- Test file structure and organization
-- Validate metadata and navigation elements
+* Verify all target documentation files are created correctly
+
+* Test file structure and organization
+
+* Validate metadata and navigation elements
 
 ### Performance Testing
 
 **Generation Speed Test**
 
-- Measure time to process all source documents
-- Test scalability with additional documentation sources
-- Validate memory usage during large document processing
+* Measure time to process all source documents
+
+* Test scalability with additional documentation sources
+
+* Validate memory usage during large document processing
 
 **Search and Navigation Performance**
 
-- Test file-based navigation efficiency
-- Validate cross-reference resolution speed
-- Measure user task completion times
+* Test file-based navigation efficiency
+
+* Validate cross-reference resolution speed
+
+* Measure user task completion times
+

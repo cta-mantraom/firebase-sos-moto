@@ -22,7 +22,73 @@
 
 ---
 
-## TAREFAS BASEADAS NO ESTADO ATUAL (70% IMPLEMENTADO)
+## Plano de Implementação
+
+### Fase 1: Correções Críticas (Prioridade ALTA)
+
+#### 1.1 🔴 CRÍTICO: Implementar Device ID no Frontend
+- **Problema**: Device ID do MercadoPago NÃO está sendo coletado
+- **Impacto**: Redução de 15-30% na taxa de aprovação de pagamentos
+- **Solução**: 
+  1. Adicionar script de segurança no index.html
+  2. Implementar coleta de Device ID no MercadoPagoCheckout.tsx
+  3. Incluir no payload de create-payment
+- **Arquivos**: `index.html`, `src/components/MercadoPagoCheckout.tsx`, `api/create-payment.ts`
+- **Estimativa**: 2-4 horas
+- **Prioridade**: MÁXIMA (impacto direto na receita)
+
+#### 1.2 🔴 CRÍTICO: Refatorar Webhook para Usar MercadoPagoService
+- **Problema**: Webhook chama MercadoPago API diretamente, não usa `MercadoPagoService`
+- **Impacto**: Viola arquitetura modular, inconsistência
+- **Solução**: 
+  1. Refatorar webhook para usar serviço implementado
+  2. Remover chamadas diretas à API
+  3. Manter validação HMAC
+- **Arquivos**: `api/mercadopago-webhook.ts`
+- **Estimativa**: 2-3 horas
+- **Prioridade**: ALTA (manutenibilidade e consistência)
+
+### Fase 2: Correções Médias (Próxima Sprint)
+
+#### 2.1 🟡 MÉDIO: Definir Arquitetura Final (Síncrono vs Assíncrono)
+- **Problema**: Inconsistência entre documentação (assíncrono) e implementação (síncrono)
+- **Impacto**: Clareza arquitetural e performance
+- **Solução**: 
+  1. Decidir: Processamento síncrono OU assíncrono
+  2. Atualizar documentação para refletir decisão
+  3. Ajustar implementação se necessário
+- **Arquivos**: Documentação + `api/mercadopago-webhook.ts`
+- **Estimativa**: 4-6 horas
+- **Prioridade**: MÉDIA (clareza arquitetural)
+
+#### 2.2 🟡 MÉDIO: Eliminar Código Duplicado
+- **Problema**: Lógica `processApprovedPayment` duplicada entre webhook e final-processor
+- **Impacto**: Manutenibilidade e princípio DRY
+- **Solução**: 
+  1. Centralizar lógica de processamento
+  2. Criar serviço compartilhado
+  3. Refatorar ambos os arquivos
+- **Arquivos**: `api/mercadopago-webhook.ts`, `api/processors/final-processor.ts`
+- **Estimativa**: 3-4 horas
+- **Prioridade**: MÉDIA (manutenibilidade)
+
+### Fase 3: Otimizações (Prioridade BAIXA)
+
+#### 3.1 Finalização do email-sender.ts
+- **Status**: 95% completo
+- **Pendência**: Validação final de templates
+- **Solução**: Testar envio de emails em diferentes cenários
+- **Arquivos**: `api/processors/email-sender.ts`
+- **Estimativa**: 1 hora
+
+#### 3.2 Otimizações de Performance
+- **Objetivo**: Cache de validações, otimização de queries
+- **Impacto**: Performance marginal
+- **Estimativa**: 2-4 horas
+
+### Fase 4: Documentação e Fluxos (Contínuo)
+
+### Tarefas Detalhadas por Prioridade
 
 - [ ] 1. **CORREÇÃO CRÍTICA**: Corrigir MercadoPagoCheckout.tsx
 
@@ -104,6 +170,41 @@
   - Documentar procedimentos de deploy e rollback
   - _Requirements: 2.2, 2.4_
 
+## Métricas de Sucesso
+
+### Antes das Correções
+- Taxa de aprovação: ~70-75% (estimativa sem Device ID)
+- Tempo de processamento: Variável (processamento síncrono)
+- Manutenibilidade: Baixa (código duplicado)
+- Conformidade arquitetural: 90% (problemas críticos identificados)
+
+### Após Correções
+- Taxa de aprovação: ~85-90% (com Device ID)
+- Tempo de processamento: Consistente (arquitetura definida)
+- Manutenibilidade: Alta (arquitetura modular respeitada)
+- Conformidade arquitetural: 100%
+
+## Checklist de Implementação
+
+### Device ID (Prioridade 1)
+- [ ] Adicionar script de segurança no index.html
+- [ ] Implementar coleta de Device ID no MercadoPagoCheckout.tsx
+- [ ] Atualizar payload de create-payment
+- [ ] Testar em ambiente de desenvolvimento
+- [ ] Validar aumento na taxa de aprovação
+
+### Refatoração Webhook (Prioridade 2)
+- [ ] Refatorar webhook para usar MercadoPagoService
+- [ ] Remover chamadas diretas à API
+- [ ] Testar validação HMAC
+- [ ] Verificar logs de processamento
+
+### Documentação (Contínuo)
+- [x] Atualizar arquitetura-tecnica-sos-moto.md
+- [x] Documentar problemas-criticos-e-correcoes.md
+- [x] Integrar informações em .kiro
+- [ ] Atualizar fluxos após correções
+
 ## RESUMO DO ESTADO ATUAL E PRÓXIMOS PASSOS
 
 ### ✅ **JÁ IMPLEMENTADO E FUNCIONANDO (70%)**
@@ -146,4 +247,7 @@ Usuário → Form → create-payment → MercadoPago → webhook → QStash → 
    pending_profiles                                     user_profiles    Redis Cache
 ```
 
-**CONCLUSÃO**: O sistema está bem arquitetado e 70% funcional. Foco deve ser na correção dos problemas identificados e finalização dos 30% restantes, mantendo a qualidade e desacoplamento existentes.
+**Estado**: 90% implementado com arquitetura sólida, problemas críticos identificados
+**Foco**: Correções críticas (Device ID + Webhook) e eliminação de código duplicado
+**Próximos passos**: Implementar Device ID (MÁXIMA prioridade), refatorar webhook, definir arquitetura final
+**Meta**: Sistema 100% funcional com taxa de aprovação otimizada e arquitetura consistente

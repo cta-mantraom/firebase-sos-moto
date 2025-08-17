@@ -1,5 +1,11 @@
 # Technology Stack
 
+## ⚠️ Regras Críticas de Desenvolvimento
+- **NUNCA usar `any`** em código de produção
+- **Usar `unknown`** SOMENTE na fronteira do sistema + validação Zod imediata
+- **Proibido modificar** arquivos em `tests/` e `test-integration/`
+- **Arquitetura modular obrigatória** (Domain, Service, Repository, Processors)
+
 ## Frontend
 
 - **Framework**: React 18 with TypeScript
@@ -11,7 +17,7 @@
 - **Forms**: React Hook Form with Zod validation
 - **Icons**: Lucide React
 - **Notifications**: Sonner for toast notifications
-- **Payment Integration**: MercadoPago SDK React (`@mercadopago/sdk-react`: ^1.0.4) with Payment Brick
+- **Payment Integration**: MercadoPago SDK React (`@mercadopago/sdk-react`: ^1.0.4) with Payment Brick (⚠️ Device ID não implementado)
 
 ## Backend/API
 
@@ -19,12 +25,22 @@
 - **Database**: Firebase Firestore (South America East region)
 - **Storage**: Firebase Storage
 - **Authentication**: Firebase Admin SDK
-- **Payment Processing**: MercadoPago SDK (`mercadopago`: ^2.8.0)
-- **Validation**: Zod schemas for type-safe validation (`zod`: ^3.23.8)
-- **Queue/Webhooks**: Upstash QStash and Redis for background processing
+- **Payment Processing**: MercadoPago SDK (`mercadopago`: ^2.8.0) (⚠️ Webhook não usa MercadoPagoService)
+- **Validation**: Zod schemas for type-safe validation (`zod`: ^3.23.8) (✅ Implementado em todas fronteiras)
+- **Queue/Webhooks**: Upstash QStash and Redis for background processing (⚠️ Fluxo síncrono vs assíncrono)
 - **Email Service**: AWS SES v2 (`@aws-sdk/client-sesv2`: ^3.849.0)
 - **QR Code Generation**: `qrcode`: ^1.5.4 + `qrcode.react`: ^4.2.0
 - **ID Generation**: `uuid`: ^11.1.0
+
+## Arquitetura Modular (lib/)
+- **Domain Layer** - Entidades de negócio (Profile, Payment, Notification)
+- **Service Layer** - Lógica de negócio e integração com serviços externos
+- **Repository Layer** - Acesso a dados com padrão Repository
+- **Processors Layer** - Processamento assíncrono (final-processor.ts, email-sender.ts)
+- **Types** - Definições TypeScript centralizadas
+- **Utils** - Utilitários compartilhados (logger, validation, ids)
+- **Config** - Configurações de ambiente
+- **Schemas** - Validação Zod para todas as entradas
 
 ## Development Tools
 

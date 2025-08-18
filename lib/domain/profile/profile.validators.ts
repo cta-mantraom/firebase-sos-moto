@@ -760,9 +760,9 @@ function validateProfileUpdate(data: unknown): boolean {
  * Gets nested object value by dot notation
  */
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce((current, key) => {
+  return path.split('.').reduce((current: unknown, key: string) => {
     return current && typeof current === 'object' ? (current as Record<string, unknown>)[key] : undefined;
-  }, obj);
+  }, obj as unknown);
 }
 
 // Type exports for the validated schemas

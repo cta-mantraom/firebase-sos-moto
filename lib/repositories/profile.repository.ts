@@ -200,18 +200,19 @@ export class ProfileRepository {
       // Apply ordering and pagination
       query = query.orderBy('createdAt', 'desc');
 
-      if (queryData.offset > 0) {
+      if (queryData.offset && queryData.offset > 0) {
         query = query.offset(queryData.offset);
       }
 
-      query = query.limit(queryData.limit + 1); // Get one extra to check if there are more
+      query = query.limit((queryData.limit || 20) + 1); // Get one extra to check if there are more
 
       const querySnapshot = await query.get();
       const docs = querySnapshot.docs;
 
       // Check if there are more results
-      const hasMore = docs.length > queryData.limit;
-      const profileDocs = hasMore ? docs.slice(0, queryData.limit) : docs;
+      const limit = queryData.limit || 20;
+      const hasMore = docs.length > limit;
+      const profileDocs = hasMore ? docs.slice(0, limit) : docs;
 
       const profiles: Profile[] = [];
       for (const doc of profileDocs) {

@@ -127,6 +127,9 @@ export interface ProfileSearchFilters {
   planType?: PlanType;
   createdFrom?: Date;
   createdTo?: Date;
+  offset?: number;
+  limit?: number;
+  searchTerm?: string;
 }
 
 export interface ProfileUpdateData {

@@ -9,6 +9,7 @@ import {
   WebhookData,
   PaymentProcessingResult,
 } from './payment.types';
+import { PlanType } from '../profile/profile.types';
 
 /**
  * Payment Domain Validators
@@ -64,7 +65,7 @@ export const CreatePaymentSchema = z.object({
     errorMap: () => ({ message: 'Invalid payment type' }),
   }).default(PaymentType.REGULAR_PAYMENT),
   payer: PayerValidationSchema,
-  planType: z.enum(['basic', 'premium'], {
+  planType: z.nativeEnum(PlanType, {
     errorMap: () => ({ message: 'Plan type must be basic or premium' }),
   }),
   description: z.string().max(255, 'Description too long').optional(),

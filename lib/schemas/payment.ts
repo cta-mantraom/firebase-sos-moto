@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PlanType } from '../domain/profile/profile.types';
 
 // Emergency Contact Schema
 export const EmergencyContactSchema = z.object({
@@ -26,7 +27,7 @@ export const ProfileSchema = z.object({
 
 // Payment Request Schema
 export const PaymentRequestSchema = z.object({
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   userData: ProfileSchema,
 });
 

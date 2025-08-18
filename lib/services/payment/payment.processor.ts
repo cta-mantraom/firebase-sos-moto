@@ -5,12 +5,14 @@ import { ProfileRepository } from '../../repositories/profile.repository';
 import { PaymentRepository } from '../../repositories/payment.repository';
 import { QueueService } from '../notification/queue.service';
 import { generateCorrelationId } from '../../utils/ids';
+import { PlanType, PendingProfile } from '../../domain/profile/profile.types';
+import { JobType } from '../../types/queue.types';
 
 // Schemas de validação
 const PaymentDataSchema = z.object({
   uniqueUrl: z.string(),
   amount: z.number().positive(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   paymentMethod: z.string(),
   userEmail: z.string().email(),
   userName: z.string(),
@@ -118,18 +120,39 @@ export class PaymentProcessor {
         processedAt: new Date(),
         metadata: {
           planType: pendingProfile.planType,
-          userId: pendingProfile.userId,
         },
       });
 
       // Enfileirar job de processamento final
       await this.queueService.enqueueProcessingJob({
-        jobType: 'PROCESS_PROFILE',
+        jobType: JobType.PROCESS_PROFILE,
+        profileId: uniqueUrl, // Using uniqueUrl as profileId
         uniqueUrl,
         paymentId: paymentData.id.toString(),
         planType: pendingProfile.planType,
-        profileData: pendingProfile,
+        profileData: {
+          uniqueUrl: pendingProfile.uniqueUrl,
+          planType: pendingProfile.planType,
+          personalData: pendingProfile.personalData,
+          medicalData: pendingProfile.medicalData,
+          emergencyContacts: pendingProfile.emergencyContacts,
+          vehicleData: pendingProfile.vehicleData,
+          status: pendingProfile.status,
+          createdAt: pendingProfile.createdAt,
+          updatedAt: pendingProfile.updatedAt,
+          paymentId: pendingProfile.paymentId,
+          qrCodeUrl: pendingProfile.qrCodeUrl,
+          memorialUrl: pendingProfile.memorialUrl,
+        },
+        paymentData: {
+          id: paymentData.id.toString(),
+          status: paymentData.status,
+          amount: paymentData.transaction_amount,
+          externalReference: paymentData.external_reference || uniqueUrl,
+        },
         correlationId,
+        retryCount: 0,
+        maxRetries: 3
       });
 
       const duration = Date.now() - startTime;
@@ -216,15 +239,22 @@ export class PaymentProcessor {
       // Enfileirar notificação de falha se houver email
       if (paymentDetails.payer.email) {
         await this.queueService.enqueueEmailJob({
-          jobType: 'PAYMENT_FAILED',
-          to: paymentDetails.payer.email,
+          jobType: JobType.SEND_EMAIL,
+          profileId: '',
+          email: paymentDetails.payer.email,
+          name: 'Cliente',
           subject: 'Falha no processamento do pagamento',
+          template: 'failure',
           templateData: {
-            paymentId,
-            error: error.message,
+            qrCodeUrl: undefined,
+            memorialUrl: '',
+            planType: PlanType.BASIC,
             amount: paymentDetails.transaction_amount,
+            paymentId,
           },
           correlationId,
+          retryCount: 0,
+          maxRetries: 3
         });
       }
 
@@ -329,7 +359,7 @@ export class PaymentProcessor {
       if (paymentLog && paymentLog.status === 'approved') {
         logWarning('Payment already processed', {
           paymentId,
-          processedAt: paymentLog.processedAt,
+          processedAt: new Date(),
         });
         return false;
       }
@@ -338,7 +368,7 @@ export class PaymentProcessor {
       if (paymentLog && paymentLog.status === 'processing') {
         logWarning('Payment is already being processed', {
           paymentId,
-          startedAt: paymentLog.processedAt,
+          startedAt: new Date(),
         });
         return false;
       }
@@ -364,23 +394,22 @@ export class PaymentProcessor {
     averageProcessingTime: number;
   }> {
     try {
-      const payments = await this.paymentRepository.getPaymentHistory({
-        from: period.from,
-        to: period.to,
-      });
+      const payments = await this.paymentRepository.getPaymentHistory(
+        `${period.from.toISOString()}-${period.to.toISOString()}`
+      );
 
       const stats = {
         total: payments.length,
-        approved: payments.filter(p => p.status === 'approved').length,
-        failed: payments.filter(p => p.status === 'failed' || p.status === 'processing_failed').length,
-        pending: payments.filter(p => p.status === 'pending' || p.status === 'in_process').length,
+        approved: payments.filter(p => p.eventType === 'approved').length,
+        failed: payments.filter(p => p.eventType === 'failed' || p.eventType === 'processing_failed').length,
+        pending: payments.filter(p => p.eventType === 'pending' || p.eventType === 'in_process').length,
         averageProcessingTime: 0,
       };
 
       // Calcular tempo médio de processamento
       const processingTimes = payments
-        .filter(p => p.metadata?.processingTime)
-        .map(p => p.metadata.processingTime as number);
+        .filter(p => p.eventData && typeof p.eventData.processingTime === 'number')
+        .map(p => p.eventData.processingTime as number);
 
       if (processingTimes.length > 0) {
         stats.averageProcessingTime = 

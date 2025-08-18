@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PlanType } from '../profile/profile.types';
 
 // Email Template Types
 export enum EmailTemplate {
@@ -36,7 +37,7 @@ export const BaseTemplateDataSchema = z.object({
 export const PaymentConfirmationDataSchema = BaseTemplateDataSchema.extend({
   paymentId: z.string(),
   amount: z.number(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   memorialUrl: z.string().url(),
   qrCodeUrl: z.string().url().optional(),
 });
@@ -50,7 +51,7 @@ export const PaymentFailureDataSchema = BaseTemplateDataSchema.extend({
 export const ProfileCreatedDataSchema = BaseTemplateDataSchema.extend({
   profileId: z.string(),
   memorialUrl: z.string().url(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
 });
 
 export const QRCodeGeneratedDataSchema = BaseTemplateDataSchema.extend({
@@ -61,7 +62,7 @@ export const QRCodeGeneratedDataSchema = BaseTemplateDataSchema.extend({
 
 export const WelcomeDataSchema = BaseTemplateDataSchema.extend({
   memorialUrl: z.string().url(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   features: z.array(z.string()),
 });
 

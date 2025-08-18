@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PlanType } from '../profile/profile.types';
 
 // Payment Status
 export enum PaymentStatus {
@@ -433,7 +434,7 @@ export const PaymentDataSchema = z.object({
   installments: z.number().optional(),
   payer: PayerSchema,
   profileId: z.string().optional(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   description: z.string().optional(),
   externalReference: z.string(),
   metadata: z.record(z.unknown()).optional(),

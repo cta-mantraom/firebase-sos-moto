@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logInfo, logError, logWarning } from '../../utils/logger';
+import { logInfo, logError } from '../../utils/logger';
 import { QStashService } from '../queue/qstash.service';
 import { generateCorrelationId } from '../../utils/ids';
 // CORRETO: Import centralized schemas from types layer (no duplicate schemas)
@@ -78,16 +78,10 @@ export class QueueService {
       // Validar dados
       const validatedData = EmailJobDataSchema.parse(emailData);
 
-      // Construir URL do processador
-      const processorUrl = `${this.config.baseUrl}/api/processors/email-sender`;
-
       // Publicar job no QStash
-      const jobId = await this.qstashService.publishJob(
-        processorUrl,
-        {
-          type: 'email',
-          data: validatedData,
-        },
+      const response = await this.qstashService.publishJob(
+        validatedData,
+        'email-sender',
         {
           retries: validatedData.maxRetries,
           delay: 0,
@@ -95,24 +89,25 @@ export class QueueService {
             'X-Correlation-Id': correlationId,
             'X-Job-Type': 'EMAIL',
           },
-        }
+        },
+        correlationId
       );
 
       // Registrar job localmente
-      this.registerJob(jobId, 'pending');
+      this.registerJob(response.messageId, 'pending');
 
       logInfo('Email job enqueued', {
-        jobId,
+        jobId: response.messageId,
         jobType: validatedData.jobType,
-        to: validatedData.to,
+        to: validatedData.email,
         correlationId,
       });
 
-      return jobId;
+      return response.messageId;
     } catch (error) {
       logError('Failed to enqueue email job', error as Error, {
         correlationId,
-        emailTo: emailData.to,
+        emailTo: emailData.email,
       });
       throw error;
     }
@@ -128,16 +123,10 @@ export class QueueService {
       // Validar dados
       const validatedData = ProcessingJobDataSchema.parse(processingData);
 
-      // Construir URL do processador
-      const processorUrl = `${this.config.baseUrl}/api/processors/final-processor`;
-
       // Publicar job no QStash
-      const jobId = await this.qstashService.publishJob(
-        processorUrl,
-        {
-          type: 'processing',
-          data: validatedData,
-        },
+      const response = await this.qstashService.publishJob(
+        validatedData,
+        'final-processor',
         {
           retries: validatedData.maxRetries,
           delay: 0,
@@ -146,21 +135,22 @@ export class QueueService {
             'X-Job-Type': 'PROCESSING',
             'X-Payment-Id': validatedData.paymentId,
           },
-        }
+        },
+        correlationId
       );
 
       // Registrar job localmente
-      this.registerJob(jobId, 'pending');
+      this.registerJob(response.messageId, 'pending');
 
       logInfo('Processing job enqueued', {
-        jobId,
+        jobId: response.messageId,
         jobType: validatedData.jobType,
         uniqueUrl: validatedData.uniqueUrl,
         paymentId: validatedData.paymentId,
         correlationId,
       });
 
-      return jobId;
+      return response.messageId;
     } catch (error) {
       logError('Failed to enqueue processing job', error as Error, {
         correlationId,
@@ -212,42 +202,39 @@ export class QueueService {
   /**
    * Agenda um job com delay
    */
-  private async scheduleDelayedJob(
+  private async _scheduleDelayedJob(
     jobData: JobData,
     delay: number
   ): Promise<string> {
     const correlationId = generateCorrelationId();
 
     try {
-      // Determinar URL do processador baseado no tipo
-      const processorUrl = jobData.type === 'email'
-        ? `${this.config.baseUrl}/api/processors/email-sender`
-        : `${this.config.baseUrl}/api/processors/final-processor`;
-
-      // Agendar job no QStash
-      const jobId = await this.qstashService.scheduleJob(
-        processorUrl,
-        jobData,
-        delay,
+      // Determinar endpoint baseado no tipo
+      const endpoint = jobData.type === 'email' ? 'email-sender' : 'final-processor';
+      const response = await this.qstashService.publishJob(
+        jobData.data,
+        endpoint,
         {
+          delay,
           headers: {
             'X-Correlation-Id': correlationId,
             'X-Job-Type': jobData.type.toUpperCase(),
           },
-        }
+        },
+        correlationId
       );
 
       // Registrar job
-      this.registerJob(jobId, 'pending');
+      this.registerJob(response.messageId, 'pending');
 
       logInfo('Delayed job scheduled', {
-        jobId,
+        jobId: response.messageId,
         type: jobData.type,
         delay,
         correlationId,
       });
 
-      return jobId;
+      return response.messageId;
     } catch (error) {
       logError('Failed to schedule delayed job', error as Error, {
         correlationId,
@@ -323,7 +310,14 @@ export class QueueService {
         averageProcessingTime: 0, // TODO: Calcular tempo médio real
       };
 
-      logInfo('Queue metrics retrieved', metrics);
+      logInfo('Queue metrics retrieved', {
+        totalJobs: metrics.totalJobs,
+        pendingJobs: metrics.pendingJobs,
+        processingJobs: metrics.processingJobs,
+        completedJobs: metrics.completedJobs,
+        failedJobs: metrics.failedJobs,
+        averageProcessingTime: metrics.averageProcessingTime
+      });
 
       return metrics;
     } catch (error) {
@@ -396,9 +390,11 @@ export class QueueService {
   async validateConfiguration(): Promise<boolean> {
     try {
       // Testar conexão com QStash
-      const testJobId = await this.qstashService.publishJob(
-        `${this.config.baseUrl}/api/health`,
-        { test: true },
+      const response = await this.qstashService.publishJob(
+        { 
+          test: true
+        } as unknown as ProcessingJobData,
+        'health',
         {
           retries: 0,
           delay: 0,
@@ -406,7 +402,7 @@ export class QueueService {
       );
 
       // Cancelar job de teste imediatamente
-      await this.qstashService.cancelJob(testJobId);
+      await this.qstashService.cancelJob(response.messageId);
 
       logInfo('Queue configuration validated successfully');
       return true;

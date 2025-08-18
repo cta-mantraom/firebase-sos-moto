@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ProfileData } from '../domain/profile/profile.types';
+import { ProfileData, PlanType } from '../domain/profile/profile.types';
 
 // Job Types
 export enum JobType {
@@ -25,7 +25,7 @@ export const ProcessingJobDataSchema = z.object({
   paymentId: z.string(),
   profileId: z.string(),
   uniqueUrl: z.string(),
-  planType: z.enum(['basic', 'premium']),
+  planType: z.nativeEnum(PlanType),
   profileData: z.record(z.unknown()),
   paymentData: z.object({
     id: z.string(),
@@ -48,7 +48,7 @@ export const EmailJobDataSchema = z.object({
   templateData: z.object({
     qrCodeUrl: z.string().url().optional(),
     memorialUrl: z.string().url(),
-    planType: z.enum(['basic', 'premium']),
+    planType: z.nativeEnum(PlanType),
     amount: z.number().optional(),
     paymentId: z.string().optional(),
   }),

@@ -3,7 +3,7 @@ import { PlanType, ProfileStatus } from '../domain/profile/profile.types';
 
 // Request Schemas
 export const CreatePaymentRequestSchema = z.object({
-  selectedPlan: z.enum(['basic', 'premium']),
+  selectedPlan: z.nativeEnum(PlanType),
   name: z.string().min(2),
   surname: z.string().min(2),
   email: z.string().email(),

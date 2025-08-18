@@ -1,7 +1,57 @@
 import { z } from 'zod';
 import { createHmac, timingSafeEqual } from 'crypto';
 // CORRETO: Import centralized schema from domain layer (no duplicate schemas)
-import { CreatePaymentSchema, type CreatePaymentData } from '../domain/payment/payment.validators';
+import { PaymentType } from '../domain/payment/payment.types';
+import { PlanType } from '../domain/profile/profile.types';
+
+// Schema para criação de pagamento com dados do perfil
+export const CreatePaymentSchema = z.object({
+    // Payment fields
+    type: z.nativeEnum(PaymentType).default(PaymentType.REGULAR_PAYMENT),
+    amount: z.number().positive(),
+    currency: z.string().default('BRL'),
+    payer: z.object({
+        email: z.string().email(),
+        name: z.string().min(2),
+        phone: z.string().optional(),
+        cpf: z.string().optional(),
+        surname: z.string().optional(),
+        identification: z.object({
+            type: z.string(),
+            number: z.string(),
+        }).optional(),
+    }),
+    planType: z.nativeEnum(PlanType),
+    description: z.string().optional(),
+    externalReference: z.string(),
+    installments: z.number().optional(),
+    metadata: z.record(z.unknown()).optional(),
+    deviceId: z.string().optional(),
+    ipAddress: z.string().optional(),
+    // Profile fields
+    name: z.string().min(2).max(100),
+    age: z.number().min(18).max(120),
+    phone: z.string().regex(/^(\(?[1-9]{2}\)?\s?)?9?[0-9]{4}-?[0-9]{4}$/),
+    email: z.string().email(),
+    selectedPlan: z.nativeEnum(PlanType),
+    bloodType: z.string().optional(),
+    allergies: z.array(z.string()).optional(),
+    medications: z.array(z.string()).optional(),
+    medicalConditions: z.array(z.string()).optional(),
+    emergencyContacts: z.array(z.object({
+        name: z.string().min(1),
+        phone: z.string().min(1),
+        relationship: z.string().min(1)
+    })).optional(),
+    surname: z.string().optional(),
+    cpf: z.string().optional(),
+    birthDate: z.string().optional(),
+    healthPlan: z.string().optional(),
+    preferredHospital: z.string().optional(),
+    medicalNotes: z.string().optional()
+});
+
+export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
 
 // Schema principal do perfil (Core Layer - Centralizado)
 export const ProfileSchema = z.object({
@@ -9,7 +59,7 @@ export const ProfileSchema = z.object({
     age: z.number().min(18, "Idade mínima é 18 anos").max(120, "Idade máxima é 120 anos"),
     phone: z.string().regex(/^(\(?[1-9]{2}\)?\s?)?9?[0-9]{4}-?[0-9]{4}$/, "Formato de telefone inválido"),
     email: z.string().email("Email inválido"),
-    plan_type: z.enum(['basic', 'premium']),
+    plan_type: z.nativeEnum(PlanType),
     blood_type: z.string().optional(),
     allergies: z.array(z.string()).optional(),
     medications: z.array(z.string()).optional(),

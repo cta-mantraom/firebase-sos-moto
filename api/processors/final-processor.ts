@@ -7,7 +7,7 @@ import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { ProcessingJobDataSchema } from '../../lib/types/queue.types';
 import { Profile } from '../../lib/domain/profile/profile.entity';
-import { BloodType } from '../../lib/domain/profile/profile.types';
+import { BloodType, PlanType } from '../../lib/domain/profile/profile.types';
 import { ProfileRepository } from '../../lib/repositories/profile.repository';
 import { Payment } from '../../lib/domain/payment/payment.entity';
 import { PaymentRepository } from '../../lib/repositories/payment.repository';
@@ -208,8 +208,8 @@ async function createProfile(
         emergencyNotes: typeof profileData.emergencyNotes === 'string' ? profileData.emergencyNotes : undefined,
       },
       Array.isArray(profileData.emergencyContacts) ? profileData.emergencyContacts : [],
-      jobData.planType === 'premium' ? 'premium' : 'basic',
-      profileData.vehicleData as Record<string, unknown> | undefined
+      jobData.planType === PlanType.PREMIUM ? PlanType.PREMIUM : PlanType.BASIC,
+      profileData.vehicleData as any
     );
 
     // Set unique URL and memorial URL

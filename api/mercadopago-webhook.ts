@@ -8,6 +8,7 @@ import { QStashService } from '../lib/services/queue/qstash.service';
 import { QueueService } from '../lib/services/notification/queue.service';
 import { logInfo, logError, logWarning } from '../lib/utils/logger';
 import { JobType } from '../lib/types/queue.types';
+import { PlanType } from '../lib/domain/profile/profile.types';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -110,26 +111,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payment = await mercadoPagoService.getPaymentDetails(webhookData.data.id);
 
     // Log payment using repository
-    await paymentRepository.savePaymentLog({
-      paymentId: webhookData.data.id,
-      externalReference: payment.external_reference || '',
-      status: payment.status,
-      statusDetail: payment.status_detail || '',
-      amount: payment.transaction_amount,
-      paymentMethodId: payment.payment_method_id,
-      paymentTypeId: payment.payment_type_id,
-      payerEmail: payment.payer.email,
-      payerIdentification: payment.payer.identification ? {
-        type: payment.payer.identification.type,
-        number: payment.payer.identification.number
-      } : undefined,
-      metadata: payment.metadata || {},
-      correlationId,
-      processedAt: new Date(),
-      webhookReceivedAt: new Date(),
-      webhookAction: webhookData.action,
-      webhookType: webhookData.type
-    });
+    await paymentRepository.savePaymentLog(
+      webhookData.data.id,
+      'payment_webhook_received',
+      {
+        externalReference: payment.external_reference || '',
+        status: payment.status,
+        statusDetail: payment.status_detail || '',
+        amount: payment.transaction_amount,
+        paymentMethodId: payment.payment_method_id,
+        paymentTypeId: payment.payment_type_id,
+        payerEmail: payment.payer.email,
+        payerIdentification: payment.payer.identification ? {
+          type: payment.payer.identification.type,
+          number: payment.payer.identification.number
+        } : undefined,
+        metadata: payment.metadata || {},
+        webhookReceivedAt: new Date(),
+        webhookAction: webhookData.action,
+        webhookType: webhookData.type,
+        processedAt: new Date()
+      },
+      correlationId
+    );
 
     // If payment is approved, enqueue processing job (ASYNC FLOW)
     if (payment.status === "approved" && payment.external_reference) {
@@ -145,16 +149,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         // IMPORTANT: Only enqueue job, DO NOT process directly
         const jobId = await queueService.enqueueProcessingJob({
-          jobType: 'PROCESS_PROFILE',
+          jobType: JobType.PROCESS_PROFILE,
+          profileId: profileId,
           uniqueUrl: profileId,
           paymentId: payment.id.toString(),
-          planType: payment.transaction_amount === 85 ? 'premium' : 'basic',
+          planType: payment.transaction_amount === 85 ? PlanType.PREMIUM : PlanType.BASIC,
           profileData: {
             paymentId: payment.id,
             status: payment.status,
             amount: payment.transaction_amount,
             payerEmail: payment.payer.email,
             metadata: payment.metadata || {}
+          },
+          paymentData: {
+            id: payment.id.toString(),
+            status: payment.status,
+            amount: payment.transaction_amount,
+            externalReference: payment.external_reference || profileId
           },
           correlationId,
           retryCount: 0,

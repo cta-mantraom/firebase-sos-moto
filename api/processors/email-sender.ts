@@ -372,7 +372,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'confirmation':
         templateData = {
           ...baseData,
-          paymentId: jobData.templateData.paymentId || '',
+          paymentId: jobData.templateData.paymentId || 'N/A',
           amount: jobData.templateData.amount || 0,
           planType: jobData.templateData.planType,
           memorialUrl: jobData.templateData.memorialUrl,
@@ -382,7 +382,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'failure':
         templateData = {
           ...baseData,
-          paymentId: jobData.templateData.paymentId || '',
+          paymentId: jobData.templateData.paymentId || 'N/A',
           reason: 'Payment processing failed', // Default reason
           retryUrl: undefined,
         } as PaymentFailureData;
@@ -395,15 +395,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           features: [],
         } as WelcomeData;
         break;
+      case 'reminder':
+        templateData = {
+          ...baseData,
+          memorialUrl: jobData.templateData.memorialUrl,
+          planType: jobData.templateData.planType,
+          features: [],
+        } as WelcomeData;
+        break;
       default:
         templateData = {
           ...baseData,
-          ...jobData.templateData,
-        };
+          memorialUrl: jobData.templateData.memorialUrl,
+          planType: jobData.templateData.planType,
+          features: [],
+        } as WelcomeData;
     }
 
-    const htmlContent = template.generateHtml(templateData);
-    const textContent = template.generateText(templateData);
+    const htmlContent = template.generateHtml(templateData as any);
+    const textContent = template.generateText(templateData as any);
 
     // Create email entity
     const email = new Email({
@@ -415,7 +425,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                EmailTemplate.PAYMENT_CONFIRMATION,
       templateData: {
         ...templateData,
-        paymentId: templateData.paymentId || jobData.templateData.paymentId,
+        paymentId: 'paymentId' in templateData ? templateData.paymentId : (jobData.templateData.paymentId || 'N/A'),
       },
       config: {
         from: process.env.SES_FROM_EMAIL || 'noreply@sosmoto.com',

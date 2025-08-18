@@ -4,7 +4,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { z } from 'zod';
 import { logInfo, logError } from '../lib/utils/logger';
 // CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
-import { CreatePaymentSchema, type CreatePaymentData } from '../lib/domain/payment/payment.validators';
+import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {

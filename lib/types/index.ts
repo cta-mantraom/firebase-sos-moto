@@ -1,10 +1,13 @@
 // lib/types/index.ts - Centralized type definitions
 import { z } from 'zod';
-import { ProfileSchema, CreatePaymentSchema } from '../utils/validation';
+import { ProfileSchema, CreatePaymentSchema, CreatePaymentData } from '../utils/validation';
+
+// Export schemas and types
+export { CreatePaymentSchema };
+export type { CreatePaymentData };
 
 // Core types from validation schemas
 export type Profile = z.infer<typeof ProfileSchema>;
-export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
 
 // API Response types
 export interface APIResponse<T = unknown> {

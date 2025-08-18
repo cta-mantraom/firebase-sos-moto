@@ -412,19 +412,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } as WelcomeData;
     }
 
-    // Seguindo regras: validação de tipos sem any
-    let htmlContent: string;
-    let textContent: string;
+    // Seguindo regras: gerar conteúdo HTML e texto diretamente com tipos corretos
+    let htmlContent: string = '';
+    let textContent: string = '';
     
-    if (jobData.template === 'confirmation') {
-      htmlContent = template.generateHtml(templateData as PaymentConfirmationData);
-      textContent = template.generateText(templateData as PaymentConfirmationData);
-    } else if (jobData.template === 'failure') {
-      htmlContent = template.generateHtml(templateData as PaymentFailureData);
-      textContent = template.generateText(templateData as PaymentFailureData);
+    // Usar templates específicos para cada tipo
+    if (jobData.template === 'confirmation' && template) {
+      const confirmationData: PaymentConfirmationData = {
+        userName: jobData.name,
+        userEmail: jobData.email,
+        timestamp: new Date(),
+        paymentId: jobData.templateData.paymentId || 'N/A',
+        amount: jobData.templateData.amount || 0,
+        planType: jobData.templateData.planType,
+        memorialUrl: jobData.templateData.memorialUrl,
+        qrCodeUrl: jobData.templateData.qrCodeUrl,
+      };
+      htmlContent = EMAIL_TEMPLATES.confirmation.generateHtml(confirmationData);
+      textContent = EMAIL_TEMPLATES.confirmation.generateText(confirmationData);
+    } else if (jobData.template === 'failure' && template) {
+      const failureData: PaymentFailureData = {
+        userName: jobData.name,
+        userEmail: jobData.email,
+        timestamp: new Date(),
+        paymentId: jobData.templateData.paymentId || 'N/A',
+        reason: 'Payment processing failed',
+        retryUrl: undefined,
+      };
+      htmlContent = EMAIL_TEMPLATES.failure.generateHtml(failureData);
+      textContent = EMAIL_TEMPLATES.failure.generateText(failureData);
     } else {
-      htmlContent = template.generateHtml(templateData as WelcomeData);
-      textContent = template.generateText(templateData as WelcomeData);
+      const welcomeData: WelcomeData = {
+        userName: jobData.name,
+        userEmail: jobData.email,
+        timestamp: new Date(),
+        planType: jobData.templateData.planType,
+        memorialUrl: jobData.templateData.memorialUrl,
+        features: [],
+      };
+      htmlContent = EMAIL_TEMPLATES.welcome.generateHtml(welcomeData);
+      textContent = EMAIL_TEMPLATES.welcome.generateText(welcomeData);
     }
 
     // Create email entity

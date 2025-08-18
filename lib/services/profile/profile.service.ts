@@ -15,6 +15,7 @@ import {
   MedicalDataSchema,
   EmergencyContactSchema,
   VehicleDataSchema,
+  VehicleData,
   PROFILE_EXPIRATION_HOURS,
   MAX_EMERGENCY_CONTACTS,
   MIN_EMERGENCY_CONTACTS,
@@ -198,12 +199,21 @@ export class ProfileService {
       }
       
       // Criar dados atualizados mesclando com os existentes
+      // Seguindo regras: mesclar dados parciais com existentes
       const updatedData = {
         uniqueUrl: existingProfile.uniqueUrl,
-        personalData: data.personalData || existingProfile.personalData,
-        medicalData: data.medicalData || existingProfile.medicalData,
+        personalData: data.personalData ? 
+          { ...existingProfile.personalData, ...data.personalData } : 
+          existingProfile.personalData,
+        medicalData: data.medicalData ? 
+          { ...existingProfile.medicalData, ...data.medicalData } : 
+          existingProfile.medicalData,
         emergencyContacts: data.emergencyContacts || existingProfile.emergencyContacts,
-        vehicleData: data.vehicleData || existingProfile.vehicleData,
+        vehicleData: data.vehicleData ? 
+          (existingProfile.vehicleData ? 
+            { ...existingProfile.vehicleData, ...data.vehicleData } : 
+            data.vehicleData as VehicleData) :
+          existingProfile.vehicleData,
         planType: existingProfile.planType,
         status: existingProfile.status,
         paymentId: existingProfile.paymentId,
@@ -361,13 +371,20 @@ export class ProfileService {
         throw new Error(`Pending profile not found: ${uniqueUrl}`);
       }
 
-      // Criar perfil ativo
+      // Criar perfil ativo a partir do pendente
+      // Seguindo regras: converter Profile em dados para criar novo
       const profileData: ProfileData = {
-        ...pendingProfile,
+        uniqueUrl: pendingProfile.uniqueUrl,
+        personalData: pendingProfile.personalData,
+        medicalData: pendingProfile.medicalData,
+        emergencyContacts: pendingProfile.emergencyContacts,
+        vehicleData: pendingProfile.vehicleData,
+        planType: pendingProfile.planType,
         status: ProfileStatus.ACTIVE,
         paymentId,
         qrCodeUrl,
         memorialUrl: `${process.env.NEXT_PUBLIC_APP_URL}/memorial/${uniqueUrl}`,
+        createdAt: pendingProfile.createdAt,
         updatedAt: new Date(),
       };
 

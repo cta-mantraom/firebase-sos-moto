@@ -412,8 +412,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } as WelcomeData;
     }
 
-    const htmlContent = template.generateHtml(templateData as any);
-    const textContent = template.generateText(templateData as any);
+    const htmlContent = template.generateHtml(templateData as Parameters<typeof template.generateHtml>[0]);
+    const textContent = template.generateText(templateData as Parameters<typeof template.generateText>[0]);
 
     // Create email entity
     const email = new Email({

@@ -209,7 +209,7 @@ async function createProfile(
       },
       Array.isArray(profileData.emergencyContacts) ? profileData.emergencyContacts : [],
       jobData.planType === PlanType.PREMIUM ? PlanType.PREMIUM : PlanType.BASIC,
-      profileData.vehicleData as any
+      profileData.vehicleData as Record<string, unknown>
     );
 
     // Set unique URL and memorial URL

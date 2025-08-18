@@ -336,7 +336,7 @@ export class MercadoPagoService {
       });
 
       if (!response.ok) {
-        const error: any = await response.json();
+        const error = await response.json() as { message?: string };
         logError('Failed to capture payment', new Error(error.message || 'Unknown error'), {
           paymentId,
           amount,
@@ -376,7 +376,7 @@ export class MercadoPagoService {
       });
 
       if (!response.ok) {
-        const error: any = await response.json();
+        const error = await response.json() as { message?: string };
         logError('Failed to cancel payment', new Error(error.message || 'Unknown error'), {
           paymentId,
           status: response.status,

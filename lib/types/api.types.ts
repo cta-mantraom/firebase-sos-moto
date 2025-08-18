@@ -102,6 +102,17 @@ export type StatusResponse = z.infer<typeof StatusResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 export type MercadoPagoWebhook = z.infer<typeof MercadoPagoWebhookSchema>;
 
+// MercadoPago Preference Response Schema
+export const MercadoPagoPreferenceResponseSchema = z.object({
+  id: z.string(),
+  init_point: z.string().url().optional(),
+  sandbox_init_point: z.string().url().optional(),
+  date_created: z.string().optional(),
+  collector_id: z.number().optional(),
+});
+
+export type MercadoPagoPreferenceResponse = z.infer<typeof MercadoPagoPreferenceResponseSchema>;
+
 // Headers customizados
 export interface ApiHeaders {
   'X-Correlation-Id'?: string;

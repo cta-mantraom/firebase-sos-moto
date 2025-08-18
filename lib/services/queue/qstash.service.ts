@@ -153,7 +153,7 @@ export class QStashService {
         messageId,
       });
 
-      const status: any = await this.client.messages.get(messageId);
+      const status = await this.client.messages.get(messageId) as unknown;
 
       if (!status) {
         logInfo('Job not found in QStash', {
@@ -236,7 +236,7 @@ export class QStashService {
 
       // Note: QStash doesn't provide direct statistics API
       // This would need to be implemented using message listing and filtering
-      const messages: any[] = []; // await this.client.messages.list(); // Note: list method not available in current version
+      const messages: unknown[] = []; // await this.client.messages.list(); // Note: list method not available in current version
 
       const stats = {
         totalMessages: messages.length,

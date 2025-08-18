@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { logInfo, logError } from '../lib/utils/logger';
 // CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
 import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation';
+import { MercadoPagoPreferenceResponseSchema } from '../lib/types/api.types';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -21,15 +22,6 @@ if (!getApps().length) {
     logError('Error initializing Firebase Admin', error as Error);
   }
 }
-
-// MercadoPago Preference Response Schema
-const MercadoPagoPreferenceResponseSchema = z.object({
-  id: z.string(),
-  init_point: z.string().url().optional(),
-  sandbox_init_point: z.string().url().optional(),
-  date_created: z.string().optional(),
-  collector_id: z.number().optional(),
-});
 
 // Plan configuration
 const PLAN_PRICES = {

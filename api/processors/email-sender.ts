@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { z } from "zod";
-import { EmailJobDataSchema } from "../../lib/types/queue.types";
-import { Email } from "../../lib/domain/notification/email.entity";
+import { EmailJobDataSchema } from "../../lib/types/queue.types.js";
+import { Email } from "../../lib/domain/notification/email.entity.js";
 import {
   EmailTemplate,
   EmailStatus,
@@ -12,7 +12,7 @@ import {
   ProfileCreatedData,
   WelcomeData,
 } from "../../lib/domain/notification/email.types";
-import { logInfo, logError } from "../../lib/utils/logger";
+import { logInfo, logError } from "../../lib/utils/logger.js";
 
 // Initialize AWS SES
 const sesClient = new SESv2Client({

@@ -412,8 +412,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } as WelcomeData;
     }
 
-    const htmlContent = template.generateHtml(templateData as Parameters<typeof template.generateHtml>[0]);
-    const textContent = template.generateText(templateData as Parameters<typeof template.generateText>[0]);
+    // Seguindo regras: validação de tipos sem any
+    let htmlContent: string;
+    let textContent: string;
+    
+    if (jobData.template === 'confirmation') {
+      htmlContent = template.generateHtml(templateData as PaymentConfirmationData);
+      textContent = template.generateText(templateData as PaymentConfirmationData);
+    } else if (jobData.template === 'failure') {
+      htmlContent = template.generateHtml(templateData as PaymentFailureData);
+      textContent = template.generateText(templateData as PaymentFailureData);
+    } else {
+      htmlContent = template.generateHtml(templateData as WelcomeData);
+      textContent = template.generateText(templateData as WelcomeData);
+    }
 
     // Create email entity
     const email = new Email({

@@ -69,19 +69,13 @@ export class ProfileService {
         validatedData.emergencyContacts[0].isPrimary = true;
       }
 
-      // Criar entidade de perfil
-      const profile = new Profile(
-        validatedData.uniqueUrl,
-        validatedData.personalData,
-        validatedData.medicalData,
-        validatedData.emergencyContacts,
-        validatedData.planType,
-        validatedData.vehicleData
-      );
+      // Criar entidade de perfil seguindo regras: usar construtor correto
+      const profile = new Profile(validatedData);
 
       // Validar entidade
-      if (!profile.isValid()) {
-        throw new Error('Profile entity validation failed');
+      const validation = Profile.validate(validatedData);
+      if (!validation.isValid) {
+        throw new Error(`Profile entity validation failed: ${validation.errors?.join(', ')}`);
       }
 
       // Salvar no repositório
@@ -131,7 +125,7 @@ export class ProfileService {
   /**
    * Busca um perfil pendente
    */
-  async getPendingProfile(uniqueUrl: string): Promise<PendingProfile | null> {
+  async getPendingProfile(uniqueUrl: string): Promise<Profile | null> {
     try {
       const pendingProfile = await this.profileRepository.findPendingProfile(uniqueUrl);
 
@@ -139,15 +133,9 @@ export class ProfileService {
         return null;
       }
 
-      // Verificar se não expirou
-      if (pendingProfile.expiresAt < new Date()) {
-        logWarning('Pending profile expired', {
-          uniqueUrl,
-          expiresAt: pendingProfile.expiresAt.toISOString(),
-        });
-        return null;
-      }
-
+      // Perfis pendentes não expiram mais - seguindo regras de negócio
+      // O perfil fica pendente até o pagamento ser processado
+      
       return pendingProfile;
     } catch (error) {
       logError('Failed to get pending profile', error as Error, { uniqueUrl });
@@ -203,8 +191,31 @@ export class ProfileService {
         partialSchema.parse(data.vehicleData);
       }
 
-      // Aplicar atualizações
-      await this.profileRepository.update(uniqueUrl, data);
+      // Buscar perfil existente para atualizar
+      const existingProfile = await this.profileRepository.findByUniqueUrl(uniqueUrl);
+      if (!existingProfile) {
+        throw new Error('Profile not found');
+      }
+      
+      // Criar dados atualizados mesclando com os existentes
+      const updatedData = {
+        uniqueUrl: existingProfile.uniqueUrl,
+        personalData: data.personalData || existingProfile.personalData,
+        medicalData: data.medicalData || existingProfile.medicalData,
+        emergencyContacts: data.emergencyContacts || existingProfile.emergencyContacts,
+        vehicleData: data.vehicleData || existingProfile.vehicleData,
+        planType: existingProfile.planType,
+        status: existingProfile.status,
+        paymentId: existingProfile.paymentId,
+        qrCodeUrl: existingProfile.qrCodeUrl,
+        memorialUrl: existingProfile.memorialUrl,
+      };
+      
+      // Criar nova instância com dados atualizados
+      const updatedProfile = new Profile(updatedData);
+      
+      // Salvar perfil atualizado
+      await this.profileRepository.update(updatedProfile);
 
       logInfo('Profile updated successfully', {
         uniqueUrl,
@@ -315,7 +326,9 @@ export class ProfileService {
         updatedAt: new Date(),
       };
 
-      await this.profileRepository.savePendingProfile(pendingProfile);
+      // Criar entidade Profile para salvar como pendente
+      const profile = new Profile(pendingProfile);
+      await this.profileRepository.savePendingProfile(profile);
 
       logInfo('Pending profile created', {
         uniqueUrl,
@@ -403,7 +416,9 @@ export class ProfileService {
         return false;
       }
 
-      return profile.canGenerateQRCode();
+      // QR Code pode ser gerado se o perfil está ativo e tem plano premium
+      return profile.status === ProfileStatus.ACTIVE && 
+             profile.planType === PlanType.PREMIUM;
     } catch (error) {
       logError('Failed to check if profile can generate QR code', error as Error, {
         uniqueUrl,
@@ -417,7 +432,11 @@ export class ProfileService {
    */
   async cleanupExpiredPendingProfiles(): Promise<number> {
     try {
-      const count = await this.profileRepository.deleteExpiredPendingProfiles();
+      // Deletar perfis pendentes com mais de 24 horas
+      const expirationDate = new Date();
+      expirationDate.setHours(expirationDate.getHours() - 24);
+      
+      const count = await this.profileRepository.deleteExpiredPendingProfiles(expirationDate);
       
       if (count > 0) {
         logInfo('Expired pending profiles cleaned up', { count });

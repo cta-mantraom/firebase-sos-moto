@@ -1,11 +1,11 @@
 // Vercel Function para buscar dados do perfil
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateUUID } from '../lib/utils/validation.js';
-import { generateCorrelationId } from '../lib/utils/ids.js';
-import { logInfo, logError } from '../lib/utils/logger.js';
-import { firebaseService } from '../lib/services/firebase.js';
-import { redisService } from '../lib/services/redis.js';
-import { ProfileResponse, MemorialData, createSuccessResponse, createErrorResponse } from '../lib/types/index.js';
+import { validateUUID } from '../lib/utils/validation';
+import { generateCorrelationId } from '../lib/utils/ids';
+import { logInfo, logError } from '../lib/utils/logger';
+import { firebaseService } from '../lib/services/firebase';
+import { redisService } from '../lib/services/redis';
+import { ProfileResponse, MemorialData, createSuccessResponse, createErrorResponse } from '../lib/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = generateCorrelationId();

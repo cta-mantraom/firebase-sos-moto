@@ -2,10 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { z } from 'zod';
-import { logInfo, logError } from '../lib/utils/logger.js';
+import { logInfo, logError } from '../lib/utils/logger';
 // CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
-import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation.js';
-import { MercadoPagoPreferenceResponseSchema } from '../lib/types/api.types.js';
+import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation';
+import { MercadoPagoPreferenceResponseSchema } from '../lib/types/api.types';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {

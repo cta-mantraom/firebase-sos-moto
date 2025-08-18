@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { z } from 'zod';
-import { EmailJobDataSchema } from '../../lib/types/queue.types';
-import { Email } from '../../lib/domain/notification/email.entity';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { z } from "zod";
+import { EmailJobDataSchema } from "../../lib/types/queue.types";
+import { Email } from "../../lib/domain/notification/email.entity";
 import {
   EmailTemplate,
   EmailStatus,
@@ -11,12 +11,12 @@ import {
   PaymentFailureData,
   ProfileCreatedData,
   WelcomeData,
-} from '../../lib/domain/notification/email.types';
-import { logInfo, logError } from '../../lib/utils/logger';
+} from "../../lib/domain/notification/email.types";
+import { logInfo, logError } from "../../lib/utils/logger";
 
 // Initialize AWS SES
 const sesClient = new SESv2Client({
-  region: process.env.AWS_SES_REGION || 'sa-east-1',
+  region: process.env.AWS_SES_REGION || "sa-east-1",
   credentials: {
     accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
@@ -28,7 +28,7 @@ const sesClient = new SESv2Client({
  */
 const EMAIL_TEMPLATES = {
   confirmation: {
-    subject: 'SOS Moto Guardian - Cadastro Confirmado',
+    subject: "SOS Moto Guardian - Cadastro Confirmado",
     generateHtml: (data: PaymentConfirmationData) => `
       <!DOCTYPE html>
       <html>
@@ -60,21 +60,31 @@ const EMAIL_TEMPLATES = {
               
               <div style="margin: 20px 0; padding: 15px; background: #ecfdf5; border-radius: 8px;">
                 <h3 style="margin-top: 0;">📋 Detalhes do seu plano</h3>
-                <p><strong>Plano:</strong> <span class="plan-badge ${data.planType === 'premium' ? 'premium-badge' : ''}">${data.planType === 'premium' ? 'Premium' : 'Básico'}</span></p>
+                <p><strong>Plano:</strong> <span class="plan-badge ${
+                  data.planType === "premium" ? "premium-badge" : ""
+                }">${
+      data.planType === "premium" ? "Premium" : "Básico"
+    }</span></p>
                 <p><strong>Valor:</strong> R$ ${data.amount.toFixed(2)}</p>
                 <p><strong>ID do Pagamento:</strong> ${data.paymentId}</p>
               </div>
 
-              ${data.qrCodeUrl ? `
+              ${
+                data.qrCodeUrl
+                  ? `
               <div class="qr-section">
                 <h3>📱 Seu QR Code de Emergência</h3>
                 <p>Mantenha sempre com você durante suas viagens!</p>
                 <img src="${data.qrCodeUrl}" alt="QR Code de Emergência" style="max-width: 200px; border: 2px solid #e5e7eb; border-radius: 8px;">
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${data.memorialUrl}" class="button">🔗 Acessar Minha Página Memorial</a>
+                <a href="${
+                  data.memorialUrl
+                }" class="button">🔗 Acessar Minha Página Memorial</a>
               </div>
               
               <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
@@ -105,13 +115,13 @@ const EMAIL_TEMPLATES = {
       Parabéns! Seu cadastro no SOS Moto Guardian foi processado com sucesso.
       
       Detalhes do seu plano:
-      - Plano: ${data.planType === 'premium' ? 'Premium' : 'Básico'}
+      - Plano: ${data.planType === "premium" ? "Premium" : "Básico"}
       - Valor: R$ ${data.amount.toFixed(2)}
       - ID do Pagamento: ${data.paymentId}
       
       Acesse sua página memorial: ${data.memorialUrl}
       
-      ${data.qrCodeUrl ? `Seu QR Code: ${data.qrCodeUrl}` : ''}
+      ${data.qrCodeUrl ? `Seu QR Code: ${data.qrCodeUrl}` : ""}
       
       Mantenha o QR Code sempre acessível durante suas viagens.
       
@@ -119,7 +129,7 @@ const EMAIL_TEMPLATES = {
     `,
   },
   failure: {
-    subject: 'SOS Moto Guardian - Problema no Pagamento',
+    subject: "SOS Moto Guardian - Problema no Pagamento",
     generateHtml: (data: PaymentFailureData) => `
       <!DOCTYPE html>
       <html>
@@ -160,11 +170,15 @@ const EMAIL_TEMPLATES = {
                 <li>Tente novamente o pagamento</li>
               </ul>
               
-              ${data.retryUrl ? `
+              ${
+                data.retryUrl
+                  ? `
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${data.retryUrl}" class="button">🔄 Tentar Novamente</a>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
               <p>Se o problema persistir, entre em contato com nosso suporte.</p>
             </div>
@@ -187,13 +201,13 @@ const EMAIL_TEMPLATES = {
       - ID do Pagamento: ${data.paymentId}
       - Motivo: ${data.reason}
       
-      ${data.retryUrl ? `Tentar novamente: ${data.retryUrl}` : ''}
+      ${data.retryUrl ? `Tentar novamente: ${data.retryUrl}` : ""}
       
       Se o problema persistir, entre em contato com nosso suporte.
     `,
   },
   welcome: {
-    subject: 'SOS Moto Guardian - Bem-vindo!',
+    subject: "SOS Moto Guardian - Bem-vindo!",
     generateHtml: (data: WelcomeData) => `
       <!DOCTYPE html>
       <html>
@@ -222,14 +236,20 @@ const EMAIL_TEMPLATES = {
               <p>Seja bem-vindo ao SOS Moto Guardian! Estamos muito felizes em tê-lo conosco.</p>
               
               <div class="features">
-                <h3>🎯 Recursos do seu plano ${data.planType === 'premium' ? 'Premium' : 'Básico'}:</h3>
+                <h3>🎯 Recursos do seu plano ${
+                  data.planType === "premium" ? "Premium" : "Básico"
+                }:</h3>
                 <ul>
-                  ${data.features.map(feature => `<li>${feature}</li>`).join('')}
+                  ${data.features
+                    .map((feature) => `<li>${feature}</li>`)
+                    .join("")}
                 </ul>
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${data.memorialUrl}" class="button">🔗 Ver Minha Página Memorial</a>
+                <a href="${
+                  data.memorialUrl
+                }" class="button">🔗 Ver Minha Página Memorial</a>
               </div>
               
               <p>Agradecemos por escolher o SOS Moto Guardian para sua segurança!</p>
@@ -249,8 +269,10 @@ const EMAIL_TEMPLATES = {
       
       Seja bem-vindo ao SOS Moto Guardian!
       
-      Recursos do seu plano ${data.planType === 'premium' ? 'Premium' : 'Básico'}:
-      ${data.features.map(feature => `- ${feature}`).join('\n')}
+      Recursos do seu plano ${
+        data.planType === "premium" ? "Premium" : "Básico"
+      }:
+      ${data.features.map((feature) => `- ${feature}`).join("\n")}
       
       Acesse sua página: ${data.memorialUrl}
       
@@ -258,7 +280,7 @@ const EMAIL_TEMPLATES = {
     `,
   },
   reminder: {
-    subject: 'SOS Moto Guardian - Lembrete',
+    subject: "SOS Moto Guardian - Lembrete",
     generateHtml: (data: WelcomeData) => `
       <!DOCTYPE html>
       <html>
@@ -277,7 +299,9 @@ const EMAIL_TEMPLATES = {
             <p>Olá ${data.userName},</p>
             <p>Este é um lembrete sobre sua conta no SOS Moto Guardian.</p>
             <p>Para mais informações, acesse sua página memorial.</p>
-            <a href="${data.memorialUrl || '#'}" class="button">Acessar Página</a>
+            <a href="${
+              data.memorialUrl || "#"
+            }" class="button">Acessar Página</a>
           </div>
         </body>
       </html>
@@ -289,62 +313,65 @@ const EMAIL_TEMPLATES = {
       
       Este é um lembrete sobre sua conta no SOS Moto Guardian.
       
-      Acesse: ${data.memorialUrl || ''}
+      Acesse: ${data.memorialUrl || ""}
     `,
   },
 };
 
 /**
  * Email Sender API Endpoint
- * 
+ *
  * This endpoint handles asynchronous email sending with automatic retry logic,
  * dynamic templates, and delivery logging.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const correlationId = (req.headers['x-correlation-id'] as string) || 
-                       crypto.randomUUID();
+  const correlationId =
+    (req.headers["x-correlation-id"] as string) || crypto.randomUUID();
 
   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type, x-correlation-id');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "authorization, x-client-info, apikey, content-type, x-correlation-id"
+  );
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      correlationId 
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed",
+      correlationId,
     });
   }
 
   try {
-    logInfo('Email sender started', { 
+    logInfo("Email sender started", {
       correlationId,
       method: req.method,
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
     });
 
     // Validate request body
     const validationResult = EmailJobDataSchema.safeParse(req.body);
     if (!validationResult.success) {
-      logError('Invalid email job data', new Error('Validation failed'), {
+      logError("Invalid email job data", new Error("Validation failed"), {
         correlationId,
         errors: validationResult.error.errors,
       });
-      
+
       return res.status(400).json({
-        error: 'Invalid email job data',
+        error: "Invalid email job data",
         details: validationResult.error.errors,
         correlationId,
       });
     }
 
     const jobData = validationResult.data;
-    
-    logInfo('Processing email job', {
+
+    logInfo("Processing email job", {
       correlationId,
       template: jobData.template,
       recipient: jobData.email,
@@ -352,14 +379,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Get email template
-    const template = EMAIL_TEMPLATES[jobData.template as keyof typeof EMAIL_TEMPLATES];
+    const template =
+      EMAIL_TEMPLATES[jobData.template as keyof typeof EMAIL_TEMPLATES];
     if (!template) {
       throw new Error(`Unknown email template: ${jobData.template}`);
     }
 
     // Generate email content based on template type
-    let templateData: PaymentConfirmationData | PaymentFailureData | WelcomeData | ProfileCreatedData;
-    
+    let templateData:
+      | PaymentConfirmationData
+      | PaymentFailureData
+      | WelcomeData
+      | ProfileCreatedData;
+
     // Base template data
     const baseData = {
       userName: jobData.name,
@@ -369,25 +401,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Add template-specific data
     switch (jobData.template) {
-      case 'confirmation':
+      case "confirmation":
         templateData = {
           ...baseData,
-          paymentId: jobData.templateData.paymentId || 'N/A',
+          paymentId: jobData.templateData.paymentId || "N/A",
           amount: jobData.templateData.amount || 0,
           planType: jobData.templateData.planType,
           memorialUrl: jobData.templateData.memorialUrl,
           qrCodeUrl: jobData.templateData.qrCodeUrl,
         } as PaymentConfirmationData;
         break;
-      case 'failure':
+      case "failure":
         templateData = {
           ...baseData,
-          paymentId: jobData.templateData.paymentId || 'N/A',
-          reason: 'Payment processing failed', // Default reason
+          paymentId: jobData.templateData.paymentId || "N/A",
+          reason: "Payment processing failed", // Default reason
           retryUrl: undefined,
         } as PaymentFailureData;
         break;
-      case 'welcome':
+      case "welcome":
         templateData = {
           ...baseData,
           memorialUrl: jobData.templateData.memorialUrl,
@@ -395,7 +427,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           features: [],
         } as WelcomeData;
         break;
-      case 'reminder':
+      case "reminder":
         templateData = {
           ...baseData,
           memorialUrl: jobData.templateData.memorialUrl,
@@ -413,16 +445,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Seguindo regras: gerar conteúdo HTML e texto diretamente com tipos corretos
-    let htmlContent: string = '';
-    let textContent: string = '';
-    
+    let htmlContent: string = "";
+    let textContent: string = "";
+
     // Usar templates específicos para cada tipo
-    if (jobData.template === 'confirmation' && template) {
+    if (jobData.template === "confirmation" && template) {
       const confirmationData: PaymentConfirmationData = {
         userName: jobData.name,
         userEmail: jobData.email,
         timestamp: new Date(),
-        paymentId: jobData.templateData.paymentId || 'N/A',
+        paymentId: jobData.templateData.paymentId || "N/A",
         amount: jobData.templateData.amount || 0,
         planType: jobData.templateData.planType,
         memorialUrl: jobData.templateData.memorialUrl,
@@ -430,13 +462,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       htmlContent = EMAIL_TEMPLATES.confirmation.generateHtml(confirmationData);
       textContent = EMAIL_TEMPLATES.confirmation.generateText(confirmationData);
-    } else if (jobData.template === 'failure' && template) {
+    } else if (jobData.template === "failure" && template) {
       const failureData: PaymentFailureData = {
         userName: jobData.name,
         userEmail: jobData.email,
         timestamp: new Date(),
-        paymentId: jobData.templateData.paymentId || 'N/A',
-        reason: 'Payment processing failed',
+        paymentId: jobData.templateData.paymentId || "N/A",
+        reason: "Payment processing failed",
         retryUrl: undefined,
       };
       htmlContent = EMAIL_TEMPLATES.failure.generateHtml(failureData);
@@ -458,16 +490,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const email = new Email({
       to: [jobData.email],
       subject: template.subject,
-      template: jobData.template === 'confirmation' ? EmailTemplate.PAYMENT_CONFIRMATION :
-               jobData.template === 'failure' ? EmailTemplate.PAYMENT_FAILURE :
-               jobData.template === 'welcome' ? EmailTemplate.WELCOME :
-               EmailTemplate.PAYMENT_CONFIRMATION,
+      template:
+        jobData.template === "confirmation"
+          ? EmailTemplate.PAYMENT_CONFIRMATION
+          : jobData.template === "failure"
+          ? EmailTemplate.PAYMENT_FAILURE
+          : jobData.template === "welcome"
+          ? EmailTemplate.WELCOME
+          : EmailTemplate.PAYMENT_CONFIRMATION,
       templateData: {
         ...templateData,
-        paymentId: 'paymentId' in templateData ? templateData.paymentId : (jobData.templateData.paymentId || 'N/A'),
+        paymentId:
+          "paymentId" in templateData
+            ? templateData.paymentId
+            : jobData.templateData.paymentId || "N/A",
       },
       config: {
-        from: process.env.SES_FROM_EMAIL || 'noreply@sosmoto.com',
+        from: process.env.SES_FROM_EMAIL || "contact@memoryys.com",
       },
       options: {
         priority: EmailPriority.NORMAL,
@@ -492,7 +531,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Mark as sent
     email.markAsSent(messageId);
 
-    logInfo('Email sent successfully', {
+    logInfo("Email sent successfully", {
       correlationId,
       messageId,
       template: jobData.template,
@@ -506,19 +545,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       recipient: jobData.email,
       correlationId,
     });
-
   } catch (error) {
-    logError('Email sending failed', error as Error, { 
+    logError("Email sending failed", error as Error, {
       correlationId,
       retryCount: req.body?.retryCount || 0,
     });
-    
+
     // Determine if this is a retryable error
     const isRetryable = isRetryableError(error as Error);
     const statusCode = isRetryable ? 500 : 422;
-    
+
     return res.status(statusCode).json({
-      error: 'Email sending failed',
+      error: "Email sending failed",
       message: (error as Error).message,
       retryable: isRetryable,
       correlationId,
@@ -537,14 +575,14 @@ async function sendEmailViaSES(
   correlationId: string
 ): Promise<string> {
   try {
-    logInfo('Sending email via AWS SES', {
+    logInfo("Sending email via AWS SES", {
       correlationId,
       recipient,
       subject,
     });
 
     const command = new SendEmailCommand({
-      FromEmailAddress: process.env.SES_FROM_EMAIL || 'noreply@sosmoto.com',
+      FromEmailAddress: process.env.SES_FROM_EMAIL || "contact@memoryys.com",
       Destination: {
         ToAddresses: [recipient],
       },
@@ -552,16 +590,16 @@ async function sendEmailViaSES(
         Simple: {
           Subject: {
             Data: subject,
-            Charset: 'UTF-8',
+            Charset: "UTF-8",
           },
           Body: {
             Html: {
               Data: htmlContent,
-              Charset: 'UTF-8',
+              Charset: "UTF-8",
             },
             Text: {
               Data: textContent,
-              Charset: 'UTF-8',
+              Charset: "UTF-8",
             },
           },
         },
@@ -572,7 +610,7 @@ async function sendEmailViaSES(
     const response = await sesClient.send(command);
     const messageId = response.MessageId!;
 
-    logInfo('Email sent via AWS SES', {
+    logInfo("Email sent via AWS SES", {
       correlationId,
       messageId,
       recipient,
@@ -580,7 +618,7 @@ async function sendEmailViaSES(
 
     return messageId;
   } catch (error) {
-    logError('Error sending email via AWS SES', error as Error, {
+    logError("Error sending email via AWS SES", error as Error, {
       correlationId,
       recipient,
       subject,
@@ -595,30 +633,30 @@ async function sendEmailViaSES(
 function isRetryableError(error: Error): boolean {
   // AWS SES specific retryable errors
   const retryableAwsErrors = [
-    'Throttling',
-    'RequestTimeout',
-    'ServiceUnavailable',
-    'InternalServerError',
+    "Throttling",
+    "RequestTimeout",
+    "ServiceUnavailable",
+    "InternalServerError",
   ];
 
   // Network-related errors
   const retryableNetworkErrors = [
-    'ECONNRESET',
-    'ENOTFOUND',
-    'ECONNREFUSED',
-    'ETIMEDOUT',
-    'EAI_AGAIN',
+    "ECONNRESET",
+    "ENOTFOUND",
+    "ECONNREFUSED",
+    "ETIMEDOUT",
+    "EAI_AGAIN",
   ];
 
   // Check AWS error code
-  if ('name' in error && typeof error.name === 'string') {
+  if ("name" in error && typeof error.name === "string") {
     if (retryableAwsErrors.includes(error.name)) {
       return true;
     }
   }
 
   // Check error code
-  if ('code' in error && typeof error.code === 'string') {
+  if ("code" in error && typeof error.code === "string") {
     if (retryableNetworkErrors.includes(error.code)) {
       return true;
     }
@@ -627,15 +665,15 @@ function isRetryableError(error: Error): boolean {
   // Check error message for transient issues
   const errorMessage = error.message.toLowerCase();
   const retryableMessages = [
-    'timeout',
-    'connection',
-    'network',
-    'temporary',
-    'rate limit',
-    'throttl',
-    'quota',
-    'busy',
+    "timeout",
+    "connection",
+    "network",
+    "temporary",
+    "rate limit",
+    "throttl",
+    "quota",
+    "busy",
   ];
 
-  return retryableMessages.some(msg => errorMessage.includes(msg));
+  return retryableMessages.some((msg) => errorMessage.includes(msg));
 }

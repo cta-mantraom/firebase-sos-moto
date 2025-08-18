@@ -1,8 +1,8 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { z } from 'zod';
-import { logInfo, logError, logWarning } from '../../utils/logger';
-import { Profile } from '../../domain/profile/profile.entity';
-import { generateCorrelationId } from '../../utils/ids';
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { z } from "zod";
+import { logInfo, logError, logWarning } from "../../utils/logger";
+import { Profile } from "../../domain/profile/profile.entity";
+import { generateCorrelationId } from "../../utils/ids";
 
 // Schemas de validação
 const EmailDataSchema = z.object({
@@ -31,12 +31,12 @@ export type EmailData = z.infer<typeof EmailDataSchema>;
 export type EmailTemplateData = z.infer<typeof EmailTemplateDataSchema>;
 
 export enum EmailType {
-  PAYMENT_CONFIRMATION = 'payment_confirmation',
-  PAYMENT_FAILED = 'payment_failed',
-  PROFILE_CREATED = 'profile_created',
-  PROFILE_UPDATED = 'profile_updated',
-  PASSWORD_RESET = 'password_reset',
-  WELCOME = 'welcome',
+  PAYMENT_CONFIRMATION = "payment_confirmation",
+  PAYMENT_FAILED = "payment_failed",
+  PROFILE_CREATED = "profile_created",
+  PROFILE_UPDATED = "profile_updated",
+  PASSWORD_RESET = "password_reset",
+  WELCOME = "welcome",
 }
 
 export interface EmailServiceConfig {
@@ -55,13 +55,20 @@ export class EmailService {
 
   constructor(config?: Partial<EmailServiceConfig>) {
     this.config = {
-      fromEmail: config?.fromEmail ?? process.env.AWS_SES_FROM_EMAIL ?? 'noreply@sosmoto.com.br',
-      replyToEmail: config?.replyToEmail ?? process.env.AWS_SES_REPLY_TO ?? 'suporte@sosmoto.com.br',
+      fromEmail:
+        config?.fromEmail ??
+        process.env.AWS_SES_FROM_EMAIL ??
+        "contact@memoryys.com",
+      replyToEmail:
+        config?.replyToEmail ??
+        process.env.AWS_SES_REPLY_TO ??
+        "contact@memoryys.com",
       maxRetries: config?.maxRetries ?? 3,
       retryDelayMs: config?.retryDelayMs ?? 1000,
-      region: config?.region ?? process.env.AWS_SES_REGION ?? 'us-east-1',
+      region: config?.region ?? process.env.AWS_SES_REGION ?? "us-east-1",
       accessKeyId: config?.accessKeyId ?? process.env.AWS_SES_ACCESS_KEY_ID!,
-      secretAccessKey: config?.secretAccessKey ?? process.env.AWS_SES_SECRET_ACCESS_KEY!,
+      secretAccessKey:
+        config?.secretAccessKey ?? process.env.AWS_SES_SECRET_ACCESS_KEY!,
     };
 
     this.sesClient = new SESClient({
@@ -81,21 +88,27 @@ export class EmailService {
     qrCodeDataUrl: string
   ): Promise<void> {
     const correlationId = generateCorrelationId();
-    
+
     try {
       const templateData: EmailTemplateData = {
         name: `${profile.personalData.name} ${profile.personalData.surname}`,
-        profileUrl: profile.memorialUrl || '',
+        profileUrl: profile.memorialUrl || "",
         qrCodeUrl: profile.qrCodeUrl || qrCodeDataUrl,
         planType: profile.planType,
       };
 
-      const htmlBody = this.generateEmailTemplate(EmailType.PAYMENT_CONFIRMATION, templateData);
-      const textBody = this.generateTextTemplate(EmailType.PAYMENT_CONFIRMATION, templateData);
+      const htmlBody = this.generateEmailTemplate(
+        EmailType.PAYMENT_CONFIRMATION,
+        templateData
+      );
+      const textBody = this.generateTextTemplate(
+        EmailType.PAYMENT_CONFIRMATION,
+        templateData
+      );
 
       const emailData: EmailData = {
         to: profile.personalData.email,
-        subject: 'Pagamento Confirmado - SOS Moto',
+        subject: "Pagamento Confirmado - SOS Moto",
         htmlBody,
         textBody,
         from: this.config.fromEmail,
@@ -104,13 +117,13 @@ export class EmailService {
 
       await this.sendEmail(emailData, correlationId);
 
-      logInfo('Confirmation email sent successfully', {
+      logInfo("Confirmation email sent successfully", {
         to: profile.personalData.email,
         profileId: profile.uniqueUrl,
         correlationId,
       });
     } catch (error) {
-      logError('Failed to send confirmation email', error as Error, {
+      logError("Failed to send confirmation email", error as Error, {
         profileId: profile.uniqueUrl,
         correlationId,
       });
@@ -121,24 +134,27 @@ export class EmailService {
   /**
    * Envia notificação de falha no pagamento
    */
-  async sendFailureNotification(
-    email: string,
-    error: string
-  ): Promise<void> {
+  async sendFailureNotification(email: string, error: string): Promise<void> {
     const correlationId = generateCorrelationId();
 
     try {
       const templateData: EmailTemplateData = {
-        name: 'Cliente',
+        name: "Cliente",
         error,
       };
 
-      const htmlBody = this.generateEmailTemplate(EmailType.PAYMENT_FAILED, templateData);
-      const textBody = this.generateTextTemplate(EmailType.PAYMENT_FAILED, templateData);
+      const htmlBody = this.generateEmailTemplate(
+        EmailType.PAYMENT_FAILED,
+        templateData
+      );
+      const textBody = this.generateTextTemplate(
+        EmailType.PAYMENT_FAILED,
+        templateData
+      );
 
       const emailData: EmailData = {
         to: email,
-        subject: 'Falha no Processamento do Pagamento - SOS Moto',
+        subject: "Falha no Processamento do Pagamento - SOS Moto",
         htmlBody,
         textBody,
         from: this.config.fromEmail,
@@ -147,12 +163,12 @@ export class EmailService {
 
       await this.sendEmail(emailData, correlationId);
 
-      logInfo('Failure notification sent', {
+      logInfo("Failure notification sent", {
         to: email,
         correlationId,
       });
     } catch (sendError) {
-      logError('Failed to send failure notification', sendError as Error, {
+      logError("Failed to send failure notification", sendError as Error, {
         to: email,
         originalError: error,
         correlationId,
@@ -171,7 +187,11 @@ export class EmailService {
     // Validar dados do email
     const validatedData = EmailDataSchema.parse(emailData);
 
-    await this.retryEmailSend(validatedData, this.config.maxRetries, correlationId);
+    await this.retryEmailSend(
+      validatedData,
+      this.config.maxRetries,
+      correlationId
+    );
   }
 
   /**
@@ -193,17 +213,19 @@ export class EmailService {
         Message: {
           Subject: {
             Data: emailData.subject,
-            Charset: 'UTF-8',
+            Charset: "UTF-8",
           },
           Body: {
             Html: {
               Data: emailData.htmlBody,
-              Charset: 'UTF-8',
+              Charset: "UTF-8",
             },
-            Text: emailData.textBody ? {
-              Data: emailData.textBody,
-              Charset: 'UTF-8',
-            } : undefined,
+            Text: emailData.textBody
+              ? {
+                  Data: emailData.textBody,
+                  Charset: "UTF-8",
+                }
+              : undefined,
           },
         },
         ReplyToAddresses: emailData.replyTo ? [emailData.replyTo] : undefined,
@@ -211,7 +233,7 @@ export class EmailService {
 
       const response = await this.sesClient.send(command);
 
-      logInfo('Email sent successfully', {
+      logInfo("Email sent successfully", {
         messageId: response.MessageId,
         to: emailData.to,
         subject: emailData.subject,
@@ -219,7 +241,7 @@ export class EmailService {
       });
     } catch (error) {
       if (retriesLeft > 0) {
-        logWarning('Email send failed, retrying...', {
+        logWarning("Email send failed, retrying...", {
           retriesLeft,
           error: (error as Error).message,
           correlationId,
@@ -228,7 +250,7 @@ export class EmailService {
         await this.delay(this.config.retryDelayMs);
         await this.retryEmailSend(emailData, retriesLeft - 1, correlationId);
       } else {
-        logError('Email send failed after all retries', error as Error, {
+        logError("Email send failed after all retries", error as Error, {
           to: emailData.to,
           subject: emailData.subject,
           correlationId,
@@ -271,26 +293,36 @@ export class EmailService {
               <div class="content">
                 <p>Olá ${data.name},</p>
                 <p>Seu pagamento foi processado com sucesso e seu perfil de emergência está ativo.</p>
-                <p><strong>Plano:</strong> ${data.planType === 'premium' ? 'Premium' : 'Básico'}</p>
+                <p><strong>Plano:</strong> ${
+                  data.planType === "premium" ? "Premium" : "Básico"
+                }</p>
                 
-                ${data.qrCodeUrl ? `
+                ${
+                  data.qrCodeUrl
+                    ? `
                   <div class="qr-code">
                     <p><strong>Seu QR Code de Emergência:</strong></p>
                     <img src="${data.qrCodeUrl}" alt="QR Code" style="max-width: 200px;">
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 
-                ${data.profileUrl ? `
+                ${
+                  data.profileUrl
+                    ? `
                   <p style="text-align: center;">
                     <a href="${data.profileUrl}" class="button">Acessar Meu Perfil</a>
                   </p>
-                ` : ''}
+                `
+                    : ""
+                }
                 
                 <p>Imprima ou salve seu QR Code em local seguro. Em caso de emergência, ele permitirá acesso rápido às suas informações médicas.</p>
               </div>
               <div class="footer">
                 <p>SOS Moto - Sua segurança em primeiro lugar</p>
-                <p>Dúvidas? Entre em contato: suporte@sosmoto.com.br</p>
+                <p>Dúvidas? Entre em contato: contact@memoryys.com</p>
               </div>
             </div>
           </body>
@@ -321,15 +353,21 @@ export class EmailService {
               <div class="content">
                 <p>Olá ${data.name},</p>
                 <p>Infelizmente, houve um problema ao processar seu pagamento.</p>
-                ${data.error ? `<p><strong>Motivo:</strong> ${data.error}</p>` : ''}
+                ${
+                  data.error
+                    ? `<p><strong>Motivo:</strong> ${data.error}</p>`
+                    : ""
+                }
                 <p>Por favor, tente realizar o pagamento novamente ou entre em contato com nosso suporte.</p>
                 <p style="text-align: center;">
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL}" class="button">Tentar Novamente</a>
+                  <a href="${
+                    process.env.NEXT_PUBLIC_APP_URL
+                  }" class="button">Tentar Novamente</a>
                 </p>
               </div>
               <div class="footer">
                 <p>SOS Moto - Sua segurança em primeiro lugar</p>
-                <p>Dúvidas? Entre em contato: suporte@sosmoto.com.br</p>
+                <p>Dúvidas? Entre em contato: contact@memoryys.com</p>
               </div>
             </div>
           </body>
@@ -369,14 +407,14 @@ Olá ${data.name},
 
 Seu pagamento foi processado com sucesso e seu perfil de emergência está ativo.
 
-Plano: ${data.planType === 'premium' ? 'Premium' : 'Básico'}
+Plano: ${data.planType === "premium" ? "Premium" : "Básico"}
 
-${data.profileUrl ? `Acesse seu perfil em: ${data.profileUrl}` : ''}
+${data.profileUrl ? `Acesse seu perfil em: ${data.profileUrl}` : ""}
 
 Imprima ou salve seu QR Code em local seguro.
 
 SOS Moto - Sua segurança em primeiro lugar
-Dúvidas? suporte@sosmoto.com.br
+Dúvidas? contact@memoryys.com
         `;
 
       case EmailType.PAYMENT_FAILED:
@@ -386,12 +424,12 @@ Falha no Pagamento - SOS Moto
 Olá ${data.name},
 
 Infelizmente, houve um problema ao processar seu pagamento.
-${data.error ? `Motivo: ${data.error}` : ''}
+${data.error ? `Motivo: ${data.error}` : ""}
 
 Por favor, tente realizar o pagamento novamente ou entre em contato com nosso suporte.
 
 SOS Moto - Sua segurança em primeiro lugar
-Dúvidas? suporte@sosmoto.com.br
+Dúvidas? contact@memoryys.com
         `;
 
       default:
@@ -403,7 +441,7 @@ Dúvidas? suporte@sosmoto.com.br
    * Delay helper
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -419,23 +457,23 @@ Dúvidas? suporte@sosmoto.com.br
         },
         Message: {
           Subject: {
-            Data: 'SES Configuration Test',
-            Charset: 'UTF-8',
+            Data: "SES Configuration Test",
+            Charset: "UTF-8",
           },
           Body: {
             Text: {
-              Data: 'This is a test email to validate SES configuration.',
-              Charset: 'UTF-8',
+              Data: "This is a test email to validate SES configuration.",
+              Charset: "UTF-8",
             },
           },
         },
       });
 
       await this.sesClient.send(command);
-      logInfo('SES configuration validated successfully');
+      logInfo("SES configuration validated successfully");
       return true;
     } catch (error) {
-      logError('SES configuration validation failed', error as Error);
+      logError("SES configuration validation failed", error as Error);
       return false;
     }
   }

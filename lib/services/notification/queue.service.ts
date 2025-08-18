@@ -1,32 +1,32 @@
-import { z } from 'zod';
-import { logInfo, logError } from '../../utils/logger';
-import { QStashService } from '../queue/qstash.service';
-import { generateCorrelationId } from '../../utils/ids';
+import { z } from "zod";
+import { logInfo, logError } from "../../utils/logger";
+import { QStashService } from "../queue/qstash.service";
+import { generateCorrelationId } from "../../utils/ids";
 // CORRETO: Import centralized schemas from types layer (no duplicate schemas)
-import { 
-  EmailJobDataSchema, 
+import {
+  EmailJobDataSchema,
   ProcessingJobDataSchema,
   type EmailJobData,
-  type ProcessingJobData 
-} from '../../types/queue.types';
+  type ProcessingJobData,
+} from "../../types/queue.types";
 
 // Local schemas (not duplicated elsewhere)
 const QueueStatusSchema = z.object({
   jobId: z.string(),
-  status: z.enum(['pending', 'processing', 'completed', 'failed', 'cancelled']),
+  status: z.enum(["pending", "processing", "completed", "failed", "cancelled"]),
   attempts: z.number(),
   lastAttempt: z.date().optional(),
   nextAttempt: z.date().optional(),
   error: z.string().optional(),
 });
 
-const JobDataSchema = z.discriminatedUnion('type', [
+const JobDataSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.literal('email'),
+    type: z.literal("email"),
     data: EmailJobDataSchema,
   }),
   z.object({
-    type: z.literal('processing'),
+    type: z.literal("processing"),
     data: ProcessingJobDataSchema,
   }),
 ]);
@@ -63,7 +63,10 @@ export class QueueService {
       maxRetries: config?.maxRetries ?? 3,
       retryDelayMs: config?.retryDelayMs ?? 5000,
       defaultTTL: config?.defaultTTL ?? 3600,
-      baseUrl: config?.baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.sosmoto.com.br',
+      baseUrl:
+        config?.baseUrl ??
+        process.env.NEXT_PUBLIC_APP_URL ??
+        "https://memoryys.com",
     };
     this.jobRegistry = new Map();
   }
@@ -73,7 +76,7 @@ export class QueueService {
    */
   async enqueueEmailJob(emailData: EmailJobData): Promise<string> {
     const correlationId = emailData.correlationId || generateCorrelationId();
-    
+
     try {
       // Validar dados
       const validatedData = EmailJobDataSchema.parse(emailData);
@@ -81,22 +84,22 @@ export class QueueService {
       // Publicar job no QStash
       const response = await this.qstashService.publishJob(
         validatedData,
-        'email-sender',
+        "email-sender",
         {
           retries: validatedData.maxRetries,
           delay: 0,
           headers: {
-            'X-Correlation-Id': correlationId,
-            'X-Job-Type': 'EMAIL',
+            "X-Correlation-Id": correlationId,
+            "X-Job-Type": "EMAIL",
           },
         },
         correlationId
       );
 
       // Registrar job localmente
-      this.registerJob(response.messageId, 'pending');
+      this.registerJob(response.messageId, "pending");
 
-      logInfo('Email job enqueued', {
+      logInfo("Email job enqueued", {
         jobId: response.messageId,
         jobType: validatedData.jobType,
         to: validatedData.email,
@@ -105,7 +108,7 @@ export class QueueService {
 
       return response.messageId;
     } catch (error) {
-      logError('Failed to enqueue email job', error as Error, {
+      logError("Failed to enqueue email job", error as Error, {
         correlationId,
         emailTo: emailData.email,
       });
@@ -116,8 +119,11 @@ export class QueueService {
   /**
    * Enfileira um job de processamento
    */
-  async enqueueProcessingJob(processingData: ProcessingJobData): Promise<string> {
-    const correlationId = processingData.correlationId || generateCorrelationId();
+  async enqueueProcessingJob(
+    processingData: ProcessingJobData
+  ): Promise<string> {
+    const correlationId =
+      processingData.correlationId || generateCorrelationId();
 
     try {
       // Validar dados
@@ -126,23 +132,23 @@ export class QueueService {
       // Publicar job no QStash
       const response = await this.qstashService.publishJob(
         validatedData,
-        'final-processor',
+        "final-processor",
         {
           retries: validatedData.maxRetries,
           delay: 0,
           headers: {
-            'X-Correlation-Id': correlationId,
-            'X-Job-Type': 'PROCESSING',
-            'X-Payment-Id': validatedData.paymentId,
+            "X-Correlation-Id": correlationId,
+            "X-Job-Type": "PROCESSING",
+            "X-Payment-Id": validatedData.paymentId,
           },
         },
         correlationId
       );
 
       // Registrar job localmente
-      this.registerJob(response.messageId, 'pending');
+      this.registerJob(response.messageId, "pending");
 
-      logInfo('Processing job enqueued', {
+      logInfo("Processing job enqueued", {
         jobId: response.messageId,
         jobType: validatedData.jobType,
         uniqueUrl: validatedData.uniqueUrl,
@@ -152,7 +158,7 @@ export class QueueService {
 
       return response.messageId;
     } catch (error) {
-      logError('Failed to enqueue processing job', error as Error, {
+      logError("Failed to enqueue processing job", error as Error, {
         correlationId,
         uniqueUrl: processingData.uniqueUrl,
         paymentId: processingData.paymentId,
@@ -168,10 +174,10 @@ export class QueueService {
     try {
       // Primeiro verifica o registro local
       const localStatus = this.jobRegistry.get(jobId);
-      
+
       // Busca status atualizado do QStash
       const qstashStatus = await this.qstashService.getJobStatus(jobId);
-      
+
       if (!qstashStatus) {
         if (localStatus) {
           return localStatus;
@@ -184,8 +190,12 @@ export class QueueService {
         jobId,
         status: this.mapQStashStatus(qstashStatus.state),
         attempts: qstashStatus.retries || 0,
-        lastAttempt: qstashStatus.lastAttempt ? new Date(qstashStatus.lastAttempt) : undefined,
-        nextAttempt: qstashStatus.nextAttempt ? new Date(qstashStatus.nextAttempt) : undefined,
+        lastAttempt: qstashStatus.lastAttempt
+          ? new Date(qstashStatus.lastAttempt)
+          : undefined,
+        nextAttempt: qstashStatus.nextAttempt
+          ? new Date(qstashStatus.nextAttempt)
+          : undefined,
         error: qstashStatus.error,
       };
 
@@ -194,7 +204,7 @@ export class QueueService {
 
       return status;
     } catch (error) {
-      logError('Failed to get queue status', error as Error, { jobId });
+      logError("Failed to get queue status", error as Error, { jobId });
       return this.jobRegistry.get(jobId) || null;
     }
   }
@@ -210,24 +220,25 @@ export class QueueService {
 
     try {
       // Determinar endpoint baseado no tipo
-      const endpoint = jobData.type === 'email' ? 'email-sender' : 'final-processor';
+      const endpoint =
+        jobData.type === "email" ? "email-sender" : "final-processor";
       const response = await this.qstashService.publishJob(
         jobData.data,
         endpoint,
         {
           delay,
           headers: {
-            'X-Correlation-Id': correlationId,
-            'X-Job-Type': jobData.type.toUpperCase(),
+            "X-Correlation-Id": correlationId,
+            "X-Job-Type": jobData.type.toUpperCase(),
           },
         },
         correlationId
       );
 
       // Registrar job
-      this.registerJob(response.messageId, 'pending');
+      this.registerJob(response.messageId, "pending");
 
-      logInfo('Delayed job scheduled', {
+      logInfo("Delayed job scheduled", {
         jobId: response.messageId,
         type: jobData.type,
         delay,
@@ -236,7 +247,7 @@ export class QueueService {
 
       return response.messageId;
     } catch (error) {
-      logError('Failed to schedule delayed job', error as Error, {
+      logError("Failed to schedule delayed job", error as Error, {
         correlationId,
         jobType: jobData.type,
         delay,
@@ -251,17 +262,17 @@ export class QueueService {
   async cancelJob(jobId: string): Promise<void> {
     try {
       await this.qstashService.cancelJob(jobId);
-      
+
       // Atualizar registro local
       const status = this.jobRegistry.get(jobId);
       if (status) {
-        status.status = 'cancelled';
+        status.status = "cancelled";
         this.jobRegistry.set(jobId, status);
       }
 
-      logInfo('Job cancelled', { jobId });
+      logInfo("Job cancelled", { jobId });
     } catch (error) {
-      logError('Failed to cancel job', error as Error, { jobId });
+      logError("Failed to cancel job", error as Error, { jobId });
       throw error;
     }
   }
@@ -272,24 +283,24 @@ export class QueueService {
   async retryFailedJob(jobId: string): Promise<string> {
     try {
       const status = await this.getQueueStatus(jobId);
-      
+
       if (!status) {
         throw new Error(`Job not found: ${jobId}`);
       }
 
-      if (status.status !== 'failed') {
+      if (status.status !== "failed") {
         throw new Error(`Job is not in failed state: ${status.status}`);
       }
 
       // Buscar dados originais do job (seria necessário armazenar em algum lugar)
       // Por enquanto, lançar erro indicando que precisa dos dados originais
-      throw new Error('Original job data not available for retry');
-      
+      throw new Error("Original job data not available for retry");
+
       // TODO: Implementar recuperação de dados originais do job
       // const originalData = await this.getJobData(jobId);
       // return await this.enqueueJob(originalData);
     } catch (error) {
-      logError('Failed to retry job', error as Error, { jobId });
+      logError("Failed to retry job", error as Error, { jobId });
       throw error;
     }
   }
@@ -300,28 +311,28 @@ export class QueueService {
   async getQueueMetrics(): Promise<QueueMetrics> {
     try {
       const jobs = Array.from(this.jobRegistry.values());
-      
+
       const metrics: QueueMetrics = {
         totalJobs: jobs.length,
-        pendingJobs: jobs.filter(j => j.status === 'pending').length,
-        processingJobs: jobs.filter(j => j.status === 'processing').length,
-        completedJobs: jobs.filter(j => j.status === 'completed').length,
-        failedJobs: jobs.filter(j => j.status === 'failed').length,
+        pendingJobs: jobs.filter((j) => j.status === "pending").length,
+        processingJobs: jobs.filter((j) => j.status === "processing").length,
+        completedJobs: jobs.filter((j) => j.status === "completed").length,
+        failedJobs: jobs.filter((j) => j.status === "failed").length,
         averageProcessingTime: 0, // TODO: Calcular tempo médio real
       };
 
-      logInfo('Queue metrics retrieved', {
+      logInfo("Queue metrics retrieved", {
         totalJobs: metrics.totalJobs,
         pendingJobs: metrics.pendingJobs,
         processingJobs: metrics.processingJobs,
         completedJobs: metrics.completedJobs,
         failedJobs: metrics.failedJobs,
-        averageProcessingTime: metrics.averageProcessingTime
+        averageProcessingTime: metrics.averageProcessingTime,
       });
 
       return metrics;
     } catch (error) {
-      logError('Failed to get queue metrics', error as Error);
+      logError("Failed to get queue metrics", error as Error);
       throw error;
     }
   }
@@ -334,7 +345,7 @@ export class QueueService {
     let cleaned = 0;
 
     for (const [jobId, status] of this.jobRegistry.entries()) {
-      if (status.status === 'completed' || status.status === 'cancelled') {
+      if (status.status === "completed" || status.status === "cancelled") {
         if (status.lastAttempt) {
           const age = now - status.lastAttempt.getTime();
           if (age > olderThanMs) {
@@ -346,7 +357,7 @@ export class QueueService {
     }
 
     if (cleaned > 0) {
-      logInfo('Old jobs cleaned up', { count: cleaned });
+      logInfo("Old jobs cleaned up", { count: cleaned });
     }
 
     return cleaned;
@@ -355,33 +366,30 @@ export class QueueService {
   /**
    * Registra um job localmente
    */
-  private registerJob(
-    jobId: string,
-    status: QueueStatus['status']
-  ): void {
+  private registerJob(jobId: string, status: QueueStatus["status"]): void {
     this.jobRegistry.set(jobId, {
       jobId,
       status,
       attempts: 0,
-      lastAttempt: status === 'processing' ? new Date() : undefined,
+      lastAttempt: status === "processing" ? new Date() : undefined,
     });
   }
 
   /**
    * Mapeia status do QStash para nosso formato
    */
-  private mapQStashStatus(qstashState: string): QueueStatus['status'] {
-    const statusMap: Record<string, QueueStatus['status']> = {
-      'pending': 'pending',
-      'active': 'processing',
-      'completed': 'completed',
-      'failed': 'failed',
-      'cancelled': 'cancelled',
-      'delayed': 'pending',
-      'retry': 'processing',
+  private mapQStashStatus(qstashState: string): QueueStatus["status"] {
+    const statusMap: Record<string, QueueStatus["status"]> = {
+      pending: "pending",
+      active: "processing",
+      completed: "completed",
+      failed: "failed",
+      cancelled: "cancelled",
+      delayed: "pending",
+      retry: "processing",
     };
 
-    return statusMap[qstashState] || 'pending';
+    return statusMap[qstashState] || "pending";
   }
 
   /**
@@ -391,10 +399,10 @@ export class QueueService {
     try {
       // Testar conexão com QStash
       const response = await this.qstashService.publishJob(
-        { 
-          test: true
+        {
+          test: true,
         } as unknown as ProcessingJobData,
-        'health',
+        "health",
         {
           retries: 0,
           delay: 0,
@@ -404,10 +412,10 @@ export class QueueService {
       // Cancelar job de teste imediatamente
       await this.qstashService.cancelJob(response.messageId);
 
-      logInfo('Queue configuration validated successfully');
+      logInfo("Queue configuration validated successfully");
       return true;
     } catch (error) {
-      logError('Queue configuration validation failed', error as Error);
+      logError("Queue configuration validation failed", error as Error);
       return false;
     }
   }

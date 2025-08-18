@@ -209,7 +209,13 @@ async function createProfile(
       },
       Array.isArray(profileData.emergencyContacts) ? profileData.emergencyContacts : [],
       jobData.planType === PlanType.PREMIUM ? PlanType.PREMIUM : PlanType.BASIC,
-      profileData.vehicleData as Record<string, unknown>
+      profileData.vehicleData ? {
+        brand: String((profileData.vehicleData as Record<string, unknown>).brand || ''),
+        model: String((profileData.vehicleData as Record<string, unknown>).model || ''),
+        year: Number((profileData.vehicleData as Record<string, unknown>).year || new Date().getFullYear()),
+        color: String((profileData.vehicleData as Record<string, unknown>).color || ''),
+        licensePlate: String((profileData.vehicleData as Record<string, unknown>).licensePlate || ''),
+      } : undefined
     );
 
     // Set unique URL and memorial URL

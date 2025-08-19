@@ -3,7 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { logInfo, logError } from './logger';
+import { logInfo, logError } from '../lib/utils/logger';
 // Import schemas and services
 import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation';
 import { MercadoPagoService, type PreferenceData } from '../lib/services/payment/mercadopago.service';
@@ -43,7 +43,7 @@ const PLAN_PRICES = {
  * 
  * Responsibilities:
  * - Validate input data
- * - Create MercadoPago preference using service
+ * - Create MercadoPago preference
  * - Save pending profile to Firestore
  * - Return preference ID and checkout URL
  * 
@@ -161,7 +161,7 @@ function generateUniqueUrl(): string {
 }
 
 /**
- * Build MercadoPago preference data (only supported fields)
+ * Build MercadoPago preference data
  */
 function buildPreferenceData(
   data: CreatePaymentData,
@@ -183,7 +183,7 @@ function buildPreferenceData(
     }],
     payer: {
       name: data.name,
-      surname: data.surname || '',
+      surname: data.surname,
       email: data.email,
       phone: { 
         area_code: phoneAreaCode,
@@ -191,7 +191,7 @@ function buildPreferenceData(
       },
       identification: {
         type: 'CPF',
-        number: data.cpf || '',
+        number: data.cpf,
       },
     },
     back_urls: {
@@ -202,8 +202,33 @@ function buildPreferenceData(
     auto_return: 'approved',
     external_reference: uniqueUrl,
     notification_url: `${process.env.BACKEND_URL || process.env.FRONTEND_URL}/api/mercadopago-webhook`,
+    statement_descriptor: 'SOS MOTO',
+    binary_mode: false, // Allow pending status for PIX
     expires: true,
     expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    // Additional info for better approval rates
+    additional_info: {
+      items: [{
+        id: data.selectedPlan,
+        title: plan.title,
+        description: plan.description,
+        quantity: 1,
+        unit_price: plan.unit_price,
+      }],
+      payer: {
+        first_name: data.name,
+        last_name: data.surname,
+        phone: {
+          area_code: phoneAreaCode,
+          number: phoneNumber,
+        },
+      },
+    },
+    metadata: {
+      correlation_id: uniqueUrl,
+      plan_type: data.selectedPlan,
+      device_id: data.deviceId,
+    },
   };
 }
 

@@ -19,6 +19,6 @@
     },
     "allowImportingTsExtensions": false
   },
-  "include": ["**/*", "../lib/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["**/*.ts", "../lib/**/*.ts"],
+  "exclude": ["node_modules", "**/create-payment-backup.ts", "**/create-payment-final.ts"]
 }

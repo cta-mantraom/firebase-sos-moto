@@ -1,0 +1,278 @@
+{
+  "mcpServers": {
+    "vercel": {
+      "command": "npx",
+      "args": ["@vercel/mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {
+        "VERCEL_TOKEN": "",
+        "VERCEL_PROJECT_ID": ""
+      },
+      "description": "Vercel deployment and project management",
+      "capabilities": [
+        "deploy_preview",
+        "deploy_production",
+        "list_deployments",
+        "get_deployment_logs",
+        "manage_environment_variables",
+        "get_project_info"
+      ],
+      "usage_context": [
+        "deploy-orchestrator: Deploy management and monitoring",
+        "backend-agent: Environment variable management",
+        "All agents: Deployment logs and status checking"
+      ]
+    },
+
+    "mercadopago": {
+      "command": "npx",
+      "args": ["mercadopago-mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {
+        "MERCADOPAGO_ACCESS_TOKEN": "",
+        "MERCADOPAGO_PUBLIC_KEY": "",
+        "MERCADOPAGO_WEBHOOK_SECRET": ""
+      },
+      "description": "MercadoPago payment processing and webhook management",
+      "capabilities": [
+        "create_payment_preference",
+        "get_payment_status",
+        "manage_webhooks",
+        "validate_webhook_signature",
+        "get_payment_methods",
+        "create_customer",
+        "get_approval_metrics"
+      ],
+      "usage_context": [
+        "payment-agent: Direct payment processing and validation",
+        "backend-agent: Webhook management and processing",
+        "deploy-orchestrator: Payment system health checks"
+      ]
+    },
+
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn-mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {},
+      "description": "Shadcn/UI component management and installation",
+      "capabilities": [
+        "add_component",
+        "list_components",
+        "update_components",
+        "generate_component_code",
+        "check_component_compatibility",
+        "get_component_documentation"
+      ],
+      "usage_context": [
+        "frontend-agent: UI component management and updates",
+        "All agents: Component documentation and best practices"
+      ]
+    },
+
+    "firebase": {
+      "command": "npx",
+      "args": ["firebase-mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "",
+        "FIREBASE_PROJECT_ID": ""
+      },
+      "description": "Firebase project management and operations",
+      "capabilities": [
+        "deploy_functions",
+        "manage_firestore_rules",
+        "list_collections",
+        "backup_firestore",
+        "manage_storage_rules",
+        "get_usage_metrics",
+        "manage_authentication"
+      ],
+      "usage_context": [
+        "backend-agent: Database and storage management",
+        "medical-validator: Data integrity and backup operations",
+        "deploy-orchestrator: Firebase deployment coordination"
+      ]
+    },
+
+    "upstash": {
+      "command": "npx",
+      "args": ["upstash-mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "",
+        "UPSTASH_REDIS_REST_TOKEN": "",
+        "QSTASH_TOKEN": ""
+      },
+      "description": "Upstash Redis cache and QStash queue management",
+      "capabilities": [
+        "manage_redis_cache",
+        "publish_qstash_message",
+        "get_queue_metrics",
+        "flush_cache",
+        "set_cache_ttl",
+        "monitor_queue_health"
+      ],
+      "usage_context": [
+        "backend-agent: Cache and queue management",
+        "medical-validator: Emergency data caching",
+        "payment-agent: Queue payment processing jobs"
+      ]
+    },
+
+    "aws-ses": {
+      "command": "npx",
+      "args": ["aws-ses-mcp-server"],
+      "transport": {
+        "type": "stdio"
+      },
+      "env": {
+        "AWS_ACCESS_KEY_ID": "",
+        "AWS_SECRET_ACCESS_KEY": "",
+        "AWS_REGION": "sa-east-1"
+      },
+      "description": "AWS SES email service management",
+      "capabilities": [
+        "send_email",
+        "manage_templates",
+        "get_send_statistics",
+        "manage_verified_identities",
+        "get_bounce_metrics",
+        "manage_configuration_sets"
+      ],
+      "usage_context": [
+        "backend-agent: Email service management and monitoring",
+        "medical-validator: Emergency notification emails",
+        "payment-agent: Payment confirmation emails"
+      ]
+    }
+  },
+
+  "server_groups": {
+    "essential": {
+      "description": "Core servers required for basic functionality",
+      "servers": ["vercel", "mercadopago", "firebase"],
+      "auto_start": true
+    },
+
+    "development": {
+      "description": "Servers for development workflow",
+      "servers": ["shadcn", "upstash"],
+      "auto_start": false
+    },
+
+    "production": {
+      "description": "All servers for production environment",
+      "servers": ["vercel", "mercadopago", "firebase", "upstash", "aws-ses"],
+      "auto_start": true
+    },
+
+    "emergency": {
+      "description": "Minimum servers for emergency operations",
+      "servers": ["firebase", "upstash"],
+      "auto_start": true
+    }
+  },
+
+  "integration_rules": {
+    "payment_workflow": {
+      "description": "MercadoPago payment processing requires Upstash for queuing",
+      "required_servers": ["mercadopago", "upstash", "firebase"],
+      "validation": "payment-agent validates all payment-related MCP calls"
+    },
+
+    "deploy_workflow": {
+      "description": "Deployment requires Vercel + Firebase coordination",
+      "required_servers": ["vercel", "firebase"],
+      "validation": "deploy-orchestrator coordinates deployment sequence"
+    },
+
+    "medical_data_workflow": {
+      "description": "Medical data operations require Firebase + cache",
+      "required_servers": ["firebase", "upstash"],
+      "validation": "medical-validator ensures LGPD compliance"
+    },
+
+    "emergency_response": {
+      "description": "Emergency operations can work with minimal servers",
+      "required_servers": ["firebase", "upstash"],
+      "fallback": "Direct API calls if MCP servers unavailable"
+    }
+  },
+
+  "monitoring": {
+    "health_checks": {
+      "enabled": true,
+      "interval_seconds": 300,
+      "timeout_seconds": 30,
+      "retry_count": 3
+    },
+
+    "performance_metrics": {
+      "track_response_times": true,
+      "track_error_rates": true,
+      "alert_slow_responses": true,
+      "threshold_ms": 5000
+    },
+
+    "usage_tracking": {
+      "track_api_calls": true,
+      "track_by_agent": true,
+      "daily_reports": true
+    }
+  },
+
+  "security": {
+    "credential_management": {
+      "use_environment_variables": true,
+      "rotate_tokens_days": 90,
+      "validate_credentials_startup": true
+    },
+
+    "access_control": {
+      "agent_permissions": {
+        "frontend-agent": ["shadcn"],
+        "backend-agent": ["vercel", "firebase", "upstash", "aws-ses"],
+        "payment-agent": ["mercadopago", "upstash"],
+        "medical-validator": ["firebase", "upstash"],
+        "deploy-orchestrator": ["vercel", "firebase", "upstash", "aws-ses"]
+      }
+    },
+
+    "audit_logging": {
+      "log_all_mcp_calls": true,
+      "include_agent_context": true,
+      "retention_days": 90
+    }
+  },
+
+  "fallback_strategies": {
+    "server_unavailable": {
+      "strategy": "direct_api_call",
+      "log_fallback": true,
+      "alert_on_fallback": true
+    },
+
+    "network_issues": {
+      "retry_attempts": 3,
+      "backoff_multiplier": 2,
+      "max_wait_seconds": 30
+    },
+
+    "emergency_mode": {
+      "disable_non_essential": true,
+      "use_cached_responses": true,
+      "minimal_server_set": ["firebase", "upstash"]
+    }
+  }
+}

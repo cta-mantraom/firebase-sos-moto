@@ -30,7 +30,5 @@ dist-ssr
 .kiro
 .trae
 configClaude
-CLAUDE.md
 
 # Claude Code configuration
-.claude/

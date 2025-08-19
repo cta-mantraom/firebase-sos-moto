@@ -29,4 +29,8 @@ dist-ssr
 .docMp
 .kiro
 .trae
+configClaude
 CLAUDE.md
+
+# Claude Code configuration
+.claude/

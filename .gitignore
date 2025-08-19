@@ -32,3 +32,4 @@ dist-ssr
 configClaude
 
 # Claude Code configuration
+.vercel

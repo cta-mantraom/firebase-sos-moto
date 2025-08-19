@@ -3,7 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { logInfo, logError } from './logger';
+import { logInfo, logError } from './logger.js';
 // Import schemas and services
 import { CreatePaymentSchema, type CreatePaymentData } from '../lib/utils/validation';
 import { MercadoPagoService, type PreferenceData } from '../lib/services/payment/mercadopago.service';

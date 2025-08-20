@@ -112,14 +112,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Create MercadoPago preference with required headers
     const preferenceData = buildPreferenceData(validatedData, plan, uniqueUrl);
-    
-    // Log preference data for debugging
-    logInfo("Preference data prepared", {
-      correlationId,
-      backUrls: preferenceData.back_urls,
-      notificationUrl: preferenceData.notification_url,
-    });
-    
     const preference = await createMercadoPagoPreference(
       preferenceData,
       idempotencyKey,
@@ -316,24 +308,24 @@ async function savePendingProfile(
     // Personal data
     uniqueUrl,
     name: data.name,
-    surname: data.surname,
+    surname: data.surname || null,
     email: data.email,
     phone: data.phone,
-    cpf: data.cpf,
-    birthDate: data.birthDate,
+    cpf: data.cpf || null,
+    birthDate: data.birthDate || null,
     age: data.age,
 
     // Medical data
     bloodType: data.bloodType || null,
-    allergies: data.allergies,
-    medications: data.medications,
-    medicalConditions: data.medicalConditions,
+    allergies: data.allergies || [],
+    medications: data.medications || [],
+    medicalConditions: data.medicalConditions || [],
     healthPlan: data.healthPlan || null,
     preferredHospital: data.preferredHospital || null,
     medicalNotes: data.medicalNotes || null,
 
     // Emergency contacts
-    emergencyContacts: data.emergencyContacts,
+    emergencyContacts: data.emergencyContacts || [],
 
     // Plan and payment data
     selectedPlan: data.selectedPlan,

@@ -1,0 +1,32 @@
+{
+  "shared_knowledge": {
+    "project_rules": [
+      "NEVER create backup files",
+      "NEVER duplicate existing code",
+      "ALWAYS use services from lib/",
+      "ALWAYS validate with Zod",
+      "ALWAYS include correlation IDs in logs"
+    ],
+    "import_mappings": {
+      "logger": "../lib/utils/logger",
+      "validation": "../lib/utils/validation",
+      "mercadopago": "../lib/services/payment/mercadopago.service",
+      "firebase": "../lib/services/firebase",
+      "email": "../lib/services/notification/email.service"
+    },
+    "critical_paths": {
+      "payment_flow": "create-payment → webhook → processor → profile",
+      "medical_data": "validation → firebase → cache → qr_code",
+      "emergency_access": "qr_scan → cache → fallback_firebase"
+    }
+  },
+  "agent_handoffs": [],
+  "file_operations": [],
+  "blocked_operations": [],
+  "decisions_made": [],
+  "learned_patterns": {
+    "common_errors": [],
+    "successful_fixes": [],
+    "optimization_opportunities": []
+  }
+}

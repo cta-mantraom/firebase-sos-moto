@@ -1,0 +1,29 @@
+{
+  "session": {
+    "id": "session_001",
+    "started_at": "2025-08-20T00:00:00Z",
+    "last_updated": "2025-08-20T00:00:00Z",
+    "correlation_id": "main_session",
+    "active_agent": null,
+    "context": {
+      "project": "SOS Moto",
+      "environment": "development",
+      "current_task": "Sistema de coordenação entre agentes",
+      "priority": "high"
+    }
+  },
+  "agents_executed": [],
+  "tasks_completed": [],
+  "errors_encountered": [],
+  "current_state": {
+    "hooks_configured": [
+      "typescript-validator",
+      "mercadopago-validator",
+      "secrets-scanner",
+      "import-validator",
+      "file-guardian"
+    ],
+    "last_validation": null,
+    "build_status": "unknown"
+  }
+}

@@ -46,6 +46,28 @@ src/
     └── payment.ts            # Validação pagamento
 ```
 
+## ⚠️ REGRAS CRÍTICAS DE ARQUIVOS
+
+### **🚫 NUNCA FAZER**
+- ❌ **NUNCA criar backups** (.bak, .backup, .old, _backup_, ~)
+- ❌ **NUNCA duplicar código existente** (logger, utils, services)
+- ❌ **NUNCA criar logger local** se existe em lib/utils/logger
+- ❌ **NUNCA resolver erros de import criando cópias locais**
+- ❌ **NUNCA criar arquivos temporários** que não serão commitados
+
+### **✅ SEMPRE FAZER**
+- ✅ **SEMPRE corrigir paths de import** ao invés de criar cópias
+- ✅ **SEMPRE usar imports corretos**: `../lib/utils/logger`
+- ✅ **SEMPRE consultar** `.claude/state/agent-memory.json` antes de criar arquivos
+- ✅ **SEMPRE registrar ações** em `.claude/logs/agent-actions.log`
+- ✅ **SEMPRE usar Git** para versionamento (não criar backups manuais)
+
+### **📊 Memória Compartilhada**
+- **Consultar antes de agir**: `.claude/state/agent-memory.json`
+- **Registrar decisões**: `.claude/state/current-session.json`
+- **Sincronizar TODOs**: `.claude/state/sync-todos.json`
+- **Audit trail**: `.claude/logs/`
+
 ## 🚨 Regras Críticas de Frontend
 
 ### **1. TypeScript - NUNCA USAR ANY**

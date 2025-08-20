@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",              // ← MUDANÇA: ES2022 em vez de CommonJS
+    "module": "ES2022", // ← MUDANÇA: ES2022 em vez de CommonJS
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -19,6 +19,6 @@
     },
     "allowImportingTsExtensions": false
   },
-  "include": ["**/*.ts", "../lib/**/*.ts"],
-  "exclude": ["node_modules", "**/create-payment-backup.ts", "**/create-payment-final.ts"]
+  "include": ["**/*", "../lib/**/*"],
+  "exclude": ["node_modules"]
 }

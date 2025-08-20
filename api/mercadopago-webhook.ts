@@ -1,14 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { MercadoPagoWebhookSchema } from '../lib/schemas/payment';
-import { MercadoPagoService } from '../lib/services/payment/mercadopago.service';
-import { PaymentRepository } from '../lib/repositories/payment.repository';
-import { QStashService } from '../lib/services/queue/qstash.service';
-import { QueueService } from '../lib/services/notification/queue.service';
-import { logInfo, logError, logWarning } from '../lib/utils/logger';
-import { JobType } from '../lib/types/queue.types';
-import { PlanType } from '../lib/domain/profile/profile.types';
+import { MercadoPagoWebhookSchema } from '../lib/schemas/payment.js';
+import { MercadoPagoService } from '../lib/services/payment/mercadopago.service.js';
+import { PaymentRepository } from '../lib/repositories/payment.repository.js';
+import { QStashService } from '../lib/services/queue/qstash.service.js';
+import { QueueService } from '../lib/services/notification/queue.service.js';
+import { logInfo, logError, logWarning } from '../lib/utils/logger.js';
+import { JobType } from '../lib/types/queue.types.js';
+import { PlanType } from '../lib/domain/profile/profile.types.js';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {

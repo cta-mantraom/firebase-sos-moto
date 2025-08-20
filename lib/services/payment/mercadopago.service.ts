@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import crypto from 'crypto';
-import { logInfo, logError, logWarning } from '../../utils/logger';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
 
 // Schemas de validação
 const PreferenceItemSchema = z.object({

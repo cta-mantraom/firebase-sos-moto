@@ -1,7 +1,7 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
-import { logInfo, logError } from '../utils/logger';
+import { logInfo, logError } from '../utils/logger.js';
 
 /**
  * Firebase Admin Helper - Factory Pattern for Serverless Functions

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlanType } from '../profile/profile.types';
+import { PlanType } from '../profile/profile.types.js';
 
 // Email Template Types
 export enum EmailTemplate {

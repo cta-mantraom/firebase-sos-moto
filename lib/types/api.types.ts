@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlanType, ProfileStatus } from '../domain/profile/profile.types';
+import { PlanType, ProfileStatus } from '../domain/profile/profile.types.js';
 
 // Request Schemas
 export const CreatePaymentRequestSchema = z.object({

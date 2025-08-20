@@ -1,6 +1,6 @@
 // lib/types/index.ts - Centralized type definitions
 import { z } from 'zod';
-import { ProfileSchema, CreatePaymentSchema, CreatePaymentData } from '../utils/validation';
+import { ProfileSchema, CreatePaymentSchema, CreatePaymentData } from '../utils/validation.js';
 
 // Export schemas and types
 export { CreatePaymentSchema };

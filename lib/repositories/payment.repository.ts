@@ -1,14 +1,14 @@
 import { getFirestore, Firestore, CollectionReference, Query, FieldPath } from 'firebase-admin/firestore';
-import { Payment } from '../domain/payment/payment.entity';
+import { Payment } from '../domain/payment/payment.entity.js';
 import {
   PaymentData,
   PaymentStatus,
   PaymentMethod,
   PaymentType,
   PaymentProcessingResult,
-} from '../domain/payment/payment.types';
-import { PaymentQueryData, PaymentStatsQueryData } from '../domain/payment/payment.validators';
-import { logInfo, logError } from '../utils/logger';
+} from '../domain/payment/payment.types.js';
+import { PaymentQueryData, PaymentStatsQueryData } from '../domain/payment/payment.validators.js';
+import { logInfo, logError } from '../utils/logger.js';
 
 /**
  * Payment Repository

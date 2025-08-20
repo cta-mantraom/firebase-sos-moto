@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { logInfo, logError, logWarning } from '../../utils/logger';
-import { ProfileRepository } from '../../repositories/profile.repository';
-import { Profile } from '../../domain/profile/profile.entity';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
+import { ProfileRepository } from '../../repositories/profile.repository.js';
+import { Profile } from '../../domain/profile/profile.entity.js';
 import {
   ProfileData,
   ProfileDataSchema,
@@ -19,8 +19,8 @@ import {
   PROFILE_EXPIRATION_HOURS,
   MAX_EMERGENCY_CONTACTS,
   MIN_EMERGENCY_CONTACTS,
-} from '../../domain/profile/profile.types';
-import { generateUniqueUrl } from '../../utils/ids';
+} from '../../domain/profile/profile.types.js';
+import { generateUniqueUrl } from '../../utils/ids.js';
 
 export interface ProfileServiceConfig {
   maxRetries: number;

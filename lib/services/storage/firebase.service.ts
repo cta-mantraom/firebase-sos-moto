@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { db } from '../firebase-admin';
-import { logInfo, logError, logWarning } from '../../utils/logger';
+import { db } from '../firebase-admin.js';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
 import {
   DocumentData,
   DocumentReference,

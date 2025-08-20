@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { createHmac, timingSafeEqual } from 'crypto';
 // CORRETO: Import centralized schema from domain layer (no duplicate schemas)
-import { PaymentType } from '../domain/payment/payment.types';
-import { PlanType } from '../domain/profile/profile.types';
+import { PaymentType } from '../domain/payment/payment.types.js';
+import { PlanType } from '../domain/profile/profile.types.js';
 
 // Schema para criação de pagamento com dados do perfil
 export const CreatePaymentSchema = z.object({

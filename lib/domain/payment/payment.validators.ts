@@ -8,8 +8,8 @@ import {
   MercadoPagoPayment,
   WebhookData,
   PaymentProcessingResult,
-} from './payment.types';
-import { PlanType } from '../profile/profile.types';
+} from './payment.types.js';
+import { PlanType } from '../profile/profile.types.js';
 
 /**
  * Payment Domain Validators

@@ -10,7 +10,7 @@ import {
   EmailEvent,
   EmailAttachment,
   TemplateDataSchema,
-} from "./email.types";
+} from "./email.types.js";
 import { z } from "zod";
 
 export class Email {

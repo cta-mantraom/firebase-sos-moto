@@ -10,10 +10,10 @@ import {
   QStashResponse,
   QStashJobStatus,
   PublishOptions,
-} from '../../types/queue.types';
-import { PlanType } from '../../domain/profile/profile.types';
-import { logInfo, logError } from '../../utils/logger';
-import { env } from '../../config/env';
+} from '../../types/queue.types.js';
+import { PlanType } from '../../domain/profile/profile.types.js';
+import { logInfo, logError } from '../../utils/logger.js';
+import { env } from '../../config/env.js';
 
 /**
  * QStash Queue Service

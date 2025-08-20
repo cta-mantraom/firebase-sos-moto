@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
-import { logInfo, logError, logWarning } from '../../utils/logger';
-import { storage } from '../firebase-admin';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
+import { storage } from '../firebase-admin.js';
 
 export interface QRCodeOptions {
   width?: number;

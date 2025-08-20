@@ -4,7 +4,7 @@
  * Following Interface-First Development pattern
  */
 
-import { Payment, PaymentStatus, PaymentLogData } from './payment.types';
+import { Payment, PaymentStatus, PaymentLogData } from './payment.types.js';
 
 /**
  * PaymentRepository Interface

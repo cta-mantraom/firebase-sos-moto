@@ -7,7 +7,7 @@ import {
   RefundStatus,
   PaymentDataSchema,
   MercadoPagoPayment,
-} from './payment.types';
+} from './payment.types.js';
 import { z } from 'zod';
 
 export class Payment {

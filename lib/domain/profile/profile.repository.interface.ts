@@ -4,8 +4,8 @@
  * Following Interface-First Development pattern
  */
 
-import { PendingProfile, ProfileStatus } from './profile.types';
-import { Profile } from './profile.entity';
+import { PendingProfile, ProfileStatus } from './profile.types.js';
+import { Profile } from './profile.entity.js';
 
 /**
  * ProfileRepository Interface

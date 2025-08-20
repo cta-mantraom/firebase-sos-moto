@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
-import { logInfo, logError, logWarning } from '../../utils/logger';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
 
 // Schemas de validação
 const CacheEntrySchema = z.object({

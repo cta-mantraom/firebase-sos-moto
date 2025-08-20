@@ -1,12 +1,12 @@
 import { getFirestore, Firestore, CollectionReference, DocumentReference, Query } from 'firebase-admin/firestore';
-import { Profile } from '../domain/profile/profile.entity';
+import { Profile } from '../domain/profile/profile.entity.js';
 import {
   ProfileData,
   ProfileStatus,
   PlanType,
   ProfileSearchFilters,
-} from '../domain/profile/profile.types';
-import { logInfo, logError } from '../utils/logger';
+} from '../domain/profile/profile.types.js';
+import { logInfo, logError } from '../utils/logger.js';
 
 /**
  * Profile Repository

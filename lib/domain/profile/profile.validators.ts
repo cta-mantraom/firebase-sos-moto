@@ -15,7 +15,7 @@ import {
   EmergencyContactSchema,
   VehicleDataSchema,
   ProfileDataSchema,
-} from './profile.types';
+} from './profile.types.js';
 
 /**
  * Profile Domain Validators

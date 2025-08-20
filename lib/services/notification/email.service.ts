@@ -1,8 +1,8 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { z } from "zod";
-import { logInfo, logError, logWarning } from "../../utils/logger";
-import { Profile } from "../../domain/profile/profile.entity";
-import { generateCorrelationId } from "../../utils/ids";
+import { logInfo, logError, logWarning } from "../../utils/logger.js";
+import { Profile } from "../../domain/profile/profile.entity.js";
+import { generateCorrelationId } from "../../utils/ids.js";
 
 // Schemas de validação
 const EmailDataSchema = z.object({

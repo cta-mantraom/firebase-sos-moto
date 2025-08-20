@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ProfileData, PlanType } from '../domain/profile/profile.types';
+import { ProfileData, PlanType } from '../domain/profile/profile.types.js';
 
 // Job Types
 export enum JobType {

@@ -18,7 +18,7 @@ import {
   PROFILE_EXPIRATION_HOURS,
   MAX_EMERGENCY_CONTACTS,
   MIN_EMERGENCY_CONTACTS,
-} from './profile.types';
+} from './profile.types.js';
 import { z } from 'zod';
 
 /**

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlanType } from '../domain/profile/profile.types';
+import { PlanType } from '../domain/profile/profile.types.js';
 
 // Emergency Contact Schema
 export const EmergencyContactSchema = z.object({

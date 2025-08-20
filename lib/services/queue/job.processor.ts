@@ -7,8 +7,8 @@ import {
   EmailJobData,
   QRCodeJobData,
   CacheJobData,
-} from '../../types/queue.types';
-import { logInfo, logError, logWarning } from '../../utils/logger';
+} from '../../types/queue.types.js';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
 
 /**
  * Job Processing Result

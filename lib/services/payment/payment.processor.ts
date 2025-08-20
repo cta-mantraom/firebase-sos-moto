@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { logInfo, logError, logWarning } from '../../utils/logger';
-import { MercadoPagoService, PaymentDetails } from './mercadopago.service';
-import { ProfileRepository } from '../../repositories/profile.repository';
-import { PaymentRepository } from '../../repositories/payment.repository';
-import { QueueService } from '../notification/queue.service';
-import { generateCorrelationId } from '../../utils/ids';
-import { PlanType, PendingProfile } from '../../domain/profile/profile.types';
-import { JobType } from '../../types/queue.types';
+import { logInfo, logError, logWarning } from '../../utils/logger.js';
+import { MercadoPagoService, PaymentDetails } from './mercadopago.service.js';
+import { ProfileRepository } from '../../repositories/profile.repository.js';
+import { PaymentRepository } from '../../repositories/payment.repository.js';
+import { QueueService } from '../notification/queue.service.js';
+import { generateCorrelationId } from '../../utils/ids.js';
+import { PlanType, PendingProfile } from '../../domain/profile/profile.types.js';
+import { JobType } from '../../types/queue.types.js';
 
 // Schemas de validação
 const PaymentDataSchema = z.object({

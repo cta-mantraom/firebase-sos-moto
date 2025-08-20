@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { logInfo, logError } from "../../utils/logger";
-import { QStashService } from "../queue/qstash.service";
-import { generateCorrelationId } from "../../utils/ids";
+import { logInfo, logError } from "../../utils/logger.js";
+import { QStashService } from "../queue/qstash.service.js";
+import { generateCorrelationId } from "../../utils/ids.js";
 // CORRETO: Import centralized schemas from types layer (no duplicate schemas)
 import {
   EmailJobDataSchema,
   ProcessingJobDataSchema,
   type EmailJobData,
   type ProcessingJobData,
-} from "../../types/queue.types";
+} from "../../types/queue.types.js";
 
 // Local schemas (not duplicated elsewhere)
 const QueueStatusSchema = z.object({

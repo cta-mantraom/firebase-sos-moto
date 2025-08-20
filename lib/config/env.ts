@@ -8,7 +8,9 @@ const isVercel = process.env.VERCEL === '1';
 const envSchema = z.object({
   // ✅ REQUIRED - Firebase configuration
   FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_FUNCTIONS_URL: z.string().url(),
+  
+  // ✅ OPTIONAL - Firebase Functions URL (not currently used in Vercel Functions architecture)
+  FIREBASE_FUNCTIONS_URL: z.string().url().optional(),
 
   // ✅ OPTIONAL - Available in Vercel but not mandatory
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -31,7 +33,7 @@ const validatedEnv = envSchema.parse(process.env);
 // ✅ COMPLIANT - Export validated environment variables
 export const env = {
   FIREBASE_PROJECT_ID: validatedEnv.FIREBASE_PROJECT_ID,
-  FIREBASE_FUNCTIONS_URL: validatedEnv.FIREBASE_FUNCTIONS_URL,
+  FIREBASE_FUNCTIONS_URL: validatedEnv.FIREBASE_FUNCTIONS_URL || '',
   UPSTASH_REDIS_REST_URL: validatedEnv.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: validatedEnv.UPSTASH_REDIS_REST_TOKEN,
   FRONTEND_URL: validatedEnv.FRONTEND_URL || 'https://memoryys.com',
@@ -46,7 +48,7 @@ export const env = {
 export const config = {
   firebase: {
     projectId: env.FIREBASE_PROJECT_ID,
-    functionsUrl: env.FIREBASE_FUNCTIONS_URL
+    functionsUrl: env.FIREBASE_FUNCTIONS_URL || ''
   },
   redis: {
     url: env.UPSTASH_REDIS_REST_URL,

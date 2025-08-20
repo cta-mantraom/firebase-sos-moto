@@ -106,6 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uniqueUrl,
       plan: validatedData.selectedPlan,
       amount: plan.unit_price,
+      frontendUrl: process.env.FRONTEND_URL,
+      backendUrl: process.env.BACKEND_URL,
     });
 
     // Create MercadoPago preference with required headers
@@ -177,6 +179,10 @@ function buildPreferenceData(
   plan: (typeof PLAN_PRICES)[keyof typeof PLAN_PRICES],
   uniqueUrl: string
 ) {
+  // Default URLs for production when env vars are not set
+  const baseUrl = process.env.FRONTEND_URL || 'https://memoryys.com';
+  const backendUrl = process.env.BACKEND_URL || baseUrl;
+  
   // Extract phone parts for MercadoPago format
   const phoneAreaCode = data.phone.slice(0, 2);
   const phoneNumber = data.phone.slice(2);
@@ -208,15 +214,13 @@ function buildPreferenceData(
       } : {}),
     },
     back_urls: {
-      success: `${process.env.FRONTEND_URL}/success?id=${uniqueUrl}`,
-      failure: `${process.env.FRONTEND_URL}/failure?id=${uniqueUrl}`,
-      pending: `${process.env.FRONTEND_URL}/pending?id=${uniqueUrl}`,
+      success: `${baseUrl}/success?id=${uniqueUrl}`,
+      failure: `${baseUrl}/failure?id=${uniqueUrl}`,
+      pending: `${baseUrl}/pending?id=${uniqueUrl}`,
     },
     auto_return: "approved" as const,
     external_reference: uniqueUrl,
-    notification_url: `${
-      process.env.BACKEND_URL || process.env.FRONTEND_URL
-    }/api/mercadopago-webhook`,
+    notification_url: `${backendUrl}/api/mercadopago-webhook`,
     statement_descriptor: "SOS MOTO",
     binary_mode: false, // Allow pending status for PIX
     expires: true,

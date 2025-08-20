@@ -106,12 +106,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uniqueUrl,
       plan: validatedData.selectedPlan,
       amount: plan.unit_price,
-      frontendUrl: process.env.FRONTEND_URL,
-      backendUrl: process.env.BACKEND_URL,
+      frontendUrl: process.env.FRONTEND_URL?.trim(),
+      backendUrl: process.env.BACKEND_URL?.trim(),
     });
 
     // Create MercadoPago preference with required headers
     const preferenceData = buildPreferenceData(validatedData, plan, uniqueUrl);
+    
+    // Log preference data for debugging
+    logInfo("Preference data prepared", {
+      correlationId,
+      backUrls: preferenceData.back_urls,
+      notificationUrl: preferenceData.notification_url,
+    });
+    
     const preference = await createMercadoPagoPreference(
       preferenceData,
       idempotencyKey,
@@ -179,9 +187,14 @@ function buildPreferenceData(
   plan: (typeof PLAN_PRICES)[keyof typeof PLAN_PRICES],
   uniqueUrl: string
 ) {
-  // Default URLs for production when env vars are not set
-  const baseUrl = process.env.FRONTEND_URL || 'https://memoryys.com';
-  const backendUrl = process.env.BACKEND_URL || baseUrl;
+  // Default URLs for production when env vars are not set - trim whitespace/newlines
+  const baseUrl = (process.env.FRONTEND_URL || 'https://memoryys.com').trim();
+  const backendUrl = (process.env.BACKEND_URL || baseUrl).trim();
+  
+  // Validate URLs format
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    throw new Error(`Invalid FRONTEND_URL format: ${baseUrl}`);
+  }
   
   // Extract phone parts for MercadoPago format
   const phoneAreaCode = data.phone.slice(0, 2);

@@ -2,13 +2,13 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { z } from "zod";
-import { logInfo, logError } from "../lib/utils/logger";
+import { logInfo, logError } from "../lib/utils/logger.js";
 // CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
 import {
   CreatePaymentSchema,
   type CreatePaymentData,
-} from "../lib/utils/validation";
-import { MercadoPagoPreferenceResponseSchema } from "../lib/types/api.types";
+} from "../lib/utils/validation.js";
+import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -250,59 +250,35 @@ function buildPreferenceData(
 }
 
 /**
- * Create preference in MercadoPago
+ * Create preference in MercadoPago using Service
  */
 async function createMercadoPagoPreference(
   preferenceData: ReturnType<typeof buildPreferenceData>,
   idempotencyKey: string,
   correlationId: string
-): Promise<z.infer<typeof MercadoPagoPreferenceResponseSchema>> {
-  const response = await fetch(
-    "https://api.mercadopago.com/checkout/preferences",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": idempotencyKey, // Required header for MercadoPago
-      },
-      body: JSON.stringify(preferenceData),
-    }
-  );
+) {
+  const mercadoPagoService = new MercadoPagoService({
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
+    webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET!,
+    publicKey: process.env.VITE_MERCADOPAGO_PUBLIC_KEY!,
+  });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    logError("MercadoPago API error", new Error(errorText), {
+  try {
+    const preference = await mercadoPagoService.createPreference(preferenceData);
+    
+    logInfo("MercadoPago preference created via service", {
       correlationId,
-      status: response.status,
-      statusText: response.statusText,
+      preferenceId: preference.id,
+      externalReference: preference.external_reference,
     });
 
-    throw new Error(
-      `MercadoPago API error: ${response.status} ${response.statusText}`
-    );
+    return preference;
+  } catch (error) {
+    logError("Failed to create preference via service", error as Error, {
+      correlationId,
+    });
+    throw error;
   }
-
-  const responseData = await response.json();
-
-  // Validate MercadoPago response
-  const validationResult =
-    MercadoPagoPreferenceResponseSchema.safeParse(responseData);
-
-  if (!validationResult.success) {
-    logError(
-      "Invalid MercadoPago response",
-      new Error("Response validation failed"),
-      {
-        correlationId,
-        errors: validationResult.error.errors,
-      }
-    );
-
-    throw new Error("Invalid response from MercadoPago");
-  }
-
-  return validationResult.data;
 }
 
 /**

@@ -40,6 +40,9 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
+      // Generate external reference
+      const externalReference = `sos_moto_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
       // Call Vercel API to create preference with Device ID
       const response = await fetch('/api/create-payment', {
         method: 'POST',
@@ -47,6 +50,17 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          // Payment fields required by validation schema
+          amount: planType === 'premium' ? 85.00 : 55.00,
+          payer: {
+            email: userData.email,
+            name: userData.name,
+            phone: userData.phone,
+          },
+          planType: planType,
+          externalReference: externalReference,
+          
+          // Profile fields
           selectedPlan: planType,
           name: userData.name,
           email: userData.email,
@@ -60,6 +74,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           preferredHospital: userData.preferredHospital,
           medicalNotes: userData.medicalNotes,
           emergencyContacts: userData.emergencyContacts,
+          
           // CRITICAL: Include Device ID for improved approval rate
           deviceId: window.MP_DEVICE_SESSION_ID || null,
         }),

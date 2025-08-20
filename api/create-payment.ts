@@ -194,23 +194,25 @@ function buildPreferenceData(
     ],
     payer: {
       name: data.name,
-      surname: data.surname,
+      surname: data.surname || '',
       email: data.email,
       phone: {
         area_code: phoneAreaCode,
         number: phoneNumber,
       },
-      identification: {
-        type: "CPF",
-        number: data.cpf,
-      },
+      ...(data.cpf ? {
+        identification: {
+          type: "CPF",
+          number: data.cpf,
+        }
+      } : {}),
     },
     back_urls: {
       success: `${process.env.FRONTEND_URL}/success?id=${uniqueUrl}`,
       failure: `${process.env.FRONTEND_URL}/failure?id=${uniqueUrl}`,
       pending: `${process.env.FRONTEND_URL}/pending?id=${uniqueUrl}`,
     },
-    auto_return: "approved",
+    auto_return: "approved" as const,
     external_reference: uniqueUrl,
     notification_url: `${
       process.env.BACKEND_URL || process.env.FRONTEND_URL
@@ -234,7 +236,7 @@ function buildPreferenceData(
       ],
       payer: {
         first_name: data.name,
-        last_name: data.surname,
+        last_name: data.surname || '',
         phone: {
           area_code: phoneAreaCode,
           number: phoneNumber,

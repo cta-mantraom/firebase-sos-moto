@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { MercadoPagoWebhookSchema } from '../lib/domain/payment/payment.validators.js';
+import { MercadoPagoWebhookSchema } from '../lib/domain/payment/payment.validators';
 import { MercadoPagoService } from '../lib/services/payment/mercadopago.service.js';
 import { PaymentRepository } from '../lib/repositories/payment.repository.js';
 import { QStashService } from '../lib/services/queue/qstash.service.js';

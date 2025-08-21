@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Payment } from '@mercadopago/sdk-react';
-import { initMercadoPago } from '@mercadopago/sdk-react';
+import React, { useEffect, useState } from "react";
+import { Payment } from "@mercadopago/sdk-react";
+import { initMercadoPago } from "@mercadopago/sdk-react";
 // Removed Firebase Functions - using Vercel API directly
-import { toast } from '@/hooks/use-toast';
-import { UserProfile } from '@/schemas/profile';
+import { toast } from "@/hooks/use-toast";
+import { UserProfile } from "@/schemas/profile";
 
 // Extended window interface for MercadoPago Device ID
 declare global {
@@ -14,7 +14,7 @@ declare global {
 
 interface MercadoPagoCheckoutProps {
   userData: UserProfile;
-  planType: 'basic' | 'premium';
+  planType: "basic" | "premium";
   onSuccess: (paymentData: unknown) => void;
   onError: (error: Error) => void;
 }
@@ -32,26 +32,28 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   const createPreference = React.useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Wait for Device ID to be available (CRITICAL for approval rate)
       if (!window.MP_DEVICE_SESSION_ID) {
-        console.warn('Device ID not yet available, waiting...');
+        console.warn("Device ID not yet available, waiting...");
         // Wait a bit more for device ID
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
-      
+
       // Generate external reference
-      const externalReference = `sos_moto_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      
+      const externalReference = `sos_moto_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(7)}`;
+
       // Call Vercel API to create preference with Device ID
-      const response = await fetch('/api/create-payment', {
-        method: 'POST',
+      const response = await fetch("/api/create-payment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           // Payment fields required by validation schema
-          amount: planType === 'premium' ? 85.00 : 55.00,
+          amount: planType === "premium" ? 85.0 : 5.0,
           payer: {
             email: userData.email,
             name: userData.name,
@@ -59,7 +61,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           },
           planType: planType,
           externalReference: externalReference,
-          
+
           // Profile fields
           selectedPlan: planType,
           name: userData.name,
@@ -74,7 +76,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           preferredHospital: userData.preferredHospital,
           medicalNotes: userData.medicalNotes,
           emergencyContacts: userData.emergencyContacts,
-          
+
           // CRITICAL: Include Device ID for improved approval rate
           deviceId: window.MP_DEVICE_SESSION_ID || null,
         }),
@@ -86,13 +88,12 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 
       const data = await response.json();
       setPreferenceId(data.preferenceId);
-      
     } catch (error) {
-      console.error('Error creating preference:', error);
+      console.error("Error creating preference:", error);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível criar a preferência de pagamento',
-        variant: 'destructive',
+        title: "Erro",
+        description: "Não foi possível criar a preferência de pagamento",
+        variant: "destructive",
       });
       onError(error as Error);
     } finally {
@@ -104,14 +105,14 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
     // Initialize MercadoPago SDK
     const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
     if (publicKey) {
-      initMercadoPago(publicKey, { locale: 'pt-BR' });
+      initMercadoPago(publicKey, { locale: "pt-BR" });
     }
 
     // Wait for Device ID to be loaded (CRITICAL for fraud prevention)
     const checkDeviceId = () => {
       if (window.MP_DEVICE_SESSION_ID) {
         setDeviceId(window.MP_DEVICE_SESSION_ID);
-        console.log('Device ID loaded:', window.MP_DEVICE_SESSION_ID);
+        console.log("Device ID loaded:", window.MP_DEVICE_SESSION_ID);
         // Create payment preference after Device ID is ready
         createPreference();
       } else {
@@ -119,7 +120,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         setTimeout(checkDeviceId, 100);
       }
     };
-    
+
     // Start checking for Device ID
     checkDeviceId();
   }, [createPreference]);
@@ -129,7 +130,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         <span className="ml-3">
-          {!deviceId ? 'Carregando segurança...' : 'Preparando checkout...'}
+          {!deviceId ? "Carregando segurança..." : "Preparando checkout..."}
         </span>
       </div>
     );
@@ -153,7 +154,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
     <div className="w-full">
       <Payment
         initialization={{
-          amount: planType === 'premium' ? 85.00 : 55.00,
+          amount: planType === "premium" ? 85.0 : 5.0,
           preferenceId: preferenceId,
           payer: {
             email: userData.email, // Pre-fill email for better UX
@@ -161,34 +162,34 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         }}
         customization={{
           paymentMethods: {
-            creditCard: 'all',
-            debitCard: 'all',
-            ticket: 'all',
-            bankTransfer: 'all',
-            mercadoPago: 'all',
+            creditCard: "all",
+            debitCard: "all",
+            ticket: "all",
+            bankTransfer: "all",
+            mercadoPago: "all",
           },
           visual: {
             style: {
-              theme: 'default',
+              theme: "default",
               customVariables: {
-                formBackgroundColor: '#ffffff',
-                baseColor: '#2563eb',
+                formBackgroundColor: "#ffffff",
+                baseColor: "#2563eb",
               },
             },
           },
         }}
         onSubmit={async (paymentData) => {
-          console.log('Payment submitted:', paymentData);
+          console.log("Payment submitted:", paymentData);
           onSuccess(paymentData);
         }}
         onError={(error) => {
-          console.error('Payment error:', error);
+          console.error("Payment error:", error);
           toast({
-            title: 'Erro no pagamento',
-            description: 'Ocorreu um erro ao processar o pagamento',
-            variant: 'destructive',
+            title: "Erro no pagamento",
+            description: "Ocorreu um erro ao processar o pagamento",
+            variant: "destructive",
           });
-          onError(new Error('Payment failed'));
+          onError(new Error("Payment failed"));
         }}
       />
     </div>

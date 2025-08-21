@@ -30,7 +30,7 @@ if (!getApps().length) {
 const PLAN_PRICES = {
   basic: {
     title: "SOS Moto Guardian - Plano Básico",
-    unit_price: 55.0,
+    unit_price: 5.0,
     description: "Plano básico de proteção para motociclistas",
   },
   premium: {
@@ -180,14 +180,14 @@ function buildPreferenceData(
   uniqueUrl: string
 ) {
   // Default URLs for production when env vars are not set - trim whitespace/newlines
-  const baseUrl = (process.env.FRONTEND_URL || 'https://memoryys.com').trim();
+  const baseUrl = (process.env.FRONTEND_URL || "https://memoryys.com").trim();
   const backendUrl = (process.env.BACKEND_URL || baseUrl).trim();
-  
+
   // Validate URLs format
-  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+  if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
     throw new Error(`Invalid FRONTEND_URL format: ${baseUrl}`);
   }
-  
+
   // Extract phone parts for MercadoPago format
   const phoneAreaCode = data.phone.slice(0, 2);
   const phoneNumber = data.phone.slice(2);
@@ -205,18 +205,20 @@ function buildPreferenceData(
     ],
     payer: {
       name: data.name,
-      surname: data.surname || '',
+      surname: data.surname || "",
       email: data.email,
       phone: {
         area_code: phoneAreaCode,
         number: phoneNumber,
       },
-      ...(data.cpf ? {
-        identification: {
-          type: "CPF",
-          number: data.cpf,
-        }
-      } : {}),
+      ...(data.cpf
+        ? {
+            identification: {
+              type: "CPF",
+              number: data.cpf,
+            },
+          }
+        : {}),
     },
     back_urls: {
       success: `${baseUrl}/success?id=${uniqueUrl}`,
@@ -245,7 +247,7 @@ function buildPreferenceData(
       ],
       payer: {
         first_name: data.name,
-        last_name: data.surname || '',
+        last_name: data.surname || "",
         phone: {
           area_code: phoneAreaCode,
           number: phoneNumber,
@@ -275,8 +277,10 @@ async function createMercadoPagoPreference(
   });
 
   try {
-    const preference = await mercadoPagoService.createPreference(preferenceData);
-    
+    const preference = await mercadoPagoService.createPreference(
+      preferenceData
+    );
+
     logInfo("MercadoPago preference created via service", {
       correlationId,
       preferenceId: preference.id,

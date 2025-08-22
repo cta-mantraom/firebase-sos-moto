@@ -13,7 +13,7 @@ import {
 } from '../../types/queue.types.js';
 import { PlanType } from '../../domain/profile/profile.types.js';
 import { logInfo, logError } from '../../utils/logger.js';
-import { env } from '../../config/env.js';
+import { config } from '../../config/env.js';
 
 /**
  * QStash Queue Service
@@ -26,15 +26,15 @@ export class QStashService {
   private readonly baseUrl: string;
 
   constructor() {
-    if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+    if (!config.redis.url || !config.redis.token) {
       throw new Error('QStash configuration missing: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN required');
     }
 
     this.client = new Client({
-      token: env.UPSTASH_REDIS_REST_TOKEN,
+      token: config.redis.token,
     });
     
-    this.baseUrl = env.FRONTEND_URL || 'https://memoryys.com';
+    this.baseUrl = config.app.frontendUrl || 'https://memoryys.com';
   }
 
   /**

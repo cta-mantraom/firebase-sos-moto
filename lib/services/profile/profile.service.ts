@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
 import { ProfileRepository } from '../../repositories/profile.repository.js';
+import { config } from '../../config/env.js';
 import { Profile } from '../../domain/profile/profile.entity.js';
 import {
   ProfileData,
@@ -383,7 +384,7 @@ export class ProfileService {
         status: ProfileStatus.ACTIVE,
         paymentId,
         qrCodeUrl,
-        memorialUrl: `${process.env.NEXT_PUBLIC_APP_URL}/memorial/${uniqueUrl}`,
+        memorialUrl: `${config.app.publicUrl}/memorial/${uniqueUrl}`,
         createdAt: pendingProfile.createdAt,
         updatedAt: new Date(),
       };

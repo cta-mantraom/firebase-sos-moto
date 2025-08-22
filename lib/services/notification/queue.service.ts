@@ -2,6 +2,7 @@ import { z } from "zod";
 import { logInfo, logError } from "../../utils/logger.js";
 import { QStashService } from "../queue/qstash.service.js";
 import { generateCorrelationId } from "../../utils/ids.js";
+import { config as envConfig } from "../../config/env.js";
 // CORRETO: Import centralized schemas from types layer (no duplicate schemas)
 import {
   EmailJobDataSchema,
@@ -65,7 +66,7 @@ export class QueueService {
       defaultTTL: config?.defaultTTL ?? 3600,
       baseUrl:
         config?.baseUrl ??
-        process.env.NEXT_PUBLIC_APP_URL ??
+        envConfig.app.publicUrl ??
         "https://memoryys.com",
     };
     this.jobRegistry = new Map();

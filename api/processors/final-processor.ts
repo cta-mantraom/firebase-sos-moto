@@ -13,18 +13,18 @@ import { Payment } from '../../lib/domain/payment/payment.entity.js';
 import { PaymentRepository } from '../../lib/repositories/payment.repository.js';
 import { QStashService } from '../../lib/services/queue/qstash.service.js';
 import { logInfo, logError } from '../../lib/utils/logger.js';
-import { env } from '../../lib/config/env.js';
+import { env, config } from '../../lib/config/env.js';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
       credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        projectId: config.firebase.projectId,
+        clientEmail: config.firebase.clientEmail,
+        privateKey: config.firebase.privateKey?.replace(/\\n/g, '\n'),
       }),
-      storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+      storageBucket: config.firebase.storageBucket,
     });
   } catch (error) {
     logError('Error initializing Firebase Admin', error as Error);
@@ -37,10 +37,10 @@ const paymentRepository = new PaymentRepository();
 const qstashService = new QStashService();
 
 let redis: Redis | null = null;
-if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+if (config.redis.url && config.redis.token) {
   redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL,
-    token: env.UPSTASH_REDIS_REST_TOKEN,
+    url: config.redis.url,
+    token: config.redis.token,
   });
 }
 
@@ -219,7 +219,7 @@ async function createProfile(
     );
 
     // Set unique URL and memorial URL
-    const memorialUrl = `${env.FRONTEND_URL}/memorial/${jobData.uniqueUrl}`;
+    const memorialUrl = `${config.app.frontendUrl}/memorial/${jobData.uniqueUrl}`;
     profile.setMemorialUrl(memorialUrl);
     
     // Mark as payment approved

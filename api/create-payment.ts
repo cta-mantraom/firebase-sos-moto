@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { z } from "zod";
+import { env, config } from "../lib/config/env.js";
 import { logInfo, logError } from "../lib/utils/logger.js";
 // CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
 import {
@@ -15,11 +16,11 @@ if (!getApps().length) {
   try {
     initializeApp({
       credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+        projectId: config.firebase.projectId,
+        clientEmail: config.firebase.clientEmail,
+        privateKey: config.firebase.privateKey?.replace(/\\n/g, "\n"),
       }),
-      storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+      storageBucket: config.firebase.storageBucket,
     });
   } catch (error) {
     logError("Error initializing Firebase Admin", error as Error);
@@ -106,8 +107,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uniqueUrl,
       plan: validatedData.selectedPlan,
       amount: plan.unit_price,
-      frontendUrl: process.env.FRONTEND_URL?.trim(),
-      backendUrl: process.env.BACKEND_URL?.trim(),
+      frontendUrl: env.FRONTEND_URL?.trim(),
+      backendUrl: env.BACKEND_URL?.trim(),
     });
 
     // Create MercadoPago preference with required headers
@@ -154,7 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({
       error: "Failed to create payment",
       message:
-        process.env.NODE_ENV === "development"
+        env.NODE_ENV === "development"
           ? (error as Error).message
           : undefined,
       correlationId,
@@ -180,8 +181,8 @@ function buildPreferenceData(
   uniqueUrl: string
 ) {
   // Default URLs for production when env vars are not set - trim whitespace/newlines
-  const baseUrl = (process.env.FRONTEND_URL || "https://memoryys.com").trim();
-  const backendUrl = (process.env.BACKEND_URL || baseUrl).trim();
+  const baseUrl = (env.FRONTEND_URL || "https://memoryys.com").trim();
+  const backendUrl = (env.BACKEND_URL || baseUrl).trim();
 
   // Validate URLs format
   if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
@@ -271,9 +272,9 @@ async function createMercadoPagoPreference(
   correlationId: string
 ) {
   const mercadoPagoService = new MercadoPagoService({
-    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-    webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET!,
-    publicKey: process.env.VITE_MERCADOPAGO_PUBLIC_KEY!,
+    accessToken: config.mercadopago.accessToken!,
+    webhookSecret: config.mercadopago.webhookSecret!,
+    publicKey: config.mercadopago.publicKey!,
   });
 
   try {

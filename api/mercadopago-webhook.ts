@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { config } from '../lib/config/env.js';
 import { MercadoPagoWebhookSchema } from '../lib/domain/payment/payment.validators';
 import { MercadoPagoService } from '../lib/services/payment/mercadopago.service.js';
 import { PaymentRepository } from '../lib/repositories/payment.repository.js';
@@ -14,9 +15,9 @@ import { PlanType } from '../lib/domain/profile/profile.types.js';
 if (!getApps().length) {
   initializeApp({
     credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      projectId: config.firebase.projectId,
+      clientEmail: config.firebase.clientEmail,
+      privateKey: config.firebase.privateKey?.replace(/\\n/g, '\n'),
     }),
   });
 }
@@ -52,9 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Initialize services
     const mercadoPagoService = new MercadoPagoService({
-      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-      webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET!,
-      publicKey: process.env.VITE_MERCADOPAGO_PUBLIC_KEY!
+      accessToken: config.mercadopago.accessToken!,
+      webhookSecret: config.mercadopago.webhookSecret!,
+      publicKey: config.mercadopago.publicKey!
     });
     
     const paymentRepository = new PaymentRepository();
@@ -127,6 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           number: payment.payer.identification.number
         } : undefined,
         metadata: payment.metadata || {},
+        deviceId: payment.metadata?.device_id || null, // Device ID from MercadoPago metadata
         webhookReceivedAt: new Date(),
         webhookAction: webhookData.action,
         webhookType: webhookData.type,
@@ -159,7 +161,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             status: payment.status,
             amount: payment.transaction_amount,
             payerEmail: payment.payer.email,
-            metadata: payment.metadata || {}
+            metadata: payment.metadata || {},
+            deviceId: payment.metadata?.device_id || null // Device ID from payment
           },
           paymentData: {
             id: payment.id.toString(),

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { logInfo, logError, logWarning } from "../../utils/logger.js";
 import { Profile } from "../../domain/profile/profile.entity.js";
 import { generateCorrelationId } from "../../utils/ids.js";
+import { config as envConfig } from "../../config/env.js";
 
 // Schemas de validação
 const EmailDataSchema = z.object({
@@ -57,18 +58,18 @@ export class EmailService {
     this.config = {
       fromEmail:
         config?.fromEmail ??
-        process.env.AWS_SES_FROM_EMAIL ??
+        envConfig.email.aws.fromEmail ??
         "contact@memoryys.com",
       replyToEmail:
         config?.replyToEmail ??
-        process.env.AWS_SES_REPLY_TO ??
+        envConfig.email.aws.replyTo ??
         "contact@memoryys.com",
       maxRetries: config?.maxRetries ?? 3,
       retryDelayMs: config?.retryDelayMs ?? 1000,
-      region: config?.region ?? process.env.AWS_SES_REGION ?? "us-east-1",
-      accessKeyId: config?.accessKeyId ?? process.env.AWS_SES_ACCESS_KEY_ID!,
+      region: config?.region ?? envConfig.email.aws.region ?? "us-east-1",
+      accessKeyId: config?.accessKeyId ?? envConfig.email.aws.accessKeyId!,
       secretAccessKey:
-        config?.secretAccessKey ?? process.env.AWS_SES_SECRET_ACCESS_KEY!,
+        config?.secretAccessKey ?? envConfig.email.aws.secretAccessKey!
     };
 
     this.sesClient = new SESClient({
@@ -322,7 +323,7 @@ export class EmailService {
               </div>
               <div class="footer">
                 <p>SOS Moto - Sua segurança em primeiro lugar</p>
-                <p>Dúvidas? Entre em contato: contact@memoryys.com</p>
+                <p>Dúvidas? Entre em contato: ${envConfig.email.aws.fromEmail}</p>
               </div>
             </div>
           </body>
@@ -361,13 +362,13 @@ export class EmailService {
                 <p>Por favor, tente realizar o pagamento novamente ou entre em contato com nosso suporte.</p>
                 <p style="text-align: center;">
                   <a href="${
-                    process.env.NEXT_PUBLIC_APP_URL
+                    envConfig.app.publicUrl
                   }" class="button">Tentar Novamente</a>
                 </p>
               </div>
               <div class="footer">
                 <p>SOS Moto - Sua segurança em primeiro lugar</p>
-                <p>Dúvidas? Entre em contato: contact@memoryys.com</p>
+                <p>Dúvidas? Entre em contato: ${envConfig.email.aws.fromEmail}</p>
               </div>
             </div>
           </body>
@@ -414,7 +415,7 @@ ${data.profileUrl ? `Acesse seu perfil em: ${data.profileUrl}` : ""}
 Imprima ou salve seu QR Code em local seguro.
 
 SOS Moto - Sua segurança em primeiro lugar
-Dúvidas? contact@memoryys.com
+Dúvidas? ${envConfig.email.aws.fromEmail}
         `;
 
       case EmailType.PAYMENT_FAILED:
@@ -429,7 +430,7 @@ ${data.error ? `Motivo: ${data.error}` : ""}
 Por favor, tente realizar o pagamento novamente ou entre em contato com nosso suporte.
 
 SOS Moto - Sua segurança em primeiro lugar
-Dúvidas? contact@memoryys.com
+Dúvidas? ${envConfig.email.aws.fromEmail}
         `;
 
       default:

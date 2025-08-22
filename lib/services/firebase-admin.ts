@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 import { logInfo, logError } from '../utils/logger.js';
+import { config } from '../config/env.js';
 
 /**
  * Firebase Admin Helper - Factory Pattern for Serverless Functions
@@ -25,11 +26,11 @@ export function getFirebaseApp(): App {
     try {
       const app = initializeApp({
         credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          projectId: config.firebase.projectId,
+          clientEmail: config.firebase.clientEmail,
+          privateKey: config.firebase.privateKey?.replace(/\\n/g, '\n'),
         }),
-        storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+        storageBucket: config.firebase.storageBucket,
       });
       
       logInfo('Firebase Admin initialized successfully');

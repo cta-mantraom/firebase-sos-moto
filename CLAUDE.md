@@ -46,6 +46,51 @@ api/
 └── processors/            # Async job processors
 ```
 
+### **Configuration Layer** ✅ CENTRALIZADO
+```
+lib/config/
+└── env.ts                  # Centralized environment config with Zod validation
+```
+
+---
+
+## 🔐 CONFIGURAÇÃO CENTRALIZADA DE VARIÁVEIS DE AMBIENTE
+
+### **Arquitetura de Configuração**
+- ✅ **Single Source of Truth**: `/lib/config/env.ts` centraliza TODAS as variáveis
+- ✅ **Validação Zod**: Type safety e validação em runtime
+- ✅ **Organização por Domínio**: Estrutura semântica (`config.firebase`, `config.email`, etc.)
+- ✅ **Fallbacks Inteligentes**: Valores padrão para produção
+
+### **Como Usar**
+```typescript
+// Import centralizado
+import { env, config } from '@/lib/config/env.js';
+
+// Uso direto (flat structure)
+env.FIREBASE_PROJECT_ID
+env.NODE_ENV
+
+// Uso semântico (domain-organized)
+config.firebase.projectId
+config.mercadopago.accessToken
+config.email.aws.region
+config.redis.url
+config.app.frontendUrl
+```
+
+### **Variáveis Organizadas por Domínio**
+- **Firebase**: `config.firebase.*` (projectId, clientEmail, privateKey, storageBucket)
+- **MercadoPago**: `config.mercadopago.*` (accessToken, webhookSecret, publicKey)
+- **Email/AWS SES**: `config.email.aws.*` (region, accessKeyId, fromEmail, replyTo)
+- **Redis/Upstash**: `config.redis.*` (url, token)
+- **Application**: `config.app.*` (frontendUrl, backendUrl, environment, isProduction)
+
+### **🚨 NUNCA**
+- ❌ Usar `process.env.VARIABLE` diretamente
+- ❌ Adicionar variáveis sem validação Zod
+- ❌ Duplicar configurações em múltiplos arquivos
+
 ---
 
 ## 🛡️ REGRAS DE DESENVOLVIMENTO
@@ -181,17 +226,27 @@ npm run build        # Verifica build serverless
 
 ### **✅ Implementado e Funcionando**
 - Domain-driven architecture
+- **Configuração centralizada** com validação Zod (100% migrado)
 - MercadoPago com Device ID + HMAC
 - Firebase Factory Pattern
 - Async processing (QStash)
 - Structured logging
-- Zod validation
+- Zod validation em todas as camadas
 - Serverless architecture
+- **Type Safety completo** para environment variables
+- **Single Source of Truth** para configurações
 
-### **⚠️ Melhorias Necessárias**
-- TypeScript strictness
+### **✅ Melhorias Implementadas (2025-08-22)**
+- ✅ **Migração completa** para `/lib/config/env.ts`
+- ✅ **Eliminação** de todos `process.env` diretos
+- ✅ **Organização semântica** por domínio
+- ✅ **Fallbacks inteligentes** para produção
+- ✅ **Correção do erro Vercel** PropertyAccessExpression
+
+### **⚠️ Melhorias Futuras**
+- TypeScript strictness (noImplicitAny, strictNullChecks)
 - Code validation hooks
-- Secrets scanning
+- Secrets scanning automation
 
 ### **🎯 Meta**
 Claude Code trabalhando **COM** esta arquitetura excelente, potencializando-a sem destruí-la.

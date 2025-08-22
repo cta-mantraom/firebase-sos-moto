@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { z } from "zod";
+import { env, config } from "../../lib/config/env.js";
 import { EmailJobDataSchema } from "../../lib/types/queue.types.js";
 import { Email } from "../../lib/domain/notification/email.entity.js";
 import {
@@ -16,10 +17,10 @@ import { logInfo, logError } from "../../lib/utils/logger.js";
 
 // Initialize AWS SES
 const sesClient = new SESv2Client({
-  region: process.env.AWS_SES_REGION || "sa-east-1",
+  region: config.email.aws.region || "sa-east-1",
   credentials: {
-    accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY!,
+    accessKeyId: config.email.aws.accessKeyId!,
+    secretAccessKey: config.email.aws.secretAccessKey!,
   },
 });
 
@@ -506,7 +507,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : jobData.templateData.paymentId || "N/A",
       },
       config: {
-        from: process.env.SES_FROM_EMAIL || "contact@memoryys.com",
+        from: config.email.aws.fromEmail || "contact@memoryys.com",
       },
       options: {
         priority: EmailPriority.NORMAL,
@@ -582,7 +583,7 @@ async function sendEmailViaSES(
     });
 
     const command = new SendEmailCommand({
-      FromEmailAddress: process.env.SES_FROM_EMAIL || "contact@memoryys.com",
+      FromEmailAddress: config.email.aws.fromEmail || "contact@memoryys.com",
       Destination: {
         ToAddresses: [recipient],
       },
@@ -604,7 +605,7 @@ async function sendEmailViaSES(
           },
         },
       },
-      ConfigurationSetName: process.env.SES_CONFIGURATION_SET,
+      ConfigurationSetName: config.email.aws.configurationSet,
     });
 
     const response = await sesClient.send(command);

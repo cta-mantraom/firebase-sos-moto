@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
 import { storage } from '../firebase-admin.js';
+import { config as envConfig } from '../../config/env.js';
 
 export interface QRCodeOptions {
   width?: number;
@@ -32,7 +33,7 @@ export class QRCodeService {
     this.config = {
       defaultWidth: config?.defaultWidth ?? 400,
       defaultMargin: config?.defaultMargin ?? 2,
-      storageBucket: config?.storageBucket ?? process.env.FIREBASE_STORAGE_BUCKET!,
+      storageBucket: config?.storageBucket ?? envConfig.firebase.storageBucket!,
       maxSizeKB: config?.maxSizeKB ?? 500,
     };
   }

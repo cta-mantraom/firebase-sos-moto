@@ -1,14 +1,14 @@
 // lib/services/redis.ts - Redis cache client (Node.js environment)
 import { logInfo, logError, logWarning } from '../utils/logger.js';
-import { env } from '../config/env.js';
+import { config } from '../config/env.js';
 
 class RedisService {
     private baseUrl: string;
     private token: string;
 
     constructor() {
-        this.baseUrl = env.UPSTASH_REDIS_REST_URL || '';
-        this.token = env.UPSTASH_REDIS_REST_TOKEN || '';
+        this.baseUrl = config.redis.url || '';
+        this.token = config.redis.token || '';
     }
 
     private isConfigured(): boolean {

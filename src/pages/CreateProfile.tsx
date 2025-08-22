@@ -76,13 +76,14 @@ const CreateProfile: React.FC = () => {
     setShowCheckout(true);
   };
 
-  const handlePaymentSuccess = (paymentData: unknown) => {
-    console.log('Payment successful:', paymentData);
+  const handlePaymentSuccess = (paymentData: unknown, uniqueUrl: string) => {
+    console.log('Payment successful:', paymentData, 'UniqueURL:', uniqueUrl);
     toast({
       title: "Pagamento realizado com sucesso!",
       description: "Você receberá um email de confirmação em breve.",
     });
-    navigate('/success');
+    // Navigate to success page with the uniqueUrl as query parameter
+    navigate(`/success?id=${uniqueUrl}`);
   };
 
   const handlePaymentError = (error: Error) => {

@@ -8,7 +8,6 @@ export const CreatePaymentRequestSchema = z.object({
   surname: z.string().min(2),
   email: z.string().email(),
   phone: z.string().regex(/^\d{10,11}$/),
-  cpf: z.string().regex(/^\d{11}$/),
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   age: z.number().min(1).max(120),
   bloodType: z.string().optional(),

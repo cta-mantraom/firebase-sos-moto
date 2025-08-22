@@ -212,14 +212,6 @@ function buildPreferenceData(
         area_code: phoneAreaCode,
         number: phoneNumber,
       },
-      ...(data.cpf
-        ? {
-            identification: {
-              type: "CPF",
-              number: data.cpf,
-            },
-          }
-        : {}),
     },
     back_urls: {
       success: `${baseUrl}/success?id=${uniqueUrl}`,
@@ -316,7 +308,6 @@ async function savePendingProfile(
     surname: data.surname || null,
     email: data.email,
     phone: data.phone,
-    cpf: data.cpf || null,
     birthDate: data.birthDate || null,
     age: data.age,
 

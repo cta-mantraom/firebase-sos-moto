@@ -90,9 +90,6 @@ export class Payment {
       throw new Error('Payer name must have at least 2 characters');
     }
 
-    if (this._payer.cpf && !this.isValidCPF(this._payer.cpf)) {
-      throw new Error('Invalid CPF format');
-    }
 
     if (this._installments && this._installments < 1) {
       throw new Error('Installments must be at least 1');
@@ -104,10 +101,6 @@ export class Payment {
     return emailRegex.test(email);
   }
 
-  private isValidCPF(cpf: string): boolean {
-    const cleanCPF = cpf.replace(/[^\d]/g, '');
-    return cleanCPF.length === 11;
-  }
 
   // State transition methods
   public markAsProcessing(): void {

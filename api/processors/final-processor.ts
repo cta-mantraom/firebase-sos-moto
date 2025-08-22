@@ -171,7 +171,6 @@ async function createProfile(
     // Safely extract and validate profile data fields
     const name = typeof profileData.name === 'string' ? profileData.name : '';
     const surname = typeof profileData.surname === 'string' ? profileData.surname : '';
-    const cpf = typeof profileData.cpf === 'string' ? profileData.cpf : '';
     const birthDate = typeof profileData.birthDate === 'string' ? profileData.birthDate : '';
     const phone = typeof profileData.phone === 'string' ? profileData.phone : '';
     const email = typeof profileData.email === 'string' ? profileData.email : '';
@@ -193,7 +192,6 @@ async function createProfile(
       {
         name,
         surname,
-        cpf,
         birthDate,
         phone,
         email,

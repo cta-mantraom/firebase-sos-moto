@@ -31,7 +31,7 @@ export const ExternalReferenceSchema = z.string()
   .min(1, 'External reference is required')
   .max(256, 'External reference too long');
 
-// Payer validation with strict CPF validation
+// Payer validation
 export const PayerValidationSchema = z.object({
   email: z.string()
     .email('Invalid email format')
@@ -46,10 +46,6 @@ export const PayerValidationSchema = z.object({
     .optional(),
   phone: z.string()
     .regex(/^\d{10,11}$/, 'Phone must be 10 or 11 digits')
-    .optional(),
-  cpf: z.string()
-    .regex(/^\d{11}$/, 'CPF must be exactly 11 digits')
-    .refine(validateCPF, 'Invalid CPF')
     .optional(),
   identification: z.object({
     type: z.string().min(1, 'Identification type is required'),
@@ -358,39 +354,6 @@ export class PaymentValidators {
   }
 }
 
-/**
- * CPF validation algorithm
- */
-function validateCPF(cpf: string): boolean {
-  // Remove any non-digit characters
-  const cleanCPF = cpf.replace(/\D/g, '');
-  
-  // Check if has 11 digits
-  if (cleanCPF.length !== 11) return false;
-  
-  // Check if all digits are the same (invalid CPF)
-  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
-  
-  // Validate first check digit
-  let sum = 0;
-  for (let i = 0; i < 9; i++) {
-    sum += parseInt(cleanCPF[i]) * (10 - i);
-  }
-  let remainder = sum % 11;
-  const firstCheckDigit = remainder < 2 ? 0 : 11 - remainder;
-  if (parseInt(cleanCPF[9]) !== firstCheckDigit) return false;
-  
-  // Validate second check digit
-  sum = 0;
-  for (let i = 0; i < 10; i++) {
-    sum += parseInt(cleanCPF[i]) * (11 - i);
-  }
-  remainder = sum % 11;
-  const secondCheckDigit = remainder < 2 ? 0 : 11 - remainder;
-  if (parseInt(cleanCPF[10]) !== secondCheckDigit) return false;
-  
-  return true;
-}
 
 // Type exports for the validated schemas
 export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;

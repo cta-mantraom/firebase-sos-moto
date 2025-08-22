@@ -376,7 +376,6 @@ export interface PaymentData {
     name: string;
     surname?: string;
     phone?: string;
-    cpf?: string;
     identification?: {
       type: string;
       number: string;
@@ -415,7 +414,6 @@ export const PayerSchema = z.object({
   name: z.string().min(2),
   surname: z.string().optional(),
   phone: z.string().optional(),
-  cpf: z.string().optional(),
   identification: z.object({
     type: z.string(),
     number: z.string(),

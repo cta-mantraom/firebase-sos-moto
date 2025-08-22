@@ -26,9 +26,6 @@ import {
 
 // Enhanced validation schemas with custom business rules
 
-export const CPFValidationSchema = z.string()
-  .regex(/^\d{11}$/, 'CPF must be exactly 11 digits')
-  .refine(validateCPF, 'Invalid CPF number');
 
 export const PhoneValidationSchema = z.string()
   .regex(/^\d{10,11}$/, 'Phone must be 10 or 11 digits')
@@ -44,7 +41,6 @@ export const LicensePlateValidationSchema = z.string()
 
 // Extended personal data validation
 export const ExtendedPersonalDataSchema = PersonalDataSchema.extend({
-  cpf: CPFValidationSchema,
   phone: PhoneValidationSchema,
   address: z.object({
     street: z.string()
@@ -128,7 +124,6 @@ export const CreateProfileSchema = z.object({
 
 // Base schemas without effects for partial operations
 const BasePersonalDataSchema = PersonalDataSchema.extend({
-  cpf: z.string(),
   phone: z.string(),
   address: z.object({
     street: z.string()
@@ -361,7 +356,7 @@ export class ProfileValidators {
 
     // Personal data fields
     const personalFields = [
-      'name', 'surname', 'cpf', 'birthDate', 'phone', 'email',
+      'name', 'surname', 'birthDate', 'phone', 'email',
       'address.street', 'address.number', 'address.neighborhood', 
       'address.city', 'address.state', 'address.zipCode'
     ];
@@ -518,39 +513,6 @@ export class ProfileValidators {
 
 // Helper functions
 
-/**
- * Validates Brazilian CPF number
- */
-function validateCPF(cpf: string): boolean {
-  // Remove any non-digit characters
-  const cleanCPF = cpf.replace(/\D/g, '');
-  
-  // Check if has 11 digits
-  if (cleanCPF.length !== 11) return false;
-  
-  // Check if all digits are the same (invalid CPF)
-  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
-  
-  // Validate first check digit
-  let sum = 0;
-  for (let i = 0; i < 9; i++) {
-    sum += parseInt(cleanCPF[i]) * (10 - i);
-  }
-  let remainder = sum % 11;
-  const firstCheckDigit = remainder < 2 ? 0 : 11 - remainder;
-  if (parseInt(cleanCPF[9]) !== firstCheckDigit) return false;
-  
-  // Validate second check digit
-  sum = 0;
-  for (let i = 0; i < 10; i++) {
-    sum += parseInt(cleanCPF[i]) * (11 - i);
-  }
-  remainder = sum % 11;
-  const secondCheckDigit = remainder < 2 ? 0 : 11 - remainder;
-  if (parseInt(cleanCPF[10]) !== secondCheckDigit) return false;
-  
-  return true;
-}
 
 /**
  * Validates Brazilian phone number format

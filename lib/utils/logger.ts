@@ -9,7 +9,7 @@ interface LogData {
 
 const SENSITIVE_FIELDS = [
     'password', 'token', 'secret', 'key', 'signature',
-    'email', 'phone', 'cpf', 'credit_card', 'api_key',
+    'email', 'phone', 'credit_card', 'api_key',
     'access_token', 'webhook_secret', 'authorization'
 ];
 

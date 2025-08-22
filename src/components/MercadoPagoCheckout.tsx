@@ -15,7 +15,7 @@ declare global {
 interface MercadoPagoCheckoutProps {
   userData: UserProfile;
   planType: "basic" | "premium";
-  onSuccess: (paymentData: unknown) => void;
+  onSuccess: (paymentData: unknown, uniqueUrl: string) => void;
   onError: (error: Error) => void;
 }
 
@@ -26,6 +26,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   onError,
 }) => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [uniqueUrl, setUniqueUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
@@ -58,6 +59,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
             email: userData.email,
             name: userData.name,
             phone: userData.phone,
+            surname: userData.surname || "",
           },
           planType: planType,
           externalReference: externalReference,
@@ -65,9 +67,11 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           // Profile fields
           selectedPlan: planType,
           name: userData.name,
+          surname: userData.surname || "",
           email: userData.email,
           phone: userData.phone,
           age: userData.age,
+          birthDate: userData.birthDate || "",
           bloodType: userData.bloodType,
           allergies: userData.allergies,
           medications: userData.medications,
@@ -88,6 +92,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 
       const data = await response.json();
       setPreferenceId(data.preferenceId);
+      setUniqueUrl(data.uniqueUrl); // Save the uniqueUrl for redirect
     } catch (error) {
       console.error("Error creating preference:", error);
       toast({
@@ -180,7 +185,13 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         }}
         onSubmit={async (paymentData) => {
           console.log("Payment submitted:", paymentData);
-          onSuccess(paymentData);
+          // Pass uniqueUrl along with payment data
+          if (uniqueUrl) {
+            onSuccess(paymentData, uniqueUrl);
+          } else {
+            console.error("No uniqueUrl available");
+            onError(new Error("No unique URL available"));
+          }
         }}
         onError={(error) => {
           console.error("Payment error:", error);

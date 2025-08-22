@@ -14,7 +14,6 @@ export const CreatePaymentSchema = z.object({
         email: z.string().email(),
         name: z.string().min(2),
         phone: z.string().optional(),
-        cpf: z.string().optional(),
         surname: z.string().optional(),
         identification: z.object({
             type: z.string(),
@@ -44,7 +43,6 @@ export const CreatePaymentSchema = z.object({
         relationship: z.string().min(1)
     })).optional(),
     surname: z.string().optional(),
-    cpf: z.string().optional(),
     birthDate: z.string().optional(),
     healthPlan: z.string().optional(),
     preferredHospital: z.string().optional(),

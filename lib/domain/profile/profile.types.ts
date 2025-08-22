@@ -30,7 +30,6 @@ export enum BloodType {
 export const PersonalDataSchema = z.object({
   name: z.string().min(2),
   surname: z.string().min(2),
-  cpf: z.string().regex(/^\d{11}$/),
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   phone: z.string().regex(/^\d{10,11}$/),
   email: z.string().email(),

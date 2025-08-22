@@ -768,7 +768,6 @@ export class ProfileRepository {
       // Personal data
       name: profile.personalData.name,
       surname: profile.personalData.surname,
-      cpf: profile.personalData.cpf,
       birthDate: profile.personalData.birthDate,
       phone: profile.personalData.phone,
       email: profile.personalData.email,
@@ -807,7 +806,6 @@ export class ProfileRepository {
       personalData: {
         name: data.name as string,
         surname: data.surname as string,
-        cpf: data.cpf as string,
         birthDate: data.birthDate as string,
         phone: data.phone as string,
         email: data.email as string,

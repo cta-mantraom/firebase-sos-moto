@@ -83,6 +83,22 @@ Os agentes são acionados através de **trigger patterns** e podem ser chamados:
 2. **Manualmente**: Usando Task tool com nome específico
 3. **Via Comandos**: Comandos slash pré-configurados
 
+### **⚠️ IMPORTANTE: Análise vs Implementação**
+
+#### **Solicitações de ANÁLISE (criar apenas documentação)**
+- "Analise o fluxo de pagamento"
+- "Verifique os problemas no componente"
+- "Faça uma análise profunda do sistema"
+- "Documente o processo de deploy"
+
+#### **Solicitações de IMPLEMENTAÇÃO (criar código)**
+- "Corrija o bug no pagamento"
+- "Implemente a validação de CPF"
+- "Crie o componente de checkout"
+- "Adicione o endpoint de status"
+
+**🔴 REGRA CRÍTICA**: Agentes NUNCA devem criar código sem solicitação explícita de implementação
+
 ### **🎨 Frontend Agent**
 
 **Trigger Patterns**: `react`, `component`, `tsx`, `frontend`, `ui`, `tailwind`, `shadcn`

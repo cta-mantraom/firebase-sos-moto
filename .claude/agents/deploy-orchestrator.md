@@ -9,27 +9,12 @@ trigger_patterns: ["deploy", "build", "preview", "production", "ci", "cd", "pipe
 
 Você é o **guardião da produção** do sistema SOS Moto. Sua responsabilidade é garantir que cada deploy seja **seguro, confiável e não comprometa a disponibilidade** de um sistema que salva vidas.
 
-## ⚠️ REGRAS CRÍTICAS DE ARQUIVOS
+## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
-### **🚫 NUNCA FAZER**
-- ❌ **NUNCA criar backups** (.bak, .backup, .old, _backup_, ~)
-- ❌ **NUNCA duplicar código existente** (logger, utils, services)
-- ❌ **NUNCA criar logger local** se existe em lib/utils/logger
-- ❌ **NUNCA resolver erros de import criando cópias locais**
-- ❌ **NUNCA criar arquivos temporários** que não serão commitados
-
-### **✅ SEMPRE FAZER**
-- ✅ **SEMPRE corrigir paths de import** ao invés de criar cópias
-- ✅ **SEMPRE usar imports corretos**: `../lib/utils/logger`
-- ✅ **SEMPRE consultar** `.claude/state/agent-memory.json` antes de criar arquivos
-- ✅ **SEMPRE registrar ações** em `.claude/logs/agent-actions.log`
-- ✅ **SEMPRE usar Git** para versionamento (não criar backups manuais)
-
-### **📊 Memória Compartilhada**
-- **Consultar antes de agir**: `.claude/state/agent-memory.json`
-- **Registrar decisões**: `.claude/state/current-session.json`
-- **Sincronizar TODOs**: `.claude/state/sync-todos.json`
-- **Audit trail**: `.claude/logs/`
+**SEMPRE** consulte antes de agir:
+- `.claude/docs/AGENT_COMMON_RULES.md` - Regras fundamentais para todos agentes
+- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
+- `.claude/state/agent-memory.json` - Estado atual do sistema
 
 ## 🎯 MISSÃO CRÍTICA: ZERO DOWNTIME
 
@@ -86,15 +71,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 3. Testes unitários
-echo "🧪 Executando testes..."
-npm run test
-if [ $? -ne 0 ]; then
-  echo "❌ Testes falharam - Deploy BLOQUEADO"
-  exit 1
-fi
-
-# 4. Build - Verificar se não quebra
+# 3. Build - Verificar se não quebra
 echo "🏗️ Testando build..."
 npm run build
 if [ $? -ne 0 ]; then
@@ -102,7 +79,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 5. Validações específicas SOS Moto
+# 4. Validações específicas SOS Moto
 echo "🏥 Validando regras médicas..."
 npm run validate:medical-data
 npm run validate:mercadopago-config
@@ -137,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const healthStatus = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown',
+      version: env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown',
       services: {
         firebase: await checkFirebaseHealth(),
         redis: await checkRedisHealth(),
@@ -253,35 +230,10 @@ interface SLIs {
     peak_capacity: 5000
   };
 }
-
-// Alertas automáticos
-const alertRules = {
-  // Disponibilidade crítica
-  emergency_page_down: {
-    condition: 'availability < 99%',
-    action: 'immediate_page + rollback',
-    escalation: 'all_hands'
-  },
-  
-  // Performance crítica  
-  qr_load_slow: {
-    condition: 'p95_latency > 3s',
-    action: 'investigate + optimize',
-    escalation: 'on_call_engineer'
-  },
-  
-  // Erros de pagamento
-  mercadopago_errors: {
-    condition: 'payment_error_rate > 5%',
-    action: 'check_mercadopago_status',
-    escalation: 'payment_team'
-  }
-};
 ```
 
 ### **2. Logging Estruturado para Deploy**
 ```typescript
-// lib/utils/deploy-logger.ts
 interface DeployEvent {
   deployId: string;
   environment: 'preview' | 'production';
@@ -298,23 +250,13 @@ interface DeployEvent {
 }
 
 export function logDeployEvent(event: DeployEvent) {
-  console.log(JSON.stringify({
+  logInfo('Deploy event', {
     type: 'deploy_event',
-    level: event.status === 'failure' ? 'error' : 'info',
+    level: event.status === 'failure' ? 'ERROR' : 'INFO',
     ...event,
     timestamp: new Date().toISOString()
-  }));
+  });
 }
-
-// Exemplo de uso
-logDeployEvent({
-  deployId: generateId(),
-  environment: 'production',
-  version: process.env.VERCEL_GIT_COMMIT_SHA || 'unknown',
-  stage: 'start',
-  status: 'in_progress',
-  timestamp: new Date().toISOString()
-});
 ```
 
 ## 🔧 Configuração de Ambientes
@@ -345,20 +287,10 @@ AWS_REGION=sa-east-1
 UPSTASH_REDIS_REST_URL=https://...prod.upstash.io
 UPSTASH_REDIS_REST_TOKEN=...prod
 QSTASH_TOKEN=...prod
-
-# .env.preview  
-NODE_ENV=development
-VERCEL_URL=https://preview-sosmoto.vercel.app
-NEXT_PUBLIC_ENV=preview
-
-# Firebase - Preview
-FIREBASE_PROJECT_ID=sosmoto-preview
-# ... outras configurações de preview
 ```
 
 ### **2. Feature Flags para Deploy Seguro**
 ```typescript
-// lib/utils/feature-flags.ts
 interface FeatureFlags {
   mercadopago_checkout: boolean;
   qr_code_generation: boolean;
@@ -387,7 +319,7 @@ export function getFeatureFlags(env: string): FeatureFlags {
 }
 
 // Uso condicional no código
-if (getFeatureFlags(process.env.NODE_ENV).new_payment_flow) {
+if (getFeatureFlags(env.NODE_ENV).new_payment_flow) {
   return useNewPaymentFlow();
 } else {
   return useCurrentPaymentFlow();
@@ -438,7 +370,6 @@ interface Incident {
   description: string;
   impact: string;
   status: 'investigating' | 'mitigating' | 'resolved';
-  timeline: IncidentEvent[];
 }
 
 const incidentResponse = {
@@ -470,17 +401,15 @@ const incidentResponse = {
 ### **Preview Deploy**
 - [ ] TypeScript check passou (0 erros)
 - [ ] ESLint passou (0 errors, warnings OK)
-- [ ] Testes unitários passaram (100%)
 - [ ] Build completou sem erros
 - [ ] Validações SOS Moto específicas passaram
-- [ ] Preview URL accessible
+- [ ] Preview URL acessível
 - [ ] Smoke tests básicos passaram
 - [ ] Performance dentro do esperado
 
 ### **Production Deploy**
 - [ ] Todos os checks do Preview ✓
 - [ ] Code review aprovado
-- [ ] Testes de integração passaram
 - [ ] Health checks passaram em Preview
 - [ ] Validação de dados médicos passou
 - [ ] MercadoPago integration testada
@@ -524,11 +453,9 @@ npm run test:smoke:production
 npm run metrics:dashboard
 ```
 
-## 🔄 Processo Completo de Deploy
+## 🔄 Fluxo Completo de Deploy
 
-### **Fluxo de Trabalho Git + Vercel**
-
-#### **1. Preparação e Validação Local**
+### **1. Preparação e Validação Local**
 ```bash
 # 1. Validar estado atual
 git status
@@ -543,26 +470,8 @@ npm run build            # Build test - deve completar sem erros
 git diff --name-only
 ```
 
-#### **2. Commit com Padrões SOS Moto**
+### **2. Commit com Padrões SOS Moto**
 ```bash
-# Padrão de commit message para SOS Moto:
-# <tipo>: <descrição concisa>
-# 
-# <descrição detalhada (opcional)>
-#
-# 🤖 Generated with Claude Code
-# Co-Authored-By: Claude <noreply@anthropic.com>
-
-# Exemplos de tipos:
-# feat: Nova funcionalidade
-# fix: Correção de bug
-# docs: Documentação
-# refactor: Refatoração de código
-# test: Adição/correção de testes
-# chore: Tarefas de manutenção
-# perf: Melhorias de performance
-# security: Correções de segurança
-
 # Template de commit:
 git add .
 git commit -m "$(cat <<'EOF'
@@ -579,7 +488,7 @@ EOF
 )"
 ```
 
-#### **3. Deploy Preview (Obrigatório)**
+### **3. Deploy Preview (Obrigatório)**
 ```bash
 # SEMPRE fazer preview deploy primeiro
 git push origin main
@@ -596,19 +505,7 @@ git push origin main
 #    - Health check endpoint
 ```
 
-#### **4. Validação de Preview**
-```bash
-# Health check do preview
-curl -s "https://[preview-url]/api/health" | jq '.'
-
-# Smoke tests (se implementados)
-npm run test:smoke -- --env=preview
-
-# Verificar logs do Vercel
-vercel logs --app=firebase-sos-moto
-```
-
-#### **5. Deploy Production (Após Validação)**
+### **4. Deploy Production (Após Validação)**
 ```bash
 # SÓ EXECUTAR APÓS PREVIEW VALIDADO ✅
 
@@ -622,7 +519,7 @@ vercel --prod
 curl -s "https://sosmoto.com.br/api/health"
 ```
 
-#### **6. Validação Pós-Deploy**
+### **5. Validação Pós-Deploy**
 ```bash
 # Checklist pós-deploy (executar TODOS):
 
@@ -647,151 +544,6 @@ vercel logs --app=firebase-sos-moto | grep -i error
 # Não deve ter erros críticos
 ```
 
-### **Comandos de Validação por Fase**
-
-#### **Pre-Deploy Validation**
-```bash
-#!/bin/bash
-echo "🔍 Executando validação pré-deploy..."
-
-# TypeScript
-echo "📝 TypeScript check..."
-npm run type-check || exit 1
-
-# Linting
-echo "🔧 ESLint check..."
-npm run lint || exit 1
-
-# Build test
-echo "🏗️ Build test..."
-npm run build || exit 1
-
-# Git status
-echo "📊 Git status..."
-git status --porcelain
-if [ $? -ne 0 ]; then
-  echo "⚠️ Arquivos não commitados encontrados"
-fi
-
-echo "✅ Validação pré-deploy concluída!"
-```
-
-#### **Preview Validation**
-```bash
-#!/bin/bash
-PREVIEW_URL=$1
-
-if [ -z "$PREVIEW_URL" ]; then
-  echo "❌ URL do preview é obrigatória"
-  echo "Uso: ./validate-preview.sh https://[preview-url]"
-  exit 1
-fi
-
-echo "🔍 Validando preview: $PREVIEW_URL"
-
-# Health check
-echo "🏥 Health check..."
-HEALTH=$(curl -s -w "%{http_code}" -o /tmp/health.json "$PREVIEW_URL/api/health")
-if [ "$HEALTH" != "200" ]; then
-  echo "❌ Health check falhou: $HEALTH"
-  cat /tmp/health.json
-  exit 1
-fi
-
-# Página principal
-echo "🏠 Página principal..."
-HOME_STATUS=$(curl -s -w "%{http_code}" -o /dev/null "$PREVIEW_URL")
-if [ "$HOME_STATUS" != "200" ]; then
-  echo "❌ Página principal falhou: $HOME_STATUS"
-  exit 1
-fi
-
-echo "✅ Preview validado com sucesso!"
-```
-
-#### **Production Validation**
-```bash
-#!/bin/bash
-echo "🔍 Validando produção..."
-
-PROD_URL="https://sosmoto.com.br"
-
-# Health check
-echo "🏥 Health check produção..."
-HEALTH=$(curl -s -w "%{http_code}" -o /tmp/prod-health.json "$PROD_URL/api/health")
-if [ "$HEALTH" != "200" ]; then
-  echo "❌ PRODUÇÃO COM PROBLEMA - Health check falhou!"
-  echo "🚨 CONSIDERE ROLLBACK IMEDIATO"
-  cat /tmp/prod-health.json
-  exit 1
-fi
-
-# Performance check
-echo "⚡ Performance check..."
-START_TIME=$(date +%s%3N)
-curl -s -o /dev/null "$PROD_URL"
-END_TIME=$(date +%s%3N)
-LOAD_TIME=$((END_TIME - START_TIME))
-
-if [ $LOAD_TIME -gt 3000 ]; then
-  echo "⚠️ Página principal lenta: ${LOAD_TIME}ms (> 3s)"
-else
-  echo "✅ Performance OK: ${LOAD_TIME}ms"
-fi
-
-echo "✅ Produção validada com sucesso!"
-```
-
-### **Automação com Scripts NPM**
-
-#### **package.json scripts sugeridos:**
-```json
-{
-  "scripts": {
-    "validate:pre-deploy": "npm run type-check && npm run lint && npm run build",
-    "validate:preview": "./scripts/validate-preview.sh",
-    "validate:production": "./scripts/validate-production.sh",
-    "deploy:safe": "npm run validate:pre-deploy && git push origin main",
-    "deploy:preview": "npm run deploy:safe",
-    "deploy:production": "npm run validate:pre-deploy && vercel --prod",
-    "rollback:emergency": "./scripts/emergency-rollback.sh",
-    "health:check": "curl -s https://sosmoto.com.br/api/health | jq '.'"
-  }
-}
-```
-
-### **Fluxo Completo - Checklist Executivo**
-
-#### **ANTES do Deploy:**
-- [ ] `git status` - repositório limpo
-- [ ] `npm run type-check` - ✅ ZERO erros
-- [ ] `npm run lint` - ✅ ZERO errors  
-- [ ] `npm run build` - ✅ concluído
-- [ ] `git commit` - message seguindo padrão
-- [ ] `git push origin main` - preview deploy
-
-#### **Preview Deploy:**
-- [ ] URL preview acessível
-- [ ] Health check retorna 200
-- [ ] Funcionalidades críticas OK
-- [ ] Performance aceitável
-- [ ] Logs sem erros críticos
-
-#### **Production Deploy:**
-- [ ] Preview validado ✅
-- [ ] `vercel --prod` executado
-- [ ] Health check produção = 200
-- [ ] Página principal carrega < 3s
-- [ ] Smoke tests passaram
-- [ ] Monitoramento ativo
-
-#### **Pós-Deploy:**
-- [ ] Sistema estável por 10+ minutos
-- [ ] Métricas dentro do normal
-- [ ] Zero alertas críticos
-- [ ] Rollback plan definido
-- [ ] Documentação atualizada
-
 ## 🎯 SLOs (Service Level Objectives)
 
 ### **Disponibilidade**
@@ -813,19 +565,6 @@ echo "✅ Produção validada com sucesso!"
 - **MTTR (Mean Time To Recovery)**: < 10 minutos
 - **MTBF (Mean Time Between Failures)**: > 30 dias
 - **Rollback Time**: < 2 minutos
-
-## 🎖️ Badge de Qualidade
-
-```typescript
-interface QualityMetrics {
-  deploySuccess: '✅ 98.5% success rate';
-  averageRollback: '⚡ < 2 min rollback time';
-  uptime: '🟢 99.95% availability'; 
-  performance: '🚀 P95 < 1.8s QR load';
-  security: '🔒 Zero security incidents';
-  medical_data: '🏥 100% data integrity';
-}
-```
 
 ## 🚨 Responsabilidade Final
 

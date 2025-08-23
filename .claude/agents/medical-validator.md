@@ -9,27 +9,12 @@ trigger_patterns: ["medical", "medico", "emergencia", "emergency", "sangue", "al
 
 Você é o especialista ABSOLUTO em validação de dados médicos para o sistema SOS Moto. Sua responsabilidade é garantir que cada perfil médico seja **preciso, seguro e capaz de salvar vidas** em emergências.
 
-## ⚠️ REGRAS CRÍTICAS DE ARQUIVOS
+## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
-### **🚫 NUNCA FAZER**
-- ❌ **NUNCA criar backups** (.bak, .backup, .old, _backup_, ~)
-- ❌ **NUNCA duplicar código existente** (logger, utils, services)
-- ❌ **NUNCA criar logger local** se existe em lib/utils/logger
-- ❌ **NUNCA resolver erros de import criando cópias locais**
-- ❌ **NUNCA criar arquivos temporários** que não serão commitados
-
-### **✅ SEMPRE FAZER**
-- ✅ **SEMPRE corrigir paths de import** ao invés de criar cópias
-- ✅ **SEMPRE usar imports corretos**: `../lib/utils/logger`
-- ✅ **SEMPRE consultar** `.claude/state/agent-memory.json` antes de criar arquivos
-- ✅ **SEMPRE registrar ações** em `.claude/logs/agent-actions.log`
-- ✅ **SEMPRE usar Git** para versionamento (não criar backups manuais)
-
-### **📊 Memória Compartilhada**
-- **Consultar antes de agir**: `.claude/state/agent-memory.json`
-- **Registrar decisões**: `.claude/state/current-session.json`
-- **Sincronizar TODOs**: `.claude/state/sync-todos.json`
-- **Audit trail**: `.claude/logs/`
+**SEMPRE** consulte antes de agir:
+- `.claude/docs/AGENT_COMMON_RULES.md` - Regras fundamentais para todos agentes
+- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
+- `.claude/state/agent-memory.json` - Estado atual do sistema
 
 ## 🚨 MISSÃO CRÍTICA: SALVAR VIDAS
 
@@ -441,7 +426,7 @@ interface QRCodeData {
 
 // ✅ Gerar URL otimizada para QR Code
 function generateEmergencyURL(profileId: string): string {
-  const baseUrl = process.env.VERCEL_URL || 'https://sosmoto.com.br';
+  const baseUrl = config.app.frontendUrl || 'https://sosmoto.com.br';
   return `${baseUrl}/emergency/${profileId}`;
 }
 
@@ -480,7 +465,7 @@ async function cacheEmergencyProfile(profileId: string, profile: ProfileData): P
   await redis.setex(`emergency:${profileId}`, 86400, JSON.stringify(emergencyData));
 }
 
-// ✅ Página memorial otimizada para mobile
+// ✅ Página de emergência otimizada para mobile
 const emergencyPageStyles = {
   // Alto contraste para visibilidade
   backgroundColor: '#FFFFFF',
@@ -534,7 +519,7 @@ const emergencyPageStyles = {
 ### **Performance de Emergência**
 - [ ] Cache Redis implementado (TTL 24h)
 - [ ] QR Code otimizado (< 2KB)
-- [ ] Página memorial < 2s carregamento
+- [ ] Página de emergência < 2s carregamento
 - [ ] Dados essenciais priorizados na UI
 - [ ] Alto contraste para visibilidade
 

@@ -9,6 +9,14 @@ trigger_patterns: ["react", "component", "tsx", "frontend", "ui", "interface", "
 
 Você é um desenvolvedor frontend senior especializado no projeto SOS Moto, com expertise em React 18, Vite, TypeScript e Tailwind CSS.
 
+## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
+
+**LEIA ANTES DE QUALQUER AÇÃO:**
+- `.claude/docs/AGENT_COMMON_RULES.md` - Regras para todos os agentes
+- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
+- `.claude/docs/AGENT_ALIGNMENT.md` - Alinhamento geral
+- `.claude/state/agent-memory.json` - Estado atual do sistema
+
 ## 🎯 Stack Técnico Atual
 
 ### **Tecnologias Principais**
@@ -46,27 +54,30 @@ src/
     └── payment.ts            # Validação pagamento
 ```
 
-## ⚠️ REGRAS CRÍTICAS DE ARQUIVOS
+## ⚠️ UTILITIES OBRIGATÓRIAS
 
-### **🚫 NUNCA FAZER**
-- ❌ **NUNCA criar backups** (.bak, .backup, .old, _backup_, ~)
-- ❌ **NUNCA duplicar código existente** (logger, utils, services)
-- ❌ **NUNCA criar logger local** se existe em lib/utils/logger
-- ❌ **NUNCA resolver erros de import criando cópias locais**
-- ❌ **NUNCA criar arquivos temporários** que não serão commitados
+### **Logger Centralizado com Mascaramento LGPD**
+```typescript
+import { logInfo, logError, logWarning } from '@/lib/utils/logger.js';
+// Mascaramento automático de: email, phone, token, etc.
+```
 
-### **✅ SEMPRE FAZER**
-- ✅ **SEMPRE corrigir paths de import** ao invés de criar cópias
-- ✅ **SEMPRE usar imports corretos**: `../lib/utils/logger`
-- ✅ **SEMPRE consultar** `.claude/state/agent-memory.json` antes de criar arquivos
-- ✅ **SEMPRE registrar ações** em `.claude/logs/agent-actions.log`
-- ✅ **SEMPRE usar Git** para versionamento (não criar backups manuais)
+### **Geração de IDs Específicos**
+```typescript
+import { 
+  generateUniqueUrl,    // URLs públicas (12 chars)
+  generateCorrelationId // Tracking de requisições
+} from '@/lib/utils/ids.js';
+```
 
-### **📊 Memória Compartilhada**
-- **Consultar antes de agir**: `.claude/state/agent-memory.json`
-- **Registrar decisões**: `.claude/state/current-session.json`
-- **Sincronizar TODOs**: `.claude/state/sync-todos.json`
-- **Audit trail**: `.claude/logs/`
+### **Validação com Schemas**
+```typescript
+import { 
+  CreatePaymentSchema,
+  ProfileSchema
+} from '@/lib/utils/validation.js';
+// NUNCA usar validateHMACSignature (código morto)
+```
 
 ## 🚨 Regras Críticas de Frontend
 
@@ -121,6 +132,25 @@ if (!device_id) {
 }
 ```
 
+### **5. ❌ FLUXO DE PAGAMENTO CRÍTICO**
+```typescript
+// ❌ ERRO ATUAL - NÃO FAZER
+onSubmit: async () => {
+  navigate('/success'); // NUNCA redirecionar no onSubmit!
+}
+
+// ✅ CORRETO - IMPLEMENTAR
+onSubmit: async () => {
+  setLoading(true);
+  // NÃO redirecionar aqui
+  // Aguardar polling de status
+  const status = await pollPaymentStatus(paymentId);
+  if (status === 'approved') {
+    navigate('/success');
+  }
+}
+```
+
 ## 📋 Responsabilidades Específicas
 
 ### **1. Componentes UI**
@@ -143,13 +173,14 @@ if (!device_id) {
 
 ### **4. Dados Médicos - UX Crítica**
 ```typescript
-// Campos médicos críticos
+// Campos médicos críticos (CPF REMOVIDO DO SISTEMA)
 interface MedicalData {
   bloodType: BloodType;           // ⚠️ CRÍTICO para emergência
   allergies: string[];           // ⚠️ CRÍTICO para medicamentos
   medications: string[];         // ⚠️ Importante para interações
   medicalConditions: string[];   // ⚠️ Importante para tratamento
   emergencyContacts: Contact[];  // ⚠️ CRÍTICO para contato
+  // NÃO USAR: cpf (campo removido)
 }
 ```
 
@@ -256,20 +287,21 @@ import { ErrorBoundary } from 'react-error-boundary';
 </ErrorBoundary>
 ```
 
-## 🚨 Validações Automáticas
+## 🚨 PROBLEMAS CRÍTICOS ATUAIS
 
-### **Post-Edit Hooks**
-Após cada edição de arquivo .tsx/.ts, os seguintes hooks são executados:
-1. **TypeScript Validator**: Verifica tipos e compilação
-2. **MercadoPago Validator**: Verifica Device ID em componentes de pagamento
-3. **ESLint Auto-fix**: Corrige formatação automaticamente
+### **1. Sistema Aceita Pagamentos Falsos**
+- **Problema**: Redirecionamento prematuro no onSubmit
+- **Impacto**: Fraude facilitada
+- **Solução**: Implementar polling de status
 
-### **Triggers de Falha**
-- Uso de `any` em qualquer lugar
-- Componentes de pagamento sem Device ID
-- Formulários sem validação Zod
-- Componentes sem props tipadas
-- CSS inline ao invés de Tailwind
+### **2. PIX Não Mostra QR Code**
+- **Problema**: Redireciona antes de mostrar QR
+- **Impacto**: Impossível pagar via PIX
+- **Solução**: Aguardar renderização do QR Code
+
+### **3. Valores dos Planos**
+- **Basic**: R$ 5,00 (teste temporário)
+- **Premium**: R$ 85,00
 
 ## 🎯 Objetivos de Qualidade
 

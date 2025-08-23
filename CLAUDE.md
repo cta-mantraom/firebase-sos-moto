@@ -8,6 +8,21 @@ Este projeto **JÁ TEM** uma arquitetura Domain-Driven Design EXCELENTE implemen
 
 **🚨 CRÍTICO: NUNCA recriar ou duplicar estruturas existentes!**
 
+### **🔴 REGRAS DE DESENVOLVIMENTO - PRODUÇÃO**
+
+#### **ESCOPO DE ATUAÇÃO**
+- ✅ **ANÁLISE E DOCUMENTAÇÃO**: Quando solicitado análise, criar apenas documentos
+- ✅ **IMPLEMENTAÇÃO**: Criar código SOMENTE quando explicitamente solicitado
+- ❌ **NUNCA criar código sem solicitação explícita do usuário**
+- ❌ **NUNCA implementar testes/mocks em código de produção**
+- ❌ **NUNCA simular funcionalidades - tudo deve ser real**
+
+#### **TYPESCRIPT STRICT**
+- ❌ **PROIBIDO usar `any`** - sempre tipar corretamente
+- ✅ Usar tipos específicos, interfaces e generics
+- ✅ Habilitar `noImplicitAny: true` quando corrigir tsconfig
+- ✅ Sempre validar com `npm run type-check`
+
 ---
 
 ## 📁 ARQUITETURA ATUAL (NÃO MODIFICAR)
@@ -46,10 +61,56 @@ api/
 └── processors/            # Async job processors
 ```
 
+### **Utilities Layer** 🔧 CRÍTICO (Não Documentado)
+```
+lib/utils/
+├── logger.ts              # Structured logging com mascaramento LGPD
+├── ids.ts                 # Geração de IDs únicos (10+ arquivos dependem)
+└── validation.ts          # Schemas Zod e transformações
+```
+
 ### **Configuration Layer** ✅ CENTRALIZADO
 ```
 lib/config/
 └── env.ts                  # Centralized environment config with Zod validation
+```
+
+---
+
+## 🔧 UTILITIES CRÍTICAS (DESCOBERTAS NA ANÁLISE)
+
+### **Logger com Mascaramento LGPD Automático**
+```typescript
+// lib/utils/logger.ts
+// AUTOMATICAMENTE mascara campos sensíveis:
+const SENSITIVE_FIELDS = [
+    'password', 'token', 'secret', 'email', 'phone',
+    'credit_card', 'api_key', 'webhook_secret'
+];
+// Resultado: {"email": "***MASKED***"}
+
+// Funções disponíveis:
+logInfo(message, data?)    // Logs informativos
+logError(message, error?, data?)  // Erros com stack trace
+logWarning(message, data?)  // Avisos (usado em 13 arquivos!)
+```
+
+### **Geração de IDs Específicos (10+ arquivos dependem)**
+```typescript
+// lib/utils/ids.ts
+generateUniqueUrl()    // URLs públicas (12 chars, sem hífens)
+generateCorrelationId() // req_timestamp_random para rastreamento
+generatePaymentId()    // payment_timestamp_uuid para pagamentos
+generateProfileId()    // profile_uuid completo
+```
+
+### **Validação e Schemas**
+```typescript
+// lib/utils/validation.ts
+CreatePaymentSchema    // 25+ campos validados
+ProfileSchema         // Schema do perfil médico
+transformApiToProfile() // Transforma dados da API para banco
+// ⚠️ ATENÇÃO: validateHMACSignature() é código morto (usar MercadoPagoService)
 ```
 
 ---
@@ -125,11 +186,22 @@ config.app.frontendUrl
 
 ## 🎯 FUNCIONALIDADES CRÍTICAS
 
-### **Fluxo de Pagamento SOS Moto**
-1. **Frontend**: Device ID → Payment Brick → Create Payment
-2. **Backend**: Validate → Create Preference → Return to Frontend  
-3. **Webhook**: HMAC → Log → Enqueue Job (assíncrono)
-4. **Processor**: Create Profile → Generate QR → Send Email
+### **🔴 PROBLEMA CRÍTICO ATUAL: Sistema Aceita Pagamentos Falsos**
+- **Status**: CRÍTICO - Redirecionamento prematuro no onSubmit
+- **Impacto**: Fraude facilitada, perda de receita, risco legal
+- **Documentação Completa**: `/docs/PAYMENT_FLOW_ANALYSIS.md`
+
+### **Fluxo de Pagamento ATUAL (Problemático)**
+1. **Frontend**: Device ID → Payment Brick → onSubmit
+2. **❌ ERRO**: Redireciona IMEDIATAMENTE para /success
+3. **Backend**: Webhook processa (desconectado do frontend)
+4. **Problema**: Usuário vê sucesso sem pagamento real
+
+### **Fluxo CORRETO (A Implementar)**
+1. **Frontend**: Device ID → Payment Brick → Aguarda confirmação
+2. **Backend**: Webhook valida → Status = approved
+3. **Frontend**: Polling/WebSocket → Detecta aprovação
+4. **SÓ ENTÃO**: Redireciona para /success
 
 ### **Dados Médicos Críticos**
 - **Tipo sanguíneo** (select A+, A-, B+, B-, AB+, AB-, O+, O-)
@@ -139,8 +211,9 @@ config.app.frontendUrl
 - **Contatos de emergência** (array de objetos validados)
 
 ### **Planos SOS Moto**
-- **Basic**: R$ 55,00 (validado no código)
+- **Basic**: R$ 5,00 (**TESTE TEMPORÁRIO** - produção final: R$ 55,00)
 - **Premium**: R$ 85,00 (validado no código)
+- **Nota**: Valor R$ 5 é intencional para testes com pagamento real
 
 ---
 
@@ -196,7 +269,9 @@ npm run build        # Verifica build serverless
 - ✅ Validar dados com schemas Zod existentes
 - ✅ Incluir correlation IDs em logs
 - ✅ Tratar erros com try/catch
-- ✅ Usar TypeScript strict (quando corrigido)
+- ✅ Usar TypeScript strict - **NUNCA usar `any`**
+- ✅ Desenvolver para **PRODUÇÃO REAL** (não criar mocks/testes)
+- ✅ Aguardar aprovação antes de interagir com banco de dados
 
 ### **NUNCA**
 - ❌ Chamar APIs externas diretamente
@@ -204,6 +279,11 @@ npm run build        # Verifica build serverless
 - ❌ Modificar arquitetura Domain/Repository/Service
 - ❌ Processar síncronamente em webhooks
 - ❌ Expor secrets em logs ou console
+- ❌ **Criar código sem solicitação explícita**
+- ❌ **Usar `any` em TypeScript**
+- ❌ **Criar código de teste/mock em produção**
+- ❌ **Salvar em banco antes do pagamento ser aprovado**
+- ❌ **Redirecionar no onSubmit do Payment Brick**
 
 ---
 
@@ -230,11 +310,12 @@ npm run build        # Verifica build serverless
 - MercadoPago com Device ID + HMAC
 - Firebase Factory Pattern
 - Async processing (QStash)
-- Structured logging
+- **Structured logging com mascaramento LGPD automático**
 - Zod validation em todas as camadas
 - Serverless architecture
 - **Type Safety completo** para environment variables
 - **Single Source of Truth** para configurações
+- **Geração de IDs específicos** por tipo de entidade
 
 ### **✅ Melhorias Implementadas (2025-08-22)**
 - ✅ **Migração completa** para `/lib/config/env.ts`
@@ -243,10 +324,16 @@ npm run build        # Verifica build serverless
 - ✅ **Fallbacks inteligentes** para produção
 - ✅ **Correção do erro Vercel** PropertyAccessExpression
 
-### **⚠️ Melhorias Futuras**
+### **🔴 Problemas CRÍTICOS a Corrigir**
+- **Redirecionamento prematuro**: Sistema aceita pagamentos falsos
+- **validateHMACSignature duplicado**: Código morto em validation.ts
+- **PIX quebrado**: QR Code não é mostrado antes do redirect
+
+### **⚠️ Melhorias Necessárias**
 - TypeScript strictness (noImplicitAny, strictNullChecks)
-- Code validation hooks
-- Secrets scanning automation
+- Implementar polling/WebSocket para status de pagamento
+- Documentar todas as utilities críticas
+- Remover código morto (validateHMACSignature, transformApiToProfile)
 
 ### **🎯 Meta**
 Claude Code trabalhando **COM** esta arquitetura excelente, potencializando-a sem destruí-la.

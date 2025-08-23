@@ -1,17 +1,1 @@
-{
-  "todos": {
-    "pending": [],
-    "in_progress": [],
-    "completed": [],
-    "blocked": []
-  },
-  "sync_config": {
-    "auto_sync": true,
-    "sync_interval_ms": 5000,
-    "max_todos_per_agent": 10,
-    "priority_levels": ["critical", "high", "medium", "low"]
-  },
-  "agent_assignments": {},
-  "last_sync": null,
-  "version": "1.0.0"
-}
+[]

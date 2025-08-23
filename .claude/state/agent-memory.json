@@ -1,32 +1,50 @@
 {
-  "shared_knowledge": {
-    "project_rules": [
-      "NEVER create backup files",
-      "NEVER duplicate existing code",
-      "ALWAYS use services from lib/",
-      "ALWAYS validate with Zod",
-      "ALWAYS include correlation IDs in logs"
+  "description": "Memória compartilhada entre agentes - Estado do sistema",
+  "lastUpdate": "2025-01-22",
+  "systemState": {
+    "architecture": "Domain-Driven Design (DDD)",
+    "environment": "PRODUCTION",
+    "criticalIssues": [
+      "Redirecionamento prematuro no Payment Brick",
+      "PIX não mostra QR Code",
+      "Sistema aceita pagamentos falsos"
     ],
-    "import_mappings": {
-      "logger": "../lib/utils/logger",
-      "validation": "../lib/utils/validation",
-      "mercadopago": "../lib/services/payment/mercadopago.service",
-      "firebase": "../lib/services/firebase",
-      "email": "../lib/services/notification/email.service"
-    },
-    "critical_paths": {
-      "payment_flow": "create-payment → webhook → processor → profile",
-      "medical_data": "validation → firebase → cache → qr_code",
-      "emergency_access": "qr_scan → cache → fallback_firebase"
+    "utilities": {
+      "logger": {
+        "hasLGPDMasking": true,
+        "functions": ["logInfo", "logError", "logWarning"]
+      },
+      "ids": {
+        "functions": [
+          "generateUniqueUrl",
+          "generateCorrelationId",
+          "generatePaymentId",
+          "generateProfileId"
+        ]
+      }
     }
   },
-  "agent_handoffs": [],
-  "file_operations": [],
-  "blocked_operations": [],
-  "decisions_made": [],
-  "learned_patterns": {
-    "common_errors": [],
-    "successful_fixes": [],
-    "optimization_opportunities": []
+  "avoidPatterns": [
+    "Não usar validateHMACSignature de validation.ts (código morto)",
+    "Usar MercadoPagoService.validateWebhook",
+    "Não criar backups (.bak, .backup, .old)",
+    "Não usar process.env diretamente",
+    "Não usar any em TypeScript",
+    "Não redirecionar no onSubmit do Payment Brick"
+  ],
+  "dataModel": {
+    "profile": {
+      "removed": ["cpf"],
+      "critical": ["bloodType", "allergies", "medications", "emergencyContacts"],
+      "noSaveBeforeApproval": true
+    },
+    "payment": {
+      "plans": {
+        "basic": 5,
+        "premium": 85
+      },
+      "requiresDeviceId": true,
+      "requiresHMACValidation": true
+    }
   }
 }

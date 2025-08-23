@@ -1,29 +1,16 @@
 {
-  "session": {
-    "id": "session_001",
-    "started_at": "2025-08-20T00:00:00Z",
-    "last_updated": "2025-08-20T00:00:00Z",
-    "correlation_id": "main_session",
-    "active_agent": null,
-    "context": {
-      "project": "SOS Moto",
-      "environment": "development",
-      "current_task": "Sistema de coordenação entre agentes",
-      "priority": "high"
-    }
-  },
-  "agents_executed": [],
-  "tasks_completed": [],
-  "errors_encountered": [],
-  "current_state": {
-    "hooks_configured": [
-      "typescript-validator",
-      "mercadopago-validator",
-      "secrets-scanner",
-      "import-validator",
-      "file-guardian"
-    ],
-    "last_validation": null,
-    "build_status": "unknown"
-  }
+  "sessionId": "session_2025_01_22",
+  "startedAt": "2025-01-22T00:00:00Z",
+  "currentTask": "System alignment and agent synchronization",
+  "completedTasks": [],
+  "pendingTasks": [
+    "Corrigir redirecionamento prematuro no Payment Brick",
+    "Implementar polling de status de pagamento",
+    "Corrigir fluxo PIX com QR Code"
+  ],
+  "modifiedFiles": [],
+  "warnings": [
+    "validateHMACSignature é código morto",
+    "transformApiToProfile não é usado"
+  ]
 }

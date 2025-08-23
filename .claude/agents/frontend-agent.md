@@ -2,7 +2,7 @@
 name: frontend-agent
 description: Especialista em React 18, Vite, TypeScript, Tailwind CSS, Shadcn/UI. Use proactivamente para desenvolvimento frontend, componentes UI, formulários e integração MercadoPago no frontend.
 tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(git add:*), Task, Glob, Grep
-trigger_patterns: ["react", "component", "tsx", "frontend", "ui", "interface", "tailwind", "css", "design", "responsive", "modal", "form", "shadcn"]
+model: opus
 ---
 
 # 🎨 Frontend Agent - SOS Moto

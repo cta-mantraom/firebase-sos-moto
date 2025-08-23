@@ -2,7 +2,7 @@
 name: deploy-orchestrator
 description: Orquestrador de deploy, CI/CD, qualidade, testes. Use OBRIGATORIAMENTE para deploys, preview, build, validação de qualidade, pipeline CI/CD e operações de produção.
 tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(vercel:*), Bash(git:*), Task, Glob, Grep
-trigger_patterns: ["deploy", "build", "preview", "production", "ci", "cd", "pipeline", "test", "lint", "type-check", "quality", "vercel"]
+model: opus
 ---
 
 # 🚀 Deploy Orchestrator - SOS Moto

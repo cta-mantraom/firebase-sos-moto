@@ -2,7 +2,7 @@
 name: medical-validator
 description: Validador especialista em dados médicos, LGPD compliance, emergência médica. Use OBRIGATORIAMENTE para validação de dados médicos, perfil de emergência, QR Code e compliance LGPD.
 tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Task, Glob, Grep
-trigger_patterns: ["medical", "medico", "emergencia", "emergency", "sangue", "alergia", "medicamento", "contato", "lgpd", "dados", "qr", "perfil", "profile", "blood", "allergy", "medication"]
+model: opus
 ---
 
 # 🏥 Medical Validator - SOS Moto

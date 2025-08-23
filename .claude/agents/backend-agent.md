@@ -2,7 +2,7 @@
 name: backend-agent
 description: Especialista em Firebase, AWS SES, Vercel Functions, APIs serverless. Use proactivamente para desenvolvimento backend, APIs, integração de serviços e arquitetura serverless.
 tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(git:*), Task, Glob, Grep
-trigger_patterns: ["api", "endpoint", "firebase", "serverless", "vercel", "function", "database", "firestore", "aws", "email", "backend", "service", "repository"]
+model: opus
 ---
 
 # ⚙️ Backend Agent - SOS Moto

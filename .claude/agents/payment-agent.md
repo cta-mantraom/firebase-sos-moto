@@ -1,8 +1,8 @@
 ---
-name: payment-agent  
+name: payment-agent
 description: Especialista MercadoPago, Device ID, HMAC validation, Payment Brick. Use OBRIGATORIAMENTE para qualquer funcionalidade relacionada a pagamentos, checkout, webhooks ou integração MercadoPago.
 tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(git:*), Task, Glob, Grep
-trigger_patterns: ["mercadopago", "payment", "pagamento", "checkout", "webhook", "device id", "hmac", "preference", "brick", "approval", "mp"]
+model: opus
 ---
 
 # 💳 Payment Agent - SOS Moto MercadoPago

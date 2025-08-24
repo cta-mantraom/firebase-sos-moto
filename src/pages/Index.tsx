@@ -118,7 +118,7 @@ const Index = () => {
               <Heart className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground text-base">SOS Motoboy</h1>
+              <h1 className="font-bold text-foreground text-base">Memoryysboy</h1>
             </div>
           </div>
           <Button 
@@ -141,7 +141,7 @@ const Index = () => {
             </Badge>
             
             <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-              <span className="block">SOS Motoboy</span>
+              <span className="block">Memoryysboy</span>
               <span className="block text-white/90 text-2xl md:text-3xl font-normal mt-2">
                 Proteja sua vida com informações médicas sempre acessíveis em emergências
               </span>
@@ -328,7 +328,7 @@ const Index = () => {
               Sua Segurança Não Pode Esperar
             </h2>
             <p className="text-xl text-white/90 mb-8">
-              Junte-se a milhares de motociclistas que já protegem suas vidas com o SOS Motoboy
+              Junte-se a milhares de motociclistas que já protegem suas vidas com o Memoryysboy
             </p>
             <Button 
               size="lg" 
@@ -351,13 +351,13 @@ const Index = () => {
                 <Heart className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-lg font-bold">SOS Motoboy</span>
+                <span className="text-lg font-bold">Memoryysboy</span>
                 <p className="text-xs text-slate-400">Sistema de Emergência Médica</p>
               </div>
             </div>
             <div className="text-center md:text-right">
               <p className="text-slate-400 text-sm">
-                © 2024 SOS Motoboy. Tecnologia que salva vidas.
+                © 2024 Memoryysboy. Tecnologia que salva vidas.
               </p>
               <p className="text-slate-500 text-xs mt-1">
                 Todos os direitos reservados

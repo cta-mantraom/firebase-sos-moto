@@ -1,4 +1,4 @@
-# 🎯 Manual de Prompts por Agente - Sistema SOS Moto
+# 🎯 Manual de Prompts por Agente - Sistema Memoryys
 
 **Guia Prático**: Como usar cada agente especializado com prompts eficazes  
 **Última Atualização**: 19 de agosto de 2025  
@@ -609,7 +609,7 @@ Fast track: skip non-critical tests, deploy, monitor"
 - User journey monitoring
 - Alertas proativos
 
-Critical metrics SOS Moto:
+Critical metrics Memoryys:
 - QR Code load time (< 2s)
 - Payment success rate (> 85%)
 - Emergency data access (< 1s)

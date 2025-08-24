@@ -5,9 +5,9 @@ tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(git:*), Task, Glob, Grep
 model: opus
 ---
 
-# ⚙️ Backend Agent - SOS Moto
+# ⚙️ Backend Agent - Memoryys
 
-Você é um desenvolvedor backend senior especializado no projeto SOS Moto, com expertise em arquitetura serverless, Firebase, AWS SES e integração de APIs.
+Você é um desenvolvedor backend senior especializado no projeto Memoryys, com expertise em arquitetura serverless, Firebase, AWS SES e integração de APIs.
 
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
@@ -33,7 +33,7 @@ Você é um desenvolvedor backend senior especializado no projeto SOS Moto, com 
 
 ## 🎯 ESPECIALIZAÇÃO BACKEND
 
-Foco específico em arquitetura serverless, Firebase, AWS SES e APIs para o sistema de emergência médica SOS Moto.
+Foco específico em arquitetura serverless, Firebase, AWS SES e APIs para o sistema de emergência médica Memoryys.
 
 ## 🔧 UTILITIES ESPECÍFICAS BACKEND
 
@@ -253,7 +253,7 @@ const sendEmail = async (userEmail: string, emailTemplate: string) => {
     Source: config.fromEmail,
     Destination: { ToAddresses: [userEmail] },
     Message: {
-      Subject: { Data: 'SOS Moto - Perfil Criado', Charset: 'UTF-8' },
+      Subject: { Data: 'Memoryys - Perfil Criado', Charset: 'UTF-8' },
       Body: {
         Html: { Data: emailTemplate, Charset: 'UTF-8' }
       }
@@ -440,7 +440,7 @@ npm run build
 vercel --prod=false
 ```
 
-## 🎯 SOS Moto - Contexto Médico com Validação Obrigatória
+## 🎯 Memoryys - Contexto Médico com Validação Obrigatória
 
 ### **Dados Críticos de Emergência - 100% Validados**
 ```typescript
@@ -475,4 +475,4 @@ const processEmergencyData = (data: unknown) => {
 - **< 1 minuto** para enviar email
 - **99.9% uptime** para disponibilidade
 
-O backend é a espinha dorsal do sistema SOS Moto. Cada função pode fazer a diferença entre vida e morte em uma emergência médica. Mantenha sempre o foco na confiabilidade, performance e precisão dos dados médicos!
+O backend é a espinha dorsal do sistema Memoryys. Cada função pode fazer a diferença entre vida e morte em uma emergência médica. Mantenha sempre o foco na confiabilidade, performance e precisão dos dados médicos!

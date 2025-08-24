@@ -1,6 +1,7 @@
 {
   "description": "Memória compartilhada entre agentes - Arquitetura Refatorada com Lazy Loading",
   "lastUpdate": "2025-08-24",
+  "domain": "memoryys.com",
   "systemState": {
     "architecture": "Domain-Driven Design (DDD) com Lazy Loading",
     "environment": "PRODUCTION",
@@ -32,6 +33,17 @@
       }
     }
   },
+  "validationRules": {
+    "required": {
+      "personal": ["name", "email", "phone"],
+      "medical": ["bloodType"],
+      "emergency": ["emergencyContacts (min 1)"]
+    },
+    "optional": {
+      "medical": ["allergies", "medications", "medicalConditions"],
+      "additional": ["height", "weight", "healthInsurance", "preferredHospital"]
+    }
+  },
   "avoidPatterns": [
     "DELETAR lib/config/env.ts (usar contexts com lazy loading)",
     "DELETAR lib/services/payment/payment.processor.ts (430 linhas nunca usadas)",
@@ -41,7 +53,7 @@
     "NUNCA usar any - sempre unknown com validação Zod",
     "SEMPRE usar getPaymentConfig() etc com lazy loading",
     "Não redirecionar no onSubmit - aguardar aprovação",
-    "Validar 100% dos dados médicos com BloodTypeSchema"
+    "Não adicionar complexidade desnecessária em validações médicas"
   ],
   "newPatterns": [
     "import { getPaymentConfig } from '@/lib/config/contexts/payment.config'",
@@ -52,8 +64,9 @@
   ],
   "dataModel": {
     "profile": {
-      "removed": ["cpf"],
-      "critical": ["bloodType", "allergies", "medications", "emergencyContacts"],
+      "removed": ["cpf", "bloodCompatibility logic"],
+      "required": ["name", "email", "phone", "bloodType", "emergencyContacts"],
+      "optional": ["allergies", "medications", "medicalConditions"],
       "noSaveBeforeApproval": true
     },
     "payment": {

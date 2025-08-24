@@ -1,4 +1,4 @@
-# 🧪 Guia de Validação e Testes - Sistema de Agentes SOS Moto
+# 🧪 Guia de Validação e Testes - Sistema de Agentes Memoryys
 
 **Manual Técnico**: Como validar e testar cada agente especializado  
 **Última Atualização**: 19 de agosto de 2025  
@@ -22,7 +22,7 @@
 
 ### **Estratégia de Validação**
 ```
-Pirâmide de Testes SOS Moto:
+Pirâmide de Testes Memoryys:
 ┌─────────────────────────────────┐
 │        E2E Tests (5%)           │ ← Sistema completo
 ├─────────────────────────────────┤
@@ -42,7 +42,7 @@ Pirâmide de Testes SOS Moto:
 
 ### **Ferramentas de Teste**
 ```bash
-# Test suite SOS Moto
+# Test suite Memoryys
 npm run test:agents          # Testa todos os agentes
 npm run test:hooks          # Testa hooks Python
 npm run test:integration    # Testa integração MCP
@@ -391,7 +391,7 @@ describe("Backend Agent - Health Checks", () => {
 // Teste 1: Device ID Collection (CRÍTICO para aprovação)
 describe("Payment Agent - Device ID Critical Test", () => {
   test("Should ensure 100% Device ID collection", async () => {
-    const prompt = "Garantir Device ID em 100% dos pagamentos SOS Moto";
+    const prompt = "Garantir Device ID em 100% dos pagamentos Memoryys";
     
     const result = await executeAgent("payment-agent", prompt);
     
@@ -518,7 +518,7 @@ describe("Payment Agent - Async Processing", () => {
 // Teste 5: Payment Analytics
 describe("Payment Agent - Analytics Implementation", () => {
   test("Should implement comprehensive payment analytics", async () => {
-    const prompt = "Implementar analytics completo de pagamentos SOS Moto";
+    const prompt = "Implementar analytics completo de pagamentos Memoryys";
     
     const result = await executeAgent("payment-agent", prompt);
     
@@ -552,7 +552,7 @@ describe("Payment Agent - Analytics Implementation", () => {
 // Teste 1: Medical Data Validation
 describe("Medical Validator - Data Validation", () => {
   test("Should validate medical data rigorously", async () => {
-    const prompt = "Implementar validação rigorosa dados médicos SOS Moto";
+    const prompt = "Implementar validação rigorosa dados médicos Memoryys";
     
     const result = await executeAgent("medical-validator", prompt);
     
@@ -887,13 +887,13 @@ echo "🔌 Testando MCP Connectivity..."
 claude mcp list
 
 # Testar server específico do projeto
-claude mcp status mcp-firebase-sos-moto
+claude mcp status mcp-firebase-memoryys
 
 # Testar comunicação
-claude mcp test mcp-firebase-sos-moto
+claude mcp test mcp-firebase-memoryys
 
 # Resultados esperados:
-# - mcp-firebase-sos-moto: Connected
+# - mcp-firebase-memoryys: Connected
 # - Response time: < 1s
 # - All capabilities available
 ```
@@ -905,7 +905,7 @@ claude mcp test mcp-firebase-sos-moto
 describe("MCP Integration - Fallback Strategy", () => {
   test("Should fallback to direct API when MCP unavailable", async () => {
     // Simulate MCP disconnection
-    await disconnectMCP("mcp-firebase-sos-moto");
+    await disconnectMCP("mcp-firebase-memoryys");
     
     const prompt = "Deploy preview usando Vercel";
     const result = await executeAgent("deploy-orchestrator", prompt);
@@ -916,7 +916,7 @@ describe("MCP Integration - Fallback Strategy", () => {
     expect(result.content).toMatch(/fallback.*local.*config/i);
     
     // Re-enable MCP
-    await reconnectMCP("mcp-firebase-sos-moto");
+    await reconnectMCP("mcp-firebase-memoryys");
   });
 });
 ```
@@ -1002,7 +1002,7 @@ claude mcp status --detailed
 # Soluções
 1. Verificar conectividade internet
 2. Re-adicionar MCP server:
-   claude mcp add --transport http mcp-firebase-sos-moto URL
+   claude mcp add --transport http mcp-firebase-memoryys URL
 3. Verificar tokens/credentials
 4. Usar fallback local temporariamente
 ```
@@ -1046,7 +1046,7 @@ echo "🚨 Iniciando Emergency Recovery..."
 claude config reset
 
 # 2. Re-adicionar MCP
-claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta-mantraom/firebase-sos-moto
+claude mcp add --transport http mcp-firebase-memoryys https://mcp.vercel.com/cta-mantraom/firebase-memoryys
 
 # 3. Validar sistema
 /validate-flow
@@ -1061,4 +1061,4 @@ echo "✅ Recovery completo - sistema operacional"
 
 ---
 
-**🎯 Este guia de validação garante que cada agente do sistema SOS Moto funcione perfeitamente, mantendo a qualidade crítica necessária para salvar vidas em emergências médicas.**
+**🎯 Este guia de validação garante que cada agente do sistema Memoryys funcione perfeitamente, mantendo a qualidade crítica necessária para salvar vidas em emergências médicas.**

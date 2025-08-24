@@ -1,8 +1,8 @@
-# 🔌 Guia de Integração MCP Servers - Sistema SOS Moto
+# 🔌 Guia de Integração MCP Servers - Sistema Memoryys
 
 ## 🎯 Visão Geral
 
-Os servidores MCP (Model Context Protocol) permitem que os agentes especializados do SOS Moto se integrem diretamente com serviços externos, proporcionando automação avançada e operações em tempo real.
+Os servidores MCP (Model Context Protocol) permitem que os agentes especializados do Memoryys se integrem diretamente com serviços externos, proporcionando automação avançada e operações em tempo real.
 
 ## 📊 Servidores MCP Configurados
 
@@ -451,4 +451,4 @@ const preference = await resilientMCPCall(
 4. **Credentials security** - nunca expor tokens/keys
 5. **Medical data priority** - operações médicas têm precedência
 
-**O sistema MCP permite que os agentes SOS Moto operem com automação total, mantendo a qualidade e confiabilidade necessárias para salvar vidas em emergências médicas.**
+**O sistema MCP permite que os agentes Memoryys operem com automação total, mantendo a qualidade e confiabilidade necessárias para salvar vidas em emergências médicas.**

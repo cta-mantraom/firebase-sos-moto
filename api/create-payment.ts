@@ -54,12 +54,12 @@ if (!getApps().length) {
 // Plan configuration
 const PLAN_PRICES = {
   basic: {
-    title: "SOS Moto Guardian - Plano Básico",
+    title: "Memoryys Guardian - Plano Básico",
     unit_price: 5.0,
     description: "Plano básico de proteção para motociclistas",
   },
   premium: {
-    title: "SOS Moto Guardian - Plano Premium",
+    title: "Memoryys Guardian - Plano Premium",
     unit_price: 85.0,
     description: "Plano premium com recursos avançados",
   },

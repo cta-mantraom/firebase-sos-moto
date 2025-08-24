@@ -1,4 +1,4 @@
-# 📋 Template de Relatório de Auditoria - SOS Moto
+# 📋 Template de Relatório de Auditoria - Memoryys
 
 **Data**: `{DATE}`  
 **Auditor**: `{AGENT_NAME}`  
@@ -98,7 +98,7 @@
 - [ ] Correlation IDs em todos logs
 
 #### Compliance
-- [ ] Planos SOS Moto (R$ 55, R$ 85) validados
+- [ ] Planos Memoryys (R$ 55, R$ 85) validados
 - [ ] Additional info populated (approval rate)
 - [ ] Payer data completa
 - [ ] Webhook URL HTTPS

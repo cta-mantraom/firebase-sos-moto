@@ -1,10 +1,10 @@
 ---
-description: Procedimentos de emergência para correção rápida de problemas críticos no sistema SOS Moto
+description: Procedimentos de emergência para correção rápida de problemas críticos no sistema Memoryys
 allowed-tools: Bash(npm:*), Bash(vercel:*), Bash(git:*), Edit, MultiEdit, Read, Task, Grep, Glob
 argument-hint: [issue-type] (payment|qr-access|webhook|performance|data-corruption)
 ---
 
-# 🚨 Emergency Fix - SOS Moto
+# 🚨 Emergency Fix - Memoryys
 
 Procedimentos de emergência para correção rápida de problemas críticos que afetam a capacidade do sistema de salvar vidas.
 
@@ -34,7 +34,7 @@ echo "🚨 INICIANDO PROCEDIMENTO DE EMERGÊNCIA"
 echo "⏰ Início: $(date)"
 
 # Health Check rápido
-curl -s -w "%{http_code}" -o /dev/null https://sosmoto.com.br/api/health
+curl -s -w "%{http_code}" -o /dev/null https://memoryys.com/api/health
 
 # Status dos serviços críticos
 echo "🔍 Verificando serviços críticos..."
@@ -73,7 +73,7 @@ fi
 grep -r "validateWebhook\|createHmac" api/mercadopago-webhook.ts
 
 # Verificar logs de webhook
-vercel logs --app=sosmoto-prod | grep webhook | tail -20
+vercel logs --app=memoryys-prod | grep webhook | tail -20
 
 # Emergency webhook bypass (TEMPORÁRIO)
 if [ "$WEBHOOK_FAILING" = "true" ]; then
@@ -90,7 +90,7 @@ fi
 ```bash
 # Testar acesso direto
 PROFILE_ID="test-profile-id"
-curl -s "https://sosmoto.com.br/emergency/$PROFILE_ID"
+curl -s "https://memoryys.com/emergency/$PROFILE_ID"
 
 # Verificar cache Redis
 redis-cli -h redis-server ping 2>/dev/null || echo "❌ Redis down"
@@ -164,7 +164,7 @@ fi
 1. **QR Code > 5s carregamento**
 ```bash
 # Testar performance
-time curl -s "https://sosmoto.com.br/emergency/test-profile"
+time curl -s "https://memoryys.com/emergency/test-profile"
 
 # Verificar cache hit rate
 redis-cli info stats | grep keyspace_hits
@@ -298,7 +298,7 @@ vercel --prod --confirm
 
 # Verificar se fix funcionou
 sleep 30
-curl -s "https://sosmoto.com.br/api/health" | grep "healthy"
+curl -s "https://memoryys.com/api/health" | grep "healthy"
 
 if [ $? -eq 0 ]; then
   echo "✅ Emergency fix deployed successfully"
@@ -316,13 +316,13 @@ for i in {1..30}; do
   echo "📊 Monitoring minute $i/30"
   
   # Health check
-  curl -s "https://sosmoto.com.br/api/health"
+  curl -s "https://memoryys.com/api/health"
   
   # Performance check
-  time curl -s "https://sosmoto.com.br/emergency/test-profile" > /dev/null
+  time curl -s "https://memoryys.com/emergency/test-profile" > /dev/null
   
   # Error rate check
-  vercel logs --app=sosmoto-prod | grep -c ERROR
+  vercel logs --app=memoryys-prod | grep -c ERROR
   
   sleep 60
 done

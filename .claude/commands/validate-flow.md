@@ -1,11 +1,11 @@
 ---
-description: Executa validação completa end-to-end do fluxo SOS Moto (pagamento → perfil → QR → emergência)
+description: Executa validação completa end-to-end do fluxo Memoryys (pagamento → perfil → QR → emergência)
 allowed-tools: Bash(npm:*), Bash(git:*), Read, Task, Grep, Glob
 ---
 
-# 🔍 Validação Completa do Fluxo SOS Moto
+# 🔍 Validação Completa do Fluxo Memoryys
 
-Execute validação end-to-end completa do sistema SOS Moto, garantindo que todo o fluxo crítico esteja funcionando perfeitamente.
+Execute validação end-to-end completa do sistema Memoryys, garantindo que todo o fluxo crítico esteja funcionando perfeitamente.
 
 ## 🎯 Objetivo
 
@@ -78,7 +78,7 @@ fi
 - Device ID collection implementado
 - HMAC validation funcionando  
 - Webhook processamento assíncrono
-- Planos SOS Moto (R$ 5,00 teste temporário / R$ 85,00 premium)
+- Planos Memoryys (R$ 5,00 teste temporário / R$ 85,00 premium)
 
 **Use o medical-validator para validar:**
 - Schemas médicos Zod implementados

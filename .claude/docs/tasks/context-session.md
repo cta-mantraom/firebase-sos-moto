@@ -1,6 +1,6 @@
-# 📋 Contexto da Sessão - Sistema SOS Moto
+# 📋 Contexto da Sessão - Sistema Memoryys
 
-## 🎯 Projeto: SOS Moto - Sistema de Emergência Médica
+## 🎯 Projeto: Memoryys - Sistema de Emergência Médica
 
 ### **Visão Geral**
 Sistema serverless que permite motociclistas criarem perfis médicos de emergência acessíveis via QR Code, facilitando atendimento médico rápido em acidentes.

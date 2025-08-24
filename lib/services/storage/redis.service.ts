@@ -48,7 +48,7 @@ export class RedisService {
       defaultTTL: config?.defaultTTL ?? 3600, // 1 hour
       maxRetries: config?.maxRetries ?? 3,
       enableCompression: config?.enableCompression ?? false,
-      keyPrefix: config?.keyPrefix ?? 'sosmoto:',
+      keyPrefix: config?.keyPrefix ?? 'memoryys:',
     };
 
     this.client = new Redis({

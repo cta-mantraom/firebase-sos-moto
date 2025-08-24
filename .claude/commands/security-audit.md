@@ -1,12 +1,12 @@
 ---
-description: Auditoria completa de segurança do sistema SOS Moto (LGPD, secrets, HMAC, medical data)
+description: Auditoria completa de segurança do sistema Memoryys (LGPD, secrets, HMAC, medical data)
 allowed-tools: Bash(npm:*), Bash(git:*), Read, Grep, Glob, Task
 argument-hint: [scope] (full|medical|payment|lgpd)
 ---
 
-# 🔒 Auditoria de Segurança SOS Moto
+# 🔒 Auditoria de Segurança Memoryys
 
-Execute auditoria completa de segurança do sistema SOS Moto, com foco em proteção de dados médicos sensíveis e compliance LGPD.
+Execute auditoria completa de segurança do sistema Memoryys, com foco em proteção de dados médicos sensíveis e compliance LGPD.
 
 ## 🎯 Escopo da Auditoria
 
@@ -187,7 +187,7 @@ grep -r "sanitize.*medical\|validate.*medical" lib/
 #!/bin/bash
 # Executar auditoria completa
 
-echo "🔒 Iniciando Auditoria de Segurança SOS Moto..."
+echo "🔒 Iniciando Auditoria de Segurança Memoryys..."
 
 # 1. Secrets Scanning
 echo "🔍 Verificando vazamento de secrets..."

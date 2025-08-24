@@ -30,14 +30,14 @@ const sesClient = new SESv2Client({
  */
 const EMAIL_TEMPLATES = {
   confirmation: {
-    subject: "SOS Moto Guardian - Cadastro Confirmado",
+    subject: "Memoryys Guardian - Cadastro Confirmado",
     generateHtml: (data: PaymentConfirmationData) => `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>SOS Moto Guardian - Cadastro Confirmado</title>
+          <title>Memoryys Guardian - Cadastro Confirmado</title>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
             .container { max-width: 600px; margin: 0 auto; background: #f9fafb; border-radius: 8px; overflow: hidden; }
@@ -53,12 +53,12 @@ const EMAIL_TEMPLATES = {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🏍️ SOS Moto Guardian</h1>
+              <h1>🏍️ Memoryys Guardian</h1>
               <p>Seu cadastro foi realizado com sucesso!</p>
             </div>
             <div class="content">
               <h2>Olá ${data.userName}!</h2>
-              <p>Parabéns! Seu cadastro no SOS Moto Guardian foi processado com sucesso.</p>
+              <p>Parabéns! Seu cadastro no Memoryys Guardian foi processado com sucesso.</p>
               
               <div style="margin: 20px 0; padding: 15px; background: #ecfdf5; border-radius: 8px;">
                 <h3 style="margin-top: 0;">📋 Detalhes do seu plano</h3>
@@ -99,10 +99,10 @@ const EMAIL_TEMPLATES = {
               </div>
               
               <p style="margin-top: 30px;">Se você tiver alguma dúvida, entre em contato conosco.</p>
-              <p>Obrigado por confiar no SOS Moto Guardian!</p>
+              <p>Obrigado por confiar no Memoryys Guardian!</p>
             </div>
             <div class="footer">
-              <p>© 2024 SOS Moto Guardian. Todos os direitos reservados.</p>
+              <p>© 2024 Memoryys Guardian. Todos os direitos reservados.</p>
               <p>Este é um email automático, por favor não responda.</p>
             </div>
           </div>
@@ -110,11 +110,11 @@ const EMAIL_TEMPLATES = {
       </html>
     `,
     generateText: (data: PaymentConfirmationData) => `
-      SOS Moto Guardian - Cadastro Confirmado
+      Memoryys Guardian - Cadastro Confirmado
       
       Olá ${data.userName}!
       
-      Parabéns! Seu cadastro no SOS Moto Guardian foi processado com sucesso.
+      Parabéns! Seu cadastro no Memoryys Guardian foi processado com sucesso.
       
       Detalhes do seu plano:
       - Plano: ${data.planType === "premium" ? "Premium" : "Básico"}
@@ -127,18 +127,18 @@ const EMAIL_TEMPLATES = {
       
       Mantenha o QR Code sempre acessível durante suas viagens.
       
-      Obrigado por confiar no SOS Moto Guardian!
+      Obrigado por confiar no Memoryys Guardian!
     `,
   },
   failure: {
-    subject: "SOS Moto Guardian - Problema no Pagamento",
+    subject: "Memoryys Guardian - Problema no Pagamento",
     generateHtml: (data: PaymentFailureData) => `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>SOS Moto Guardian - Problema no Pagamento</title>
+          <title>Memoryys Guardian - Problema no Pagamento</title>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
             .container { max-width: 600px; margin: 0 auto; background: #f9fafb; border-radius: 8px; overflow: hidden; }
@@ -152,7 +152,7 @@ const EMAIL_TEMPLATES = {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🚨 SOS Moto Guardian</h1>
+              <h1>🚨 Memoryys Guardian</h1>
               <p>Problema identificado no pagamento</p>
             </div>
             <div class="content">
@@ -185,7 +185,7 @@ const EMAIL_TEMPLATES = {
               <p>Se o problema persistir, entre em contato com nosso suporte.</p>
             </div>
             <div class="footer">
-              <p>© 2024 SOS Moto Guardian. Todos os direitos reservados.</p>
+              <p>© 2024 Memoryys Guardian. Todos os direitos reservados.</p>
               <p>Este é um email automático, por favor não responda.</p>
             </div>
           </div>
@@ -193,7 +193,7 @@ const EMAIL_TEMPLATES = {
       </html>
     `,
     generateText: (data: PaymentFailureData) => `
-      SOS Moto Guardian - Problema no Pagamento
+      Memoryys Guardian - Problema no Pagamento
       
       Olá ${data.userName},
       
@@ -209,14 +209,14 @@ const EMAIL_TEMPLATES = {
     `,
   },
   welcome: {
-    subject: "SOS Moto Guardian - Bem-vindo!",
+    subject: "Memoryys Guardian - Bem-vindo!",
     generateHtml: (data: WelcomeData) => `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>SOS Moto Guardian - Bem-vindo!</title>
+          <title>Memoryys Guardian - Bem-vindo!</title>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
             .container { max-width: 600px; margin: 0 auto; background: #f9fafb; border-radius: 8px; overflow: hidden; }
@@ -230,12 +230,12 @@ const EMAIL_TEMPLATES = {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🏍️ SOS Moto Guardian</h1>
+              <h1>🏍️ Memoryys Guardian</h1>
               <p>Bem-vindo à família!</p>
             </div>
             <div class="content">
               <h2>Olá ${data.userName}!</h2>
-              <p>Seja bem-vindo ao SOS Moto Guardian! Estamos muito felizes em tê-lo conosco.</p>
+              <p>Seja bem-vindo ao Memoryys Guardian! Estamos muito felizes em tê-lo conosco.</p>
               
               <div class="features">
                 <h3>🎯 Recursos do seu plano ${
@@ -254,10 +254,10 @@ const EMAIL_TEMPLATES = {
                 }" class="button">🔗 Ver Minha Página Memorial</a>
               </div>
               
-              <p>Agradecemos por escolher o SOS Moto Guardian para sua segurança!</p>
+              <p>Agradecemos por escolher o Memoryys Guardian para sua segurança!</p>
             </div>
             <div class="footer">
-              <p>© 2024 SOS Moto Guardian. Todos os direitos reservados.</p>
+              <p>© 2024 Memoryys Guardian. Todos os direitos reservados.</p>
               <p>Este é um email automático, por favor não responda.</p>
             </div>
           </div>
@@ -265,11 +265,11 @@ const EMAIL_TEMPLATES = {
       </html>
     `,
     generateText: (data: WelcomeData) => `
-      SOS Moto Guardian - Bem-vindo!
+      Memoryys Guardian - Bem-vindo!
       
       Olá ${data.userName}!
       
-      Seja bem-vindo ao SOS Moto Guardian!
+      Seja bem-vindo ao Memoryys Guardian!
       
       Recursos do seu plano ${
         data.planType === "premium" ? "Premium" : "Básico"
@@ -278,17 +278,17 @@ const EMAIL_TEMPLATES = {
       
       Acesse sua página: ${data.memorialUrl}
       
-      Obrigado por escolher o SOS Moto Guardian!
+      Obrigado por escolher o Memoryys Guardian!
     `,
   },
   reminder: {
-    subject: "SOS Moto Guardian - Lembrete",
+    subject: "Memoryys Guardian - Lembrete",
     generateHtml: (data: WelcomeData) => `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
-          <title>SOS Moto Guardian - Lembrete</title>
+          <title>Memoryys Guardian - Lembrete</title>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -297,9 +297,9 @@ const EMAIL_TEMPLATES = {
         </head>
         <body>
           <div class="container">
-            <h1>SOS Moto Guardian - Lembrete</h1>
+            <h1>Memoryys Guardian - Lembrete</h1>
             <p>Olá ${data.userName},</p>
-            <p>Este é um lembrete sobre sua conta no SOS Moto Guardian.</p>
+            <p>Este é um lembrete sobre sua conta no Memoryys Guardian.</p>
             <p>Para mais informações, acesse sua página memorial.</p>
             <a href="${
               data.memorialUrl || "#"
@@ -309,11 +309,11 @@ const EMAIL_TEMPLATES = {
       </html>
     `,
     generateText: (data: WelcomeData) => `
-      SOS Moto Guardian - Lembrete
+      Memoryys Guardian - Lembrete
       
       Olá ${data.userName},
       
-      Este é um lembrete sobre sua conta no SOS Moto Guardian.
+      Este é um lembrete sobre sua conta no Memoryys Guardian.
       
       Acesse: ${data.memorialUrl || ""}
     `,

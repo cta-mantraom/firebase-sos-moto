@@ -2,7 +2,7 @@
 
 ## 📋 VISÃO GERAL
 
-Este documento alinha TODOS os agentes com a arquitetura refatorada do sistema SOS Moto, implementando:
+Este documento alinha TODOS os agentes com a arquitetura refatorada do sistema Memoryys, implementando:
 - **Configs separadas** com lazy loading para performance
 - **Zero uso de `any`** - sempre `unknown` com validação Zod
 - **Eliminação de 942 linhas** de código morto/duplicado

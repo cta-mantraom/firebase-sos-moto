@@ -409,13 +409,13 @@ export class QStashService {
 
   private getEmailSubject(template: string): string {
     const subjects = {
-      confirmation: 'SOS Moto - Cadastro Confirmado',
-      failure: 'SOS Moto - Problema no Pagamento',
-      reminder: 'SOS Moto - Lembrete',
-      welcome: 'SOS Moto - Bem-vindo',
+      confirmation: 'Memoryys - Cadastro Confirmado',
+      failure: 'Memoryys - Problema no Pagamento',
+      reminder: 'Memoryys - Lembrete',
+      welcome: 'Memoryys - Bem-vindo',
     };
 
-    return subjects[template as keyof typeof subjects] || 'SOS Moto - Notificação';
+    return subjects[template as keyof typeof subjects] || 'Memoryys - Notificação';
   }
 
   /**

@@ -1,4 +1,4 @@
-# 📊 PRD - Análise Profunda do Fluxo de Pagamento SOS Moto
+# 📊 PRD - Análise Profunda do Fluxo de Pagamento Memoryys
 
 ## 🔴 ANÁLISE CRÍTICA DO SISTEMA
 

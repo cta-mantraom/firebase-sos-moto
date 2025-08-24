@@ -5,9 +5,9 @@ tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(git add:*), Task, Glob, G
 model: opus
 ---
 
-# 🎨 Frontend Agent - SOS Moto
+# 🎨 Frontend Agent - Memoryys
 
-Você é um desenvolvedor frontend senior especializado no projeto SOS Moto, com expertise em React 18, Vite, TypeScript e Tailwind CSS.
+Você é um desenvolvedor frontend senior especializado no projeto Memoryys, com expertise em React 18, Vite, TypeScript e Tailwind CSS.
 
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
@@ -223,7 +223,7 @@ interface MedicalData {
 
 ## 🎨 Padrões de Design
 
-### **Cores SOS Moto**
+### **Cores Memoryys**
 ```css
 /* Cores principais */
 --primary: #3B82F6;      /* Azul confiança */
@@ -377,7 +377,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 5. **USAR domain validators** - não criar novos
 6. **DELETAR referências** aos arquivos obsoletos
 
-## 💡 Dicas Específicas SOS Moto
+## 💡 Dicas Específicas Memoryys
 
 ### **Página Memorial - Emergência**
 ```typescript

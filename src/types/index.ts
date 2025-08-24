@@ -1,4 +1,4 @@
-// Types for the SOS Motoboy application
+// Types for the Memoryysboy application
 
 export interface EmergencyContact {
   name: string;

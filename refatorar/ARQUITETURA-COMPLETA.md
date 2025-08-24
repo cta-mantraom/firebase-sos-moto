@@ -6,7 +6,7 @@
 
 📁 ESTRUTURA FINAL DE PASTAS E ARQUIVOS
 
-firebase-sos-moto/
+firebase-memoryys/
 │
 ├── lib/
 │ ├── config/ ← 🆕 CONFIGS SEPARADAS POR CONTEXTO

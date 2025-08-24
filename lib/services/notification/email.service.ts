@@ -110,7 +110,7 @@ export class EmailService {
 
       const emailData: EmailData = {
         to: profile.personalData.email,
-        subject: "Pagamento Confirmado - SOS Moto",
+        subject: "Pagamento Confirmado - Memoryys",
         htmlBody,
         textBody,
         from: this.config.fromEmail,
@@ -156,7 +156,7 @@ export class EmailService {
 
       const emailData: EmailData = {
         to: email,
-        subject: "Falha no Processamento do Pagamento - SOS Moto",
+        subject: "Falha no Processamento do Pagamento - Memoryys",
         htmlBody,
         textBody,
         from: this.config.fromEmail,
@@ -276,7 +276,7 @@ export class EmailService {
           <html>
           <head>
             <meta charset="UTF-8">
-            <title>Pagamento Confirmado - SOS Moto</title>
+            <title>Pagamento Confirmado - Memoryys</title>
             <style>
               body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -323,7 +323,7 @@ export class EmailService {
                 <p>Imprima ou salve seu QR Code em local seguro. Em caso de emergência, ele permitirá acesso rápido às suas informações médicas.</p>
               </div>
               <div class="footer">
-                <p>SOS Moto - Sua segurança em primeiro lugar</p>
+                <p>Memoryys - Sua segurança em primeiro lugar</p>
                 <p>Dúvidas? Entre em contato: ${this.config.fromEmail}</p>
               </div>
             </div>
@@ -337,7 +337,7 @@ export class EmailService {
           <html>
           <head>
             <meta charset="UTF-8">
-            <title>Falha no Pagamento - SOS Moto</title>
+            <title>Falha no Pagamento - Memoryys</title>
             <style>
               body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -368,7 +368,7 @@ export class EmailService {
                 </p>
               </div>
               <div class="footer">
-                <p>SOS Moto - Sua segurança em primeiro lugar</p>
+                <p>Memoryys - Sua segurança em primeiro lugar</p>
                 <p>Dúvidas? Entre em contato: ${this.config.fromEmail}</p>
               </div>
             </div>
@@ -382,7 +382,7 @@ export class EmailService {
           <html>
           <head>
             <meta charset="UTF-8">
-            <title>SOS Moto</title>
+            <title>Memoryys</title>
           </head>
           <body>
             <p>Email de ${type}</p>
@@ -403,7 +403,7 @@ export class EmailService {
     switch (type) {
       case EmailType.PAYMENT_CONFIRMATION:
         return `
-Pagamento Confirmado - SOS Moto
+Pagamento Confirmado - Memoryys
 
 Olá ${data.name},
 
@@ -415,13 +415,13 @@ ${data.profileUrl ? `Acesse seu perfil em: ${data.profileUrl}` : ""}
 
 Imprima ou salve seu QR Code em local seguro.
 
-SOS Moto - Sua segurança em primeiro lugar
+Memoryys - Sua segurança em primeiro lugar
 Dúvidas? ${this.config.fromEmail}
         `;
 
       case EmailType.PAYMENT_FAILED:
         return `
-Falha no Pagamento - SOS Moto
+Falha no Pagamento - Memoryys
 
 Olá ${data.name},
 
@@ -430,7 +430,7 @@ ${data.error ? `Motivo: ${data.error}` : ""}
 
 Por favor, tente realizar o pagamento novamente ou entre em contato com nosso suporte.
 
-SOS Moto - Sua segurança em primeiro lugar
+Memoryys - Sua segurança em primeiro lugar
 Dúvidas? ${this.config.fromEmail}
         `;
 

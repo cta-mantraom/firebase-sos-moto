@@ -1,4 +1,4 @@
-# 🔄 Manual de Rollback e Recovery - Sistema de Agentes SOS Moto
+# 🔄 Manual de Rollback e Recovery - Sistema de Agentes Memoryys
 
 **Manual Crítico**: Como desfazer ações e recuperar de falhas no sistema de agentes  
 **Última Atualização**: 19 de agosto de 2025  
@@ -20,7 +20,7 @@
 
 ## 🚨 Visão Geral de Recovery
 
-### **Filosofia de Recovery SOS Moto**
+### **Filosofia de Recovery Memoryys**
 > **"Em um sistema de emergência médica, cada falha pode custar vidas. Recovery deve ser IMEDIATO e CONFIÁVEL."**
 
 ### **Tipos de Recovery**
@@ -987,7 +987,7 @@ function getEmergencyFallbackData() {
     instructions: [
       '🚨 EMERGÊNCIA MÉDICA DETECTADA',
       '📞 Contactar SAMU: 192',
-      '🏥 Informar que é motociclista com perfil SOS Moto',
+      '🏥 Informar que é motociclista com perfil Memoryys',
       '📋 Verificar documentos na moto para informações médicas',
       '👥 Contactar familiares se possível'
     ],
@@ -1010,7 +1010,7 @@ function getLastResortEmergencyData() {
       '🚨 EMERGÊNCIA MÉDICA',
       '📞 SAMU: 192',
       '🏥 INFORMAR: Motociclista, verificar documentos',
-      '📱 Sistema SOS Moto temporariamente indisponível'
+      '📱 Sistema Memoryys temporariamente indisponível'
     ],
     system_status: 'CRITICAL_FAILURE',
     recovery_eta: 'Em andamento - contactar suporte técnico'
@@ -1076,7 +1076,7 @@ fi
 
 # 2. Health check previous deployment
 echo "🔍 Testing previous deployment health..."
-HEALTH_URL="https://${PREVIOUS_DEPLOYMENT}-sosmoto.vercel.app/api/health"
+HEALTH_URL="https://${PREVIOUS_DEPLOYMENT}-memoryys.vercel.app/api/health"
 
 curl -f --max-time 10 "$HEALTH_URL" > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -1090,7 +1090,7 @@ vercel promote "$PREVIOUS_DEPLOYMENT" --confirm
 
 # 4. Validate rollback
 sleep 10
-curl -f --max-time 10 "https://sosmoto.com.br/api/health" > /dev/null 2>&1
+curl -f --max-time 10 "https://memoryys.com/api/health" > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     echo "✅ Rollback successful - system healthy"
     
@@ -1098,7 +1098,7 @@ if [ $? -eq 0 ]; then
     echo "🧪 Testing critical paths..."
     
     # Test QR code access
-    TEST_QR_URL="https://sosmoto.com.br/emergency/test-profile"
+    TEST_QR_URL="https://memoryys.com/emergency/test-profile"
     QR_RESPONSE_TIME=$(curl -w "%{time_total}" -s -o /dev/null "$TEST_QR_URL")
     
     if (( $(echo "$QR_RESPONSE_TIME < 2.0" | bc -l) )); then
@@ -1108,7 +1108,7 @@ if [ $? -eq 0 ]; then
     fi
     
     # Test payment endpoint
-    curl -f -X POST "https://sosmoto.com.br/api/create-payment" \
+    curl -f -X POST "https://memoryys.com/api/create-payment" \
          -H "Content-Type: application/json" \
          -d '{"test": true}' > /dev/null 2>&1
     
@@ -1321,17 +1321,17 @@ echo "🔌 MCP Server Recovery iniciado"
 claude mcp status
 
 # 2. Restart specific server if down
-if ! claude mcp status mcp-firebase-sos-moto | grep -q "Connected"; then
-    echo "🔄 Restarting mcp-firebase-sos-moto..."
+if ! claude mcp status mcp-firebase-memoryys | grep -q "Connected"; then
+    echo "🔄 Restarting mcp-firebase-memoryys..."
     
     # Remove and re-add server
-    claude mcp remove mcp-firebase-sos-moto
-    claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta-mantraom/firebase-sos-moto
+    claude mcp remove mcp-firebase-memoryys
+    claude mcp add --transport http mcp-firebase-memoryys https://mcp.vercel.com/cta-mantraom/firebase-memoryys
     
     # Wait for connection
     sleep 5
     
-    if claude mcp status mcp-firebase-sos-moto | grep -q "Connected"; then
+    if claude mcp status mcp-firebase-memoryys | grep -q "Connected"; then
         echo "✅ MCP server restored"
     else
         echo "❌ MCP server still down - using fallback"
@@ -1346,7 +1346,7 @@ fi
 echo "🧪 Testing MCP functionality..."
 
 # Test with a simple operation
-claude mcp test mcp-firebase-sos-moto 2>/dev/null
+claude mcp test mcp-firebase-memoryys 2>/dev/null
 
 if [ $? -eq 0 ]; then
     echo "✅ MCP functionality working"
@@ -1372,7 +1372,7 @@ echo "Início: $(date)"
 echo "📊 Assessment inicial..."
 
 # Check if it's a deploy issue
-VERCEL_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://sosmoto.com.br/api/health)
+VERCEL_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://memoryys.com/api/health)
 
 if [ "$VERCEL_STATUS" != "200" ]; then
     echo "❌ Sistema principal down - iniciando recovery"
@@ -1383,7 +1383,7 @@ if [ "$VERCEL_STATUS" != "200" ]; then
     
     # Wait and recheck
     sleep 30
-    VERCEL_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://sosmoto.com.br/api/health)
+    VERCEL_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://memoryys.com/api/health)
 fi
 
 if [ "$VERCEL_STATUS" = "200" ]; then
@@ -1398,7 +1398,7 @@ else
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SOS Moto - Manutenção</title>
+    <title>Memoryys - Manutenção</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -1408,12 +1408,12 @@ else
     </style>
 </head>
 <body>
-    <h1>🚨 SOS Moto - Sistema Temporariamente Indisponível</h1>
+    <h1>🚨 Memoryys - Sistema Temporariamente Indisponível</h1>
     
     <div class="emergency">
         <h2>⚠️ EMERGÊNCIA MÉDICA?</h2>
         <p><strong>Ligue imediatamente: 192 (SAMU)</strong></p>
-        <p>Informe que é um motociclista com perfil SOS Moto</p>
+        <p>Informe que é um motociclista com perfil Memoryys</p>
     </div>
     
     <div class="contact">
@@ -1424,7 +1424,7 @@ else
     </div>
     
     <p>Sistema em manutenção - Previsão de retorno: máximo 30 minutos</p>
-    <p>Para suporte: suporte@sosmoto.com.br</p>
+    <p>Para suporte: suporte@memoryys.com</p>
     
     <script>
         // Auto-refresh every 5 minutes
@@ -1528,7 +1528,7 @@ echo "📊 Setting up post-recovery monitoring..."
 # 1. Health check monitoring (every 30s)
 (
   while true; do
-    HEALTH_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://sosmoto.com.br/api/health)
+    HEALTH_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://memoryys.com/api/health)
     
     if [ "$HEALTH_STATUS" != "200" ]; then
       echo "⚠️ $(date): Health check failed - $HEALTH_STATUS"
@@ -1544,7 +1544,7 @@ echo "📊 Setting up post-recovery monitoring..."
 # 2. QR Code performance monitoring (every 2 min)
 (
   while true; do
-    QR_TIME=$(curl -w "%{time_total}" -s -o /dev/null https://sosmoto.com.br/emergency/test-profile)
+    QR_TIME=$(curl -w "%{time_total}" -s -o /dev/null https://memoryys.com/emergency/test-profile)
     
     if (( $(echo "$QR_TIME > 2.0" | bc -l) )); then
       echo "⚠️ $(date): QR Code slow - ${QR_TIME}s"
@@ -1559,7 +1559,7 @@ echo "📊 Setting up post-recovery monitoring..."
 # 3. Payment monitoring (every 5 min)
 (
   while true; do
-    PAYMENT_STATUS=$(curl -s -w "%{http_code}" -o /dev/null -X POST https://sosmoto.com.br/api/create-payment -d '{"test":true}')
+    PAYMENT_STATUS=$(curl -s -w "%{http_code}" -o /dev/null -X POST https://memoryys.com/api/create-payment -d '{"test":true}')
     
     if [ "$PAYMENT_STATUS" != "200" ]; then
       echo "⚠️ $(date): Payment endpoint issues - $PAYMENT_STATUS"
@@ -1624,7 +1624,7 @@ echo "Monitor logs: tail -f recovery-monitoring.log"
 
 ---
 
-**🎯 Este manual de rollback e recovery garante que o sistema SOS Moto possa se recuperar rapidamente de qualquer falha, mantendo a disponibilidade crítica necessária para salvar vidas em emergências médicas.**
+**🎯 Este manual de rollback e recovery garante que o sistema Memoryys possa se recuperar rapidamente de qualquer falha, mantendo a disponibilidade crítica necessária para salvar vidas em emergências médicas.**
 
 <function_calls>
 <invoke name="TodoWrite">

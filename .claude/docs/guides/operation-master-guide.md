@@ -1,9 +1,9 @@
-# 🎯 Guia Mestre de Operação - Sistema de Agentes SOS Moto
+# 🎯 Guia Mestre de Operação - Sistema de Agentes Memoryys
 
 **Documento Principal**: Guia completo para operar o sistema de agentes especializados  
 **Versão**: 1.0  
 **Data**: 19 de agosto de 2025  
-**Sistema**: SOS Moto - Emergency Medical System
+**Sistema**: Memoryys - Emergency Medical System
 
 ## 📋 Índice
 - [🚀 Setup Inicial](#-setup-inicial)
@@ -23,7 +23,7 @@ O comando mencionado deve ser executado para configurar o MCP server específico
 
 ```bash
 # Comando correto para adicionar MCP server Vercel específico
-claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta-mantraom/firebase-sos-moto
+claude mcp add --transport http mcp-firebase-memoryys https://mcp.vercel.com/cta-mantraom/firebase-memoryys
 ```
 
 **⚠️ IMPORTANTE**: Este comando NÃO vai para `.claude/mcp/` - ele configura o MCP server globalmente no Claude Code CLI.
@@ -33,7 +33,7 @@ claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta
 ```
 Claude Code Global Config:
 ├── mcp-servers/
-│   └── mcp-firebase-sos-moto  ← Configurado pelo comando CLI
+│   └── mcp-firebase-memoryys  ← Configurado pelo comando CLI
 │
 Projeto Local:
 ├── .claude/
@@ -50,10 +50,10 @@ Projeto Local:
 claude mcp list
 
 # Verificar conectividade
-claude mcp status mcp-firebase-sos-moto
+claude mcp status mcp-firebase-memoryys
 
 # Testar comunicação
-claude mcp test mcp-firebase-sos-moto
+claude mcp test mcp-firebase-memoryys
 ```
 
 ### **3. Validação do Sistema**
@@ -263,7 +263,7 @@ Os agentes são acionados através de **trigger patterns** e podem ser chamados:
 **Global (CLI Command)**:
 ```bash
 # Adiciona MCP server globalmente
-claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta-mantraom/firebase-sos-moto
+claude mcp add --transport http mcp-firebase-memoryys https://mcp.vercel.com/cta-mantraom/firebase-memoryys
 
 # Listagem global
 claude mcp list
@@ -282,7 +282,7 @@ claude mcp list
 
 ### **Servers Disponíveis**
 
-1. **mcp-firebase-sos-moto**: Server específico do projeto (Vercel)
+1. **mcp-firebase-memoryys**: Server específico do projeto (Vercel)
 2. **vercel**: Deploy e environment management
 3. **mercadopago**: Payment processing e webhooks
 4. **firebase**: Database e storage operations
@@ -424,7 +424,7 @@ echo 'export const token = "APP_USR-secret";' > test.ts
 claude mcp status
 
 # Testar server específico
-claude mcp test mcp-firebase-sos-moto
+claude mcp test mcp-firebase-memoryys
 
 # Validar fallback
 # Desconectar MCP e verificar se fallback funciona
@@ -469,7 +469,7 @@ npx tsc --noEmit
 # Sintomas: Comandos MCP falham
 # Causa: Servidor indisponível
 # Solução:
-claude mcp restart mcp-firebase-sos-moto
+claude mcp restart mcp-firebase-memoryys
 # Fallback: Usar config local em .claude/mcp/
 ```
 
@@ -501,7 +501,7 @@ tail -f ~/.claude/logs/hooks.log
 claude config reset
 
 # Re-adicionar MCP server
-claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta-mantraom/firebase-sos-moto
+claude mcp add --transport http mcp-firebase-memoryys https://mcp.vercel.com/cta-mantraom/firebase-memoryys
 
 # Validar sistema
 /validate-flow
@@ -518,7 +518,7 @@ claude mcp add --transport http mcp-firebase-sos-moto https://mcp.vercel.com/cta
 watch -n 300 '/validate-flow'
 
 # Monitorar performance
-watch -n 60 'curl -w "%{time_total}" https://sosmoto.com.br/api/health'
+watch -n 60 'curl -w "%{time_total}" https://memoryys.com/api/health'
 ```
 
 ### **Métricas Críticas**

@@ -24,7 +24,7 @@ import { z } from 'zod';
 /**
  * Profile Domain Entity
  * 
- * This entity represents a user profile in the SOS Moto system.
+ * This entity represents a user profile in the Memoryys system.
  * It encapsulates all profile-related business logic and domain rules.
  */
 export class Profile {

@@ -1,4 +1,4 @@
-# SOS Moto - Sistema de Emergência Médica para Motociclistas
+# Memoryys - Sistema de Emergência Médica
 
 ## 🎯 REGRAS FUNDAMENTAIS CLAUDE CODE
 
@@ -203,14 +203,21 @@ config.app.frontendUrl
 3. **Frontend**: Polling/WebSocket → Detecta aprovação
 4. **SÓ ENTÃO**: Redireciona para /success
 
-### **Dados Médicos Críticos**
-- **Tipo sanguíneo** (select A+, A-, B+, B-, AB+, AB-, O+, O-)
-- **Alergias** (array de strings, validação Zod)
-- **Medicamentos** (array de strings, validação Zod)
-- **Condições médicas** (array de strings, validação Zod)
-- **Contatos de emergência** (array de objetos validados)
+### **Dados Médicos - Validação Simplificada**
+#### **OBRIGATÓRIOS:**
+- **Nome** (string, mínimo 2 caracteres)
+- **Telefone** (string válido)
+- **Email** (email válido)
+- **Tipo sanguíneo** (enum: A+, A-, B+, B-, AB+, AB-, O+, O-)
+- **Contatos de emergência** (mínimo 1 com nome + telefone)
 
-### **Planos SOS Moto**
+#### **OPCIONAIS:**
+- **Alergias** (array de strings simples)
+- **Medicamentos** (array de strings simples)
+- **Condições médicas** (array de strings simples)
+- **Outros dados** (altura, peso, plano saúde, hospital)
+
+### **Planos Memoryys**
 - **Basic**: R$ 5,00 (**TESTE TEMPORÁRIO** - produção final: R$ 55,00)
 - **Premium**: R$ 85,00 (validado no código)
 - **Nota**: Valor R$ 5 é intencional para testes com pagamento real

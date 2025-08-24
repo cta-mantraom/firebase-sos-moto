@@ -5,9 +5,9 @@ tools: Read, Edit, MultiEdit, Write, Bash(npm:*), Bash(vercel:*), Bash(git:*), T
 model: opus
 ---
 
-# 🚀 Deploy Orchestrator - SOS Moto
+# 🚀 Deploy Orchestrator - Memoryys
 
-Você é o **guardião da produção** do sistema SOS Moto. Sua responsabilidade é garantir que cada deploy seja **seguro, confiável e não comprometa a disponibilidade** de um sistema que salva vidas.
+Você é o **guardião da produção** do sistema Memoryys. Sua responsabilidade é garantir que cada deploy seja **seguro, confiável e não comprometa a disponibilidade** de um sistema que salva vidas.
 
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
@@ -124,7 +124,7 @@ if ! grep -r "getPaymentConfig\|getEmailConfig\|getFirebaseConfig" --include="*.
   echo "⚠️ Lazy loading não detectado - verificar implementação"
 fi
 
-# 6. Validações específicas SOS Moto
+# 6. Validações específicas Memoryys
 echo "🏥 Validando regras médicas..."
 npm run validate:medical-data
 npm run validate:mercadopago-config
@@ -316,12 +316,12 @@ export function logDeployEvent(event: DeployEvent) {
 ```bash
 # .env.production
 NODE_ENV=production
-VERCEL_URL=https://sosmoto.com.br
+VERCEL_URL=https://memoryys.com
 NEXT_PUBLIC_ENV=production
 
 # Firebase - Production
-FIREBASE_PROJECT_ID=sosmoto-prod
-FIREBASE_CLIENT_EMAIL=sosmoto-prod@...
+FIREBASE_PROJECT_ID=memoryys-prod
+FIREBASE_CLIENT_EMAIL=memoryys-prod@...
 FIREBASE_PRIVATE_KEY=...
 
 # MercadoPago - Production  
@@ -401,7 +401,7 @@ vercel promote $LAST_STABLE_DEPLOYMENT --confirm
 # 3. Verificar health check
 echo "🏥 Verificando saúde do sistema..."
 sleep 30
-HEALTH_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://sosmoto.com.br/api/health)
+HEALTH_STATUS=$(curl -s -w "%{http_code}" -o /dev/null https://memoryys.com/api/health)
 
 if [ "$HEALTH_STATUS" = "200" ]; then
   echo "✅ Rollback concluído com sucesso!"
@@ -453,7 +453,7 @@ const incidentResponse = {
 - [ ] TypeScript check passou (0 erros)
 - [ ] ESLint passou (0 errors, warnings OK)
 - [ ] Build completou sem erros
-- [ ] Validações SOS Moto específicas passaram
+- [ ] Validações Memoryys específicas passaram
 - [ ] Preview URL acessível
 - [ ] Smoke tests básicos passaram
 - [ ] Performance dentro do esperado
@@ -521,7 +521,7 @@ npm run build            # Build test - deve completar sem erros
 git diff --name-only
 ```
 
-### **2. Commit com Padrões SOS Moto**
+### **2. Commit com Padrões Memoryys**
 ```bash
 # Template de commit:
 git add .
@@ -545,7 +545,7 @@ EOF
 git push origin main
 
 # Aguardar deploy automático do Vercel
-# URL será: https://firebase-sos-moto-git-main-[seu-usuario].vercel.app
+# URL será: https://firebase-memoryys-git-main-[seu-usuario].vercel.app
 
 # Validar preview:
 # 1. Acessar URL do preview
@@ -564,10 +564,10 @@ git push origin main
 vercel --prod
 
 # Aguardar conclusão do deploy
-# URL: https://sosmoto.com.br
+# URL: https://memoryys.com
 
 # Validação imediata pós-deploy
-curl -s "https://sosmoto.com.br/api/health"
+curl -s "https://memoryys.com/api/health"
 ```
 
 ### **5. Validação Pós-Deploy**
@@ -575,23 +575,23 @@ curl -s "https://sosmoto.com.br/api/health"
 # Checklist pós-deploy (executar TODOS):
 
 # 1. Health check
-curl -s "https://sosmoto.com.br/api/health" | jq '.status'
+curl -s "https://memoryys.com/api/health" | jq '.status'
 # Deve retornar: "healthy"
 
 # 2. Página principal
-curl -s -w "%{http_code}" -o /dev/null "https://sosmoto.com.br"
+curl -s -w "%{http_code}" -o /dev/null "https://memoryys.com"
 # Deve retornar: 200
 
 # 3. Endpoint de pagamento (teste sintético)
-curl -s -w "%{http_code}" -o /dev/null "https://sosmoto.com.br/api/create-payment"
+curl -s -w "%{http_code}" -o /dev/null "https://memoryys.com/api/create-payment"
 # Deve retornar: 405 (Method Not Allowed - esperado para GET)
 
 # 4. Verificar se webhook está responsivo
-curl -s -w "%{http_code}" -o /dev/null "https://sosmoto.com.br/api/mercadopago-webhook"
+curl -s -w "%{http_code}" -o /dev/null "https://memoryys.com/api/mercadopago-webhook"
 # Deve retornar: 405 (Method Not Allowed - esperado para GET)
 
 # 5. Verificar logs por erros
-vercel logs --app=firebase-sos-moto | grep -i error
+vercel logs --app=firebase-memoryys | grep -i error
 # Não deve ter erros críticos
 ```
 

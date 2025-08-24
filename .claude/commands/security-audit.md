@@ -43,6 +43,12 @@ find . -name ".env*" -not -path "./.env.example" | xargs ls -la
 grep -r "APP_USR-" --include="*.ts" --include="*.tsx" src/ lib/ api/
 grep -r "TEST-" --include="*.ts" --include="*.tsx" src/ lib/ api/
 grep -r "PROD-" --include="*.ts" --include="*.tsx" src/ lib/ api/
+
+# Verificar uso de process.env direto (PROIBIDO)
+grep -r "process\.env\." --include="*.ts" --include="*.tsx" src/ lib/ api/
+
+# Verificar uso de any (PROIBIDO)
+grep -r ": any" --include="*.ts" --include="*.tsx" src/ lib/ api/
 ```
 
 ### **2. Dados Médicos - Proteção LGPD**
@@ -54,8 +60,11 @@ Verificar proteção de dados sensíveis:
 # Verificar se dados médicos estão sendo logados
 grep -r "bloodType\|allergies\|medications" --include="*.ts" lib/utils/logger.ts api/
 
+# Verificar mascaramento LGPD automático
+grep -r "SENSITIVE_FIELDS\|\*\*\*MASKED\*\*\*" --include="*.ts" lib/utils/logger.ts
+
 # Verificar anonimização em logs
-grep -r "anonymize\|sanitize" --include="*.ts" lib/
+grep -r "anonymize\|sanitize\|maskSensitiveData" --include="*.ts" lib/
 
 # Verificar estrutura de auditoria
 find lib/ -name "*audit*" -o -name "*lgpd*" | xargs ls -la
@@ -78,6 +87,11 @@ grep -r "MP_DEVICE_SESSION_ID\|device_id" src/components/MercadoPagoCheckout.tsx
 
 # Service layer usage (não API direta)
 grep -r "https://api.mercadopago.com" --include="*.ts" --include="*.tsx" src/ lib/ api/
+
+# Verificar arquivos deletados (não devem existir)
+if [ -f "lib/utils/validation.ts" ]; then echo "❌ ARQUIVO OBSOLETO: validation.ts"; fi
+if [ -f "lib/config/env.ts" ]; then echo "❌ ARQUIVO OBSOLETO: env.ts"; fi
+if [ -f "lib/services/payment/payment.processor.ts" ]; then echo "❌ ARQUIVO OBSOLETO: payment.processor.ts"; fi
 
 # Webhook security headers
 grep -r "x-signature\|x-request-id" api/

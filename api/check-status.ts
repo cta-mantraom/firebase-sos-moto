@@ -1,6 +1,6 @@
 // Vercel Function para verificar status do processamento
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { env, config } from '../lib/config/env.js';
+import { getRedisConfig } from '../lib/config/index.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uniqueUrl = req.query.id as string;
@@ -25,8 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Use as variáveis de ambiente corretas do Vercel
-    const redisUrl = config.redis.url;
-    const redisToken = config.redis.token;
+    const redisConfig = getRedisConfig();
+    const redisUrl = redisConfig.url;
+    const redisToken = redisConfig.token;
 
     if (!redisUrl || !redisToken) {
       console.error('Variáveis de ambiente do Redis não encontradas');

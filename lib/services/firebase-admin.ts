@@ -2,7 +2,7 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 import { logInfo, logError } from '../utils/logger.js';
-import { config } from '../config/env.js';
+import { getFirebaseConfig } from '../config/index.js';
 
 /**
  * Firebase Admin Helper - Factory Pattern for Serverless Functions
@@ -24,13 +24,14 @@ export function getFirebaseApp(): App {
   // Check if already initialized in this execution context
   if (!getApps().length) {
     try {
+      const firebaseConfig = getFirebaseConfig();
       const app = initializeApp({
         credential: cert({
-          projectId: config.firebase.projectId,
-          clientEmail: config.firebase.clientEmail,
-          privateKey: config.firebase.privateKey?.replace(/\\n/g, '\n'),
+          projectId: firebaseConfig.projectId,
+          clientEmail: firebaseConfig.clientEmail,
+          privateKey: firebaseConfig.privateKey?.replace(/\\n/g, '\n'),
         }),
-        storageBucket: config.firebase.storageBucket,
+        storageBucket: firebaseConfig.storageBucket,
       });
       
       logInfo('Firebase Admin initialized successfully');

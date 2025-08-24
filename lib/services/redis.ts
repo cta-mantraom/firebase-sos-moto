@@ -1,14 +1,15 @@
 // lib/services/redis.ts - Redis cache client (Node.js environment)
 import { logInfo, logError, logWarning } from '../utils/logger.js';
-import { config } from '../config/env.js';
+import { getRedisConfig } from '../config/index.js';
 
 class RedisService {
     private baseUrl: string;
     private token: string;
 
     constructor() {
-        this.baseUrl = config.redis.url || '';
-        this.token = config.redis.token || '';
+        const redisConfig = getRedisConfig();
+        this.baseUrl = redisConfig.url || '';
+        this.token = redisConfig.token || '';
     }
 
     private isConfigured(): boolean {

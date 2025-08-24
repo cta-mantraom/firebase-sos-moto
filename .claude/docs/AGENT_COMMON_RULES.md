@@ -7,14 +7,20 @@
 - **IMPLEMENTAÇÃO**: Criar código SOMENTE com permissão explícita
 - **NUNCA** criar código por iniciativa própria
 
-### **TypeScript Strict**
+### **TypeScript Strict - NUNCA usar `any`**
 ```typescript
-// ❌ PROIBIDO
+// ❌ PROIBIDO - VULNERABILIDADE
 function process(data: any) { }  // NUNCA usar any
+const result = data as PaymentType; // Cast direto PROIBIDO
 
-// ✅ CORRETO
-interface ProcessData { ... }
-function process(data: ProcessData) { }
+// ✅ CORRETO - SEMPRE validar unknown
+function process(data: unknown): ProcessData {
+  const validated = DataSchema.safeParse(data);
+  if (!validated.success) {
+    throw new ValidationError(validated.error);
+  }
+  return validated.data; // 100% type safe
+}
 ```
 
 ### **Ambiente de Produção**
@@ -41,7 +47,11 @@ function process(data: ProcessData) { }
 - ❌ Criar logger local (usar centralizado)
 - ❌ Usar process.env diretamente
 - ❌ Modificar arquitetura DDD existente
-- ❌ Usar validateHMACSignature de validation.ts (código morto)
+- ❌ Usar validateHMACSignature de validation.ts (ARQUIVO DELETADO)
+- ❌ Usar lib/config/env.ts (ARQUIVO DELETADO)
+- ❌ Usar lib/utils/validation.ts (ARQUIVO DELETADO)
+- ❌ Usar lib/types/api.types.ts (ARQUIVO DELETADO)
+- ❌ Usar lib/services/payment/payment.processor.ts (ARQUIVO DELETADO)
 
 ### **Dados e Segurança**
 - ❌ Salvar em banco antes do pagamento aprovado
@@ -64,19 +74,33 @@ function process(data: ProcessData) { }
 // SEMPRE usar utilities existentes
 import { logInfo, logError, logWarning } from '@/lib/utils/logger.js';
 import { generateUniqueUrl, generateCorrelationId } from '@/lib/utils/ids.js';
-import { CreatePaymentSchema, ProfileSchema } from '@/lib/utils/validation.js';
+
+// ❌ DELETADO - NÃO USAR MAIS
+// import { CreatePaymentSchema } from '@/lib/utils/validation.js'; // ARQUIVO DELETADO
+
+// ✅ USAR - Domain validators
+import { CreatePaymentValidator } from '@/lib/domain/payment/payment.validators';
+import { ProfileValidator } from '@/lib/domain/profile/profile.validators';
 ```
 
-### **Configuração Centralizada**
+### **Configuração com Lazy Loading**
 ```typescript
-// SEMPRE usar config centralizada
-import { env, config } from '@/lib/config/env.js';
+// ❌ DELETADO - NÃO USAR MAIS
+// import { env, config } from '@/lib/config/env.js'; // ARQUIVO DELETADO
+
+// ✅ USAR - Lazy loading com Singleton Pattern
+import { getPaymentConfig } from '@/lib/config/contexts/payment.config';
+import { getEmailConfig } from '@/lib/config/contexts/email.config';
+import { getFirebaseConfig } from '@/lib/config/contexts/firebase.config';
+import { getRedisConfig } from '@/lib/config/contexts/redis.config';
+import { getAppConfig } from '@/lib/config/contexts/app.config';
 
 // NUNCA
 process.env.FIREBASE_PROJECT_ID  // ❌
 
 // SEMPRE
-config.firebase.projectId         // ✅
+const firebaseConfig = getFirebaseConfig();
+firebaseConfig.projectId         // ✅
 ```
 
 ### **Services Existentes**

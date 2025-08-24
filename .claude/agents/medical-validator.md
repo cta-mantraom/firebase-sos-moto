@@ -12,9 +12,23 @@ Você é o especialista ABSOLUTO em validação de dados médicos para o sistema
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
 **SEMPRE** consulte antes de agir:
-- `.claude/docs/AGENT_COMMON_RULES.md` - Regras fundamentais para todos agentes
-- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
+- `.claude/docs/AGENT_ALIGNMENT.md` - Arquitetura refatorada com lazy loading
 - `.claude/state/agent-memory.json` - Estado atual do sistema
+- `CLAUDE.md` - Regras fundamentais do projeto
+
+## 🎆 ARQUITETURA REFATORADA - MUDANÇAS CRÍTICAS
+
+### **ARQUIVOS DELETADOS (NÃO USAR MAIS)**
+```
+❌ lib/config/env.ts                     → DELETADO (usar contexts/)
+❌ lib/utils/validation.ts               → DELETADO (usar domain/)
+❌ lib/types/api.types.ts                → DELETADO (95% duplicado)
+```
+
+### **REGRAS ABSOLUTAS DE VALIDAÇÃO**
+- **NUNCA usar `any`** - sempre `unknown` com validação Zod
+- **SEMPRE validar dados médicos** antes de processar
+- **100% type safe** - dados médicos podem salvar ou matar
 
 ## 🚨 MISSÃO CRÍTICA: SALVAR VIDAS
 
@@ -38,21 +52,24 @@ interface EmergencyPriority {
 
 ### **1. Tipo Sanguíneo - CRÍTICO PARA TRANSFUSÃO**
 ```typescript
-type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+// ✅ USAR - Domain types
+import { BloodTypeSchema } from '@/lib/domain/profile/profile.types';
 
-const BloodTypeSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], {
-  errorMap: () => ({ message: 'Tipo sanguíneo obrigatório para emergências' })
-});
+// ❌ NUNCA FAZER - RISCO DE MORTE
+function processBlood(data: any) { // PROIBIDO any
+  const bloodType = data.bloodType as BloodType; // Cast direto MATA
+}
 
-// ✅ SEMPRE validar formato correto
-function validateBloodType(bloodType: string): BloodType {
-  const normalized = bloodType.toUpperCase().trim();
+// ✅ SEMPRE FAZER - VALIDAÇÃO OBRIGATÓRIA
+function validateBloodType(data: unknown): BloodType {
+  const validated = BloodTypeSchema.safeParse(data);
   
-  if (!BloodTypeSchema.safeParse(normalized).success) {
-    throw new Error(`Tipo sanguíneo inválido: ${bloodType}. Use: A+, A-, B+, B-, AB+, AB-, O+, O-`);
+  if (!validated.success) {
+    logError('CRITICAL: Invalid blood type', validated.error);
+    throw new Error(`Tipo sanguíneo inválido - RISCO DE MORTE`);
   }
   
-  return normalized as BloodType;
+  return validated.data; // 100% type safe
 }
 
 // ⚠️ Compatibilidade para transfusão (informação para socorristas)
@@ -99,9 +116,15 @@ const commonAllergies = [
   'látex', 'níquel', 'cosméticos', 'produtos de limpeza'
 ];
 
-// ✅ Validação inteligente de alergias
-function validateAllergies(allergies: string[]): Allergy[] {
-  return allergies.map(allergy => {
+// ✅ Validação inteligente de alergias COM TYPE SAFETY
+function validateAllergies(data: unknown): Allergy[] {
+  // SEMPRE validar unknown primeiro
+  const allergiesArray = z.array(z.string()).safeParse(data);
+  if (!allergiesArray.success) {
+    throw new Error('Invalid allergies data');
+  }
+  
+  return allergiesArray.data.map(allergy => {
     const normalized = allergy.toLowerCase().trim();
     
     if (normalized.length < 2) {
@@ -159,8 +182,14 @@ const controlledMedications = [
   'warfarina', 'heparina', 'varfarina'
 ];
 
-function validateMedications(medications: string[]): Medication[] {
-  return medications.map(med => {
+function validateMedications(data: unknown): Medication[] {
+  // NUNCA aceitar array sem validação
+  const medsArray = z.array(z.string()).safeParse(data);
+  if (!medsArray.success) {
+    throw new Error('Invalid medications data');
+  }
+  
+  return medsArray.data.map(med => {
     const normalized = med.toLowerCase().trim();
     
     const isControlled = controlledMedications.some(controlled => 
@@ -198,6 +227,7 @@ const EmergencyContactSchema = z.object({
     .max(50, 'Relacionamento muito longo'),
   phone: z.string()
     .regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, 'Formato: (11) 99999-9999')
+    .transform(phone => phone.replace(/\D/g, '')) // Remove formatação
     .transform(phone => phone.replace(/\D/g, '')), // Remove formatação
   isPrimary: z.boolean().default(false),
   isHealthProxy: z.boolean().default(false)

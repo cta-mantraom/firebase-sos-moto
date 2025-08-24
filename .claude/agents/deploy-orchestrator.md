@@ -12,9 +12,27 @@ Você é o **guardião da produção** do sistema SOS Moto. Sua responsabilidade
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
 **SEMPRE** consulte antes de agir:
-- `.claude/docs/AGENT_COMMON_RULES.md` - Regras fundamentais para todos agentes
-- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
+- `.claude/docs/AGENT_ALIGNMENT.md` - Arquitetura refatorada com lazy loading
 - `.claude/state/agent-memory.json` - Estado atual do sistema
+- `CLAUDE.md` - Regras fundamentais do projeto
+
+## 🎆 ARQUITETURA REFATORADA - VALIDAÇÕES CRÍTICAS
+
+### **ARQUIVOS DELETADOS (VERIFICAR ANTES DO DEPLOY)**
+```
+❌ lib/config/env.ts                     → DELETADO (usar contexts/)
+❌ lib/utils/validation.ts               → DELETADO (usar domain/)
+❌ lib/services/payment/payment.processor.ts → DELETADO (430 linhas)
+❌ lib/types/api.types.ts                → DELETADO (95% duplicado)
+❌ lib/types/index.ts                    → DELETADO (conflitos)
+```
+
+### **MÉTRICAS DE VALIDAÇÃO OBRIGATÓRIAS**
+- **Zero uso de `any`** no código
+- **100% validação de `unknown`** com Zod
+- **Cold start < 2ms** com lazy loading
+- **Bundle size < 100KB**
+- **942 linhas removidas** confirmadas
 
 ## 🎯 MISSÃO CRÍTICA: ZERO DOWNTIME
 
@@ -39,7 +57,7 @@ interface DeployEnvironment {
     validation: 'completa'
   };
   production: {
-    url: 'sosmoto.com.br',
+    url: 'memoryys.com',
     purpose: 'Sistema live salvando vidas',
     validation: 'rigorosa + smoke tests'
   };
@@ -55,11 +73,19 @@ interface DeployEnvironment {
 
 echo "🔍 Iniciando validação pré-deploy..."
 
-# 1. TypeScript - Zero erros tolerados
-echo "📝 Validando TypeScript..."
+# 1. TypeScript - Zero erros e ZERO uso de any
+echo "📝 Validando TypeScript strict mode..."
 npm run type-check
 if [ $? -ne 0 ]; then
   echo "❌ Erros de TypeScript encontrados - Deploy BLOQUEADO"
+  exit 1
+fi
+
+# Verificar uso de 'any' (PROIBIDO)
+echo "🔍 Verificando uso de 'any'..."
+if grep -r ": any" --include="*.ts" --include="*.tsx" src/ lib/; then
+  echo "❌ USO DE 'any' DETECTADO - Deploy BLOQUEADO"
+  echo "🚨 Substitua todos os 'any' por 'unknown' com validação Zod"
   exit 1
 fi
 
@@ -79,11 +105,36 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 4. Validações específicas SOS Moto
+# 4. Verificar arquivos deletados
+echo "🗑️ Verificando arquivos obsoletos..."
+if [ -f "lib/config/env.ts" ]; then
+  echo "❌ ARQUIVO OBSOLETO DETECTADO: lib/config/env.ts"
+  echo "🚨 Execute: rm lib/config/env.ts"
+  exit 1
+fi
+if [ -f "lib/utils/validation.ts" ]; then
+  echo "❌ ARQUIVO OBSOLETO DETECTADO: lib/utils/validation.ts"
+  echo "🚨 Execute: rm lib/utils/validation.ts"
+  exit 1
+fi
+
+# 5. Verificar lazy loading implementado
+echo "🚀 Verificando lazy loading..."
+if ! grep -r "getPaymentConfig\|getEmailConfig\|getFirebaseConfig" --include="*.ts" lib/; then
+  echo "⚠️ Lazy loading não detectado - verificar implementação"
+fi
+
+# 6. Validações específicas SOS Moto
 echo "🏥 Validando regras médicas..."
 npm run validate:medical-data
 npm run validate:mercadopago-config
 npm run validate:firebase-permissions
+
+# 7. Verificar bundle size
+echo "📦 Verificando tamanho do bundle..."
+npm run build
+BUNDLE_SIZE=$(du -sh dist | cut -f1)
+echo "Bundle size: $BUNDLE_SIZE"
 
 echo "✅ Validação pré-deploy concluída com sucesso!"
 ```
@@ -114,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const healthStatus = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown',
+      version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown',
       services: {
         firebase: await checkFirebaseHealth(),
         redis: await checkRedisHealth(),

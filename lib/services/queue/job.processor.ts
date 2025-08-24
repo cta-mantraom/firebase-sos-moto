@@ -9,7 +9,7 @@ import {
   CacheJobData,
 } from '../../types/queue.types.js';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
-import { config } from '../../config/env.js';
+import { getAppConfig } from '../../config/index.js';
 
 /**
  * Job Processing Result
@@ -209,7 +209,7 @@ export abstract class BaseJobProcessor<T extends JobData = JobData> {
         maxRetries: context.maxRetries,
         duration,
         errorType: error.constructor.name,
-        stack: config.app.environment === 'development' ? error.stack : undefined,
+        stack: getAppConfig().environment === 'development' ? error.stack : undefined,
       },
     };
   }

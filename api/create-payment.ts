@@ -2,25 +2,49 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { z } from "zod";
-import { env, config } from "../lib/config/env.js";
+import { getFirebaseConfig, getPaymentConfig, getAppConfig } from "../lib/config/index.js";
 import { logInfo, logError } from "../lib/utils/logger.js";
-// CORRETO: Import centralized schema from domain layer (Serverless rule: no duplicate schemas)
-import {
-  CreatePaymentSchema,
-  type CreatePaymentData,
-} from "../lib/utils/validation.js";
+// Import from domain validators
+import { z } from "zod";
+
+// Define CreatePaymentSchema locally since validation.ts was deleted
+const CreatePaymentSchema = z.object({
+  name: z.string().min(1),
+  surname: z.string().optional(),
+  email: z.string().email(),
+  phone: z.string().min(10),
+  birthDate: z.string().optional(),
+  age: z.number().positive(),
+  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+  allergies: z.array(z.string()).optional(),
+  medications: z.array(z.string()).optional(),
+  medicalConditions: z.array(z.string()).optional(),
+  healthPlan: z.string().optional(),
+  preferredHospital: z.string().optional(),
+  medicalNotes: z.string().optional(),
+  emergencyContacts: z.array(z.object({
+    name: z.string(),
+    phone: z.string(),
+    relationship: z.string(),
+  })).optional(),
+  selectedPlan: z.enum(['basic', 'premium']),
+  deviceId: z.string().optional(),
+});
+
+type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
 import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
   try {
+    const firebaseConfig = getFirebaseConfig();
     initializeApp({
       credential: cert({
-        projectId: config.firebase.projectId,
-        clientEmail: config.firebase.clientEmail,
-        privateKey: config.firebase.privateKey?.replace(/\\n/g, "\n"),
+        projectId: firebaseConfig.projectId,
+        clientEmail: firebaseConfig.clientEmail,
+        privateKey: firebaseConfig.privateKey,
       }),
-      storageBucket: config.firebase.storageBucket,
+      storageBucket: firebaseConfig.storageBucket,
     });
   } catch (error) {
     logError("Error initializing Firebase Admin", error as Error);
@@ -107,8 +131,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uniqueUrl,
       plan: validatedData.selectedPlan,
       amount: plan.unit_price,
-      frontendUrl: env.FRONTEND_URL?.trim(),
-      backendUrl: env.BACKEND_URL?.trim(),
+      frontendUrl: getAppConfig().frontendUrl,
+      backendUrl: getAppConfig().backendUrl,
     });
 
     // Create MercadoPago preference with required headers
@@ -155,7 +179,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({
       error: "Failed to create payment",
       message:
-        env.NODE_ENV === "development"
+        getAppConfig().isDevelopment
           ? (error as Error).message
           : undefined,
       correlationId,
@@ -180,9 +204,10 @@ function buildPreferenceData(
   plan: (typeof PLAN_PRICES)[keyof typeof PLAN_PRICES],
   uniqueUrl: string
 ) {
-  // Default URLs for production when env vars are not set - trim whitespace/newlines
-  const baseUrl = (env.FRONTEND_URL || "https://memoryys.com").trim();
-  const backendUrl = (env.BACKEND_URL || baseUrl).trim();
+  // Get URLs from app config (already trimmed and validated)
+  const appConfig = getAppConfig();
+  const baseUrl = appConfig.frontendUrl;
+  const backendUrl = appConfig.backendUrl;
 
   // Validate URLs format
   if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
@@ -263,10 +288,11 @@ async function createMercadoPagoPreference(
   idempotencyKey: string,
   correlationId: string
 ) {
+  const paymentConfig = getPaymentConfig();
   const mercadoPagoService = new MercadoPagoService({
-    accessToken: config.mercadopago.accessToken!,
-    webhookSecret: config.mercadopago.webhookSecret!,
-    publicKey: config.mercadopago.publicKey!,
+    accessToken: paymentConfig.accessToken,
+    webhookSecret: paymentConfig.webhookSecret,
+    publicKey: paymentConfig.publicKey,
   });
 
   try {

@@ -75,29 +75,32 @@ logWarning(message: string, metadata?: object): void
 
 ---
 
-## ✅ Validation - lib/utils/validation.ts
+## ❌ DELETADO - lib/utils/validation.ts
 
-### **Schemas Principais**
+### **🚨 ARQUIVO DELETADO - NÃO USAR MAIS**
 
-#### `CreatePaymentSchema`
-- **25+ campos** validados com Zod
-- Dados de pagamento + perfil médico
-- Validação de telefone brasileiro
-- Campos opcionais para dados médicos
+Este arquivo foi **DELETADO** (131 linhas de código duplicado).
 
-#### `ProfileSchema`
-- Schema do perfil médico para banco
-- Usa snake_case para campos
-- Validações críticas de idade, telefone, email
+### **✅ USAR AGORA - Domain Validators**
 
-### **Funções Importantes**
+#### `lib/domain/payment/payment.validators.ts`
+- **CreatePaymentValidator** - Validação de pagamento
+- **PaymentWebhookValidator** - Validação de webhook
+- 25+ campos validados com Zod
 
-#### `transformApiToProfile()`
-- Transforma dados da API para formato do banco
-- Mapeia `selectedPlan` → `plan_type`
-- Converte camelCase → snake_case
+#### `lib/domain/profile/profile.validators.ts`
+- **ProfileValidator** - Schema do perfil médico
+- **BloodTypeSchema** - Enum crítico para emergência
+- Validações de idade, telefone, email
 
-#### `validateUUID()`
+#### `lib/domain/profile/profile.types.ts`
+- **BloodType** - Type enum para tipo sanguíneo
+- **PlanType** - Enum para planos
+- **ProfileStatus** - Status do perfil
+
+### **❌ Funções Deletadas**
+- `validateHMACSignature()` - Código morto, usar MercadoPagoService
+- `transformApiToProfile()` - Código morto, não usado
 - Valida formato de UUID v4
 - Usado para validar IDs gerados
 

@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
-import { config as envConfig } from '../../config/env.js';
+import { getRedisConfig } from '../../config/index.js';
 
 // Schemas de validação
 const CacheEntrySchema = z.object({
@@ -41,9 +41,10 @@ export class RedisService {
   private readonly localCache: Map<string, CacheEntry>;
 
   constructor(config?: Partial<RedisServiceConfig>) {
+    const redisConfig = getRedisConfig();
     this.config = {
-      url: config?.url ?? envConfig.redis.url!,
-      token: config?.token ?? envConfig.redis.token!,
+      url: config?.url ?? redisConfig.url!,
+      token: config?.token ?? redisConfig.token!,
       defaultTTL: config?.defaultTTL ?? 3600, // 1 hour
       maxRetries: config?.maxRetries ?? 3,
       enableCompression: config?.enableCompression ?? false,

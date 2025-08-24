@@ -22,11 +22,30 @@ Validar o fluxo completo:
 ```bash
 echo "🔍 FASE 1: Validação de Código"
 
-# TypeScript - Zero erros tolerados
-echo "📝 Verificando TypeScript..."
+# TypeScript - Zero erros e ZERO uso de any
+echo "📝 Verificando TypeScript strict..."
 npm run type-check
 if [ $? -ne 0 ]; then
   echo "❌ Erros de TypeScript encontrados"
+  exit 1
+fi
+
+# Verificar uso de 'any' (PROIBIDO)
+echo "🔍 Verificando uso de 'any'..."
+if grep -r ": any" --include="*.ts" --include="*.tsx" src/ lib/; then
+  echo "❌ USO DE 'any' DETECTADO - Validação BLOQUEADA"
+  echo "🚨 Substitua todos os 'any' por 'unknown' com validação Zod"
+  exit 1
+fi
+
+# Verificar arquivos deletados
+echo "🗑️ Verificando arquivos obsoletos..."
+if [ -f "lib/config/env.ts" ]; then
+  echo "❌ ARQUIVO OBSOLETO: lib/config/env.ts deve ser deletado"
+  exit 1
+fi
+if [ -f "lib/utils/validation.ts" ]; then
+  echo "❌ ARQUIVO OBSOLETO: lib/utils/validation.ts deve ser deletado"
   exit 1
 fi
 
@@ -59,7 +78,7 @@ fi
 - Device ID collection implementado
 - HMAC validation funcionando  
 - Webhook processamento assíncrono
-- Planos SOS Moto (R$ 55,00 e R$ 85,00)
+- Planos SOS Moto (R$ 5,00 teste temporário / R$ 85,00 premium)
 
 **Use o medical-validator para validar:**
 - Schemas médicos Zod implementados
@@ -85,18 +104,22 @@ fi
 
 ## 📋 Checklist de Validação Específica
 
-### **Arquitetura Serverless ✅**
-- [ ] Factory Pattern Firebase implementado em todas as functions
+### **Arquitetura Refatorada ✅**
+- [ ] Configs com lazy loading implementadas
+- [ ] Zero uso de `any` no código
+- [ ] Arquivos obsoletos deletados (942 linhas removidas)
+- [ ] Domain validators sendo usados (não validation.ts)
+- [ ] Factory Pattern Firebase com lazy loading
 - [ ] Nenhuma função usando estado compartilhado
 - [ ] Timeouts apropriados (API: 10s, Edge: 30s)
-- [ ] Environment variables validadas
+- [ ] Cold start < 2ms com lazy loading
 
 ### **MercadoPago Integration ✅**
 - [ ] Device ID coletado em 100% dos checkouts
 - [ ] HMAC validation em todos os webhooks
 - [ ] MercadoPagoService usado (não API direta)
 - [ ] Processamento assíncrono via QStash
-- [ ] Planos com preços corretos (R$ 55 e R$ 85)
+- [ ] Planos com preços corretos (R$ 5 teste / R$ 85 premium)
 
 ### **Dados Médicos ✅**
 - [ ] Tipo sanguíneo validado (A+, A-, B+, B-, AB+, AB-, O+, O-)

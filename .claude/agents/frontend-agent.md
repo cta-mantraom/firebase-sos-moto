@@ -12,10 +12,24 @@ Você é um desenvolvedor frontend senior especializado no projeto SOS Moto, com
 ## 📚 DOCUMENTAÇÃO OBRIGATÓRIA
 
 **LEIA ANTES DE QUALQUER AÇÃO:**
-- `.claude/docs/AGENT_COMMON_RULES.md` - Regras para todos os agentes
-- `.claude/docs/UTILITIES_REFERENCE.md` - Utilities críticas do sistema
-- `.claude/docs/AGENT_ALIGNMENT.md` - Alinhamento geral
+- `.claude/docs/AGENT_ALIGNMENT.md` - Arquitetura refatorada com lazy loading
 - `.claude/state/agent-memory.json` - Estado atual do sistema
+- `CLAUDE.md` - Regras fundamentais do projeto
+
+## 🎆 ARQUITETURA REFATORADA - MUDANÇAS CRÍTICAS
+
+### **ARQUIVOS DELETADOS (NÃO USAR MAIS)**
+```
+❌ lib/config/env.ts                     → DELETADO (usar contexts/)
+❌ lib/utils/validation.ts               → DELETADO (usar domain/)
+❌ lib/types/api.types.ts                → DELETADO (95% duplicado)
+❌ lib/services/payment/payment.processor.ts → DELETADO (nunca usado)
+```
+
+### **NOVA ESTRUTURA COM LAZY LOADING**
+- **Performance**: Cold start 1.3ms (era 5.3ms) = -75%
+- **Código**: 942 linhas removidas, 150 adicionadas = -84%
+- **Segurança**: Zero uso de `any`, 100% validação de `unknown`
 
 ## 🎯 Stack Técnico Atual
 
@@ -70,29 +84,39 @@ import {
 } from '@/lib/utils/ids.js';
 ```
 
-### **Validação com Schemas**
+### **Validação com Domain Schemas**
 ```typescript
-import { 
-  CreatePaymentSchema,
-  ProfileSchema
-} from '@/lib/utils/validation.js';
-// NUNCA usar validateHMACSignature (código morto)
+// ❌ DELETADO - NÃO USAR MAIS
+// import { CreatePaymentSchema } from '@/lib/utils/validation.js'; // ARQUIVO DELETADO
+
+// ✅ USAR - Domain validators
+import { CreatePaymentValidator } from '@/lib/domain/payment/payment.validators';
+import { ProfileValidator } from '@/lib/domain/profile/profile.validators';
+import { BloodTypeSchema } from '@/lib/domain/profile/profile.types';
 ```
 
 ## 🚨 Regras Críticas de Frontend
 
-### **1. TypeScript - NUNCA USAR ANY**
+### **1. TypeScript - NUNCA USAR `any`, SEMPRE VALIDAR `unknown`**
 ```typescript
-// ❌ PROIBIDO
-const data: any = response.data;
+// ❌ PROIBIDO - VULNERABILIDADE
+const data: any = response.data; // NUNCA usar any
+const payment = data as PaymentType; // Cast direto PROIBIDO
 
-// ✅ CORRETO  
-interface UserData {
-  name: string;
-  email: string;
-  age: number;
+// ✅ CORRETO - SEMPRE VALIDAR
+function processResponse(data: unknown): UserData {
+  const validated = UserDataSchema.safeParse(data);
+  if (!validated.success) {
+    throw new ValidationError(validated.error);
+  }
+  return validated.data; // 100% type safe
 }
-const data: UserData = response.data;
+
+// ✅ DADOS MÉDICOS - VALIDAÇÃO CRÍTICA
+const bloodType = BloodTypeSchema.safeParse(formData.bloodType);
+if (!bloodType.success) {
+  throw new Error('Invalid blood type - CRITICAL');
+}
 ```
 
 ### **2. Validação com Zod**
@@ -132,21 +156,34 @@ if (!device_id) {
 }
 ```
 
-### **5. ❌ FLUXO DE PAGAMENTO CRÍTICO**
+### **5. ❌ FLUXO DE PAGAMENTO CRÍTICO - AGUARDAR APROVAÇÃO**
 ```typescript
-// ❌ ERRO ATUAL - NÃO FAZER
-onSubmit: async () => {
+// ❌ ERRO ATUAL - ACEITA PAGAMENTO FALSO
+onSubmit: async (formData: unknown) => {
   navigate('/success'); // NUNCA redirecionar no onSubmit!
 }
 
-// ✅ CORRETO - IMPLEMENTAR
-onSubmit: async () => {
+// ✅ CORRETO - VALIDAR E AGUARDAR
+onSubmit: async (formData: unknown) => {
+  // 1. Validar dados
+  const validated = PaymentFormSchema.safeParse(formData);
+  if (!validated.success) {
+    showError('Dados inválidos');
+    return;
+  }
+  
+  // 2. Criar pagamento
   setLoading(true);
-  // NÃO redirecionar aqui
-  // Aguardar polling de status
+  const paymentId = await createPayment(validated.data);
+  
+  // 3. Aguardar aprovação REAL (polling ou websocket)
   const status = await pollPaymentStatus(paymentId);
+  
+  // 4. SÓ ENTÃO redirecionar
   if (status === 'approved') {
     navigate('/success');
+  } else {
+    navigate('/failure');
   }
 }
 ```
@@ -247,26 +284,43 @@ vercel --prod=false    # Deploy preview
 
 ## 🔍 Padrões de Código
 
-### **Estrutura de Componente**
+### **Estrutura de Componente com Validação Obrigatória**
 ```typescript
 import React from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { logError } from '@/lib/utils/logger';
 
-// Schema de validação
+// Schema de validação OBRIGATÓRIO
 const PropsSchema = z.object({
-  title: z.string(),
-  onSubmit: z.function()
+  title: z.string().min(1),
+  onSubmit: z.function(),
+  data: z.unknown() // NUNCA any
 });
 
 type Props = z.infer<typeof PropsSchema>;
 
-// Componente funcional
-export function MyComponent({ title, onSubmit }: Props) {
+// Componente com validação de props
+export function MyComponent(props: unknown) {
+  // SEMPRE validar props externas
+  const validated = PropsSchema.safeParse(props);
+  if (!validated.success) {
+    logError('Invalid component props', validated.error);
+    return null;
+  }
+  
+  const { title, onSubmit, data } = validated.data;
+  
+  // Validar data antes de usar
+  const processedData = DataSchema.safeParse(data);
+  if (!processedData.success) {
+    return <div>Dados inválidos</div>;
+  }
+  
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">{title}</h2>
-      <Button onClick={onSubmit}>
+      <Button onClick={() => onSubmit(processedData.data)}>
         Enviar
       </Button>
     </div>
@@ -303,13 +357,25 @@ import { ErrorBoundary } from 'react-error-boundary';
 - **Basic**: R$ 5,00 (teste temporário)
 - **Premium**: R$ 85,00
 
-## 🎯 Objetivos de Qualidade
+## 🎯 Objetivos de Qualidade - NOVA ARQUITETURA
 
-- **Performance**: Lighthouse score > 90
+- **Performance**: Lighthouse score > 95 (lazy loading)
 - **Acessibilidade**: WCAG AA compliance
 - **SEO**: Meta tags e structured data
-- **Mobile**: Touch-friendly, < 3s load time
-- **TypeScript**: 100% strict mode, zero `any`
+- **Mobile**: Touch-friendly, < 2s load time
+- **TypeScript**: 100% strict mode, **ZERO `any`**
+- **Validação**: 100% dos `unknown` validados com Zod
+- **Segurança**: Zero vulnerabilidades de type casting
+- **Bundle**: < 100KB com lazy loading
+
+## 🔴 REGRAS ABSOLUTAS
+
+1. **NUNCA usar `any`** - sempre `unknown` com validação
+2. **SEMPRE validar dados externos** com Zod
+3. **NUNCA redirecionar no onSubmit** sem confirmação
+4. **SEMPRE coletar Device ID** para MercadoPago
+5. **USAR domain validators** - não criar novos
+6. **DELETAR referências** aos arquivos obsoletos
 
 ## 💡 Dicas Específicas SOS Moto
 

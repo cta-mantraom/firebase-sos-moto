@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { z } from "zod";
-import { env, config } from "../../lib/config/env.js";
+import { getEmailConfig } from "../../lib/config/index.js";
 import { EmailJobDataSchema } from "../../lib/types/queue.types.js";
 import { Email } from "../../lib/domain/notification/email.entity.js";
 import {
@@ -16,11 +16,12 @@ import {
 import { logInfo, logError } from "../../lib/utils/logger.js";
 
 // Initialize AWS SES
+const emailConfig = getEmailConfig();
 const sesClient = new SESv2Client({
-  region: config.email.aws.region || "sa-east-1",
+  region: emailConfig.aws.region || "sa-east-1",
   credentials: {
-    accessKeyId: config.email.aws.accessKeyId!,
-    secretAccessKey: config.email.aws.secretAccessKey!,
+    accessKeyId: emailConfig.aws.accessKeyId!,
+    secretAccessKey: emailConfig.aws.secretAccessKey!,
   },
 });
 
@@ -507,7 +508,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : jobData.templateData.paymentId || "N/A",
       },
       config: {
-        from: config.email.aws.fromEmail || "contact@memoryys.com",
+        from: emailConfig.aws.fromEmail || "contact@memoryys.com",
       },
       options: {
         priority: EmailPriority.NORMAL,
@@ -583,7 +584,7 @@ async function sendEmailViaSES(
     });
 
     const command = new SendEmailCommand({
-      FromEmailAddress: config.email.aws.fromEmail || "contact@memoryys.com",
+      FromEmailAddress: emailConfig.aws.fromEmail || "contact@memoryys.com",
       Destination: {
         ToAddresses: [recipient],
       },
@@ -605,7 +606,7 @@ async function sendEmailViaSES(
           },
         },
       },
-      ConfigurationSetName: config.email.aws.configurationSet,
+      ConfigurationSetName: emailConfig.aws.configurationSet,
     });
 
     const response = await sesClient.send(command);

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { config } from "../lib/config/env.js";
+import { getFirebaseConfig, getPaymentConfig } from "../lib/config/index.js";
 import { MercadoPagoWebhookSchema } from "../lib/domain/payment/payment.validators.js";
 import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
 import { PaymentRepository } from "../lib/repositories/payment.repository.js";
@@ -13,11 +13,12 @@ import { PlanType } from "../lib/domain/profile/profile.types.js";
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
+  const firebaseConfig = getFirebaseConfig();
   initializeApp({
     credential: cert({
-      projectId: config.firebase.projectId,
-      clientEmail: config.firebase.clientEmail,
-      privateKey: config.firebase.privateKey?.replace(/\\n/g, "\n"),
+      projectId: firebaseConfig.projectId,
+      clientEmail: firebaseConfig.clientEmail,
+      privateKey: firebaseConfig.privateKey,
     }),
   });
 }
@@ -52,10 +53,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Initialize services
+    const paymentConfig = getPaymentConfig();
     const mercadoPagoService = new MercadoPagoService({
-      accessToken: config.mercadopago.accessToken!,
-      webhookSecret: config.mercadopago.webhookSecret!,
-      publicKey: config.mercadopago.publicKey!,
+      accessToken: paymentConfig.accessToken,
+      webhookSecret: paymentConfig.webhookSecret,
+      publicKey: paymentConfig.publicKey,
     });
 
     const paymentRepository = new PaymentRepository();

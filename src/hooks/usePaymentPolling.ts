@@ -1,13 +1,17 @@
 import { useState, useCallback } from 'react';
 import { z } from 'zod';
+import type { PixData } from '@/components/PaymentStatus';
 
-// Schema para validação dos dados PIX
+// Re-export PixData from PaymentStatus for consistency
+export type { PixData } from '@/components/PaymentStatus';
+
+// Schema para validação dos dados PIX - alinhado com o tipo PixData
 const PixDataSchema = z.object({
   qrCode: z.string(),
   qrCodeBase64: z.string().optional(),
   ticketUrl: z.string().optional(),
   amount: z.number(),
-  instructions: z.array(z.string()).optional()
+  instructions: z.array(z.string()).optional().default([])
 });
 
 // Schema para validação dos dados de sucesso
@@ -19,8 +23,7 @@ const SuccessDataSchema = z.object({
   redirectUrl: z.string().optional()
 });
 
-// Tipos inferidos dos schemas
-export type PixData = z.infer<typeof PixDataSchema>;
+// Tipo para dados de sucesso
 export type SuccessData = z.infer<typeof SuccessDataSchema>;
 
 export interface PollingOptions {
@@ -102,7 +105,15 @@ export const usePaymentPolling = () => {
           // Validar dados PIX antes de chamar onPixQRCode
           const validatedPixData = PixDataSchema.safeParse(data.pixData);
           if (validatedPixData.success) {
-            options.onPixQRCode?.(validatedPixData.data);
+            // Garantir que os campos obrigatórios estejam presentes
+            const pixData: PixData = {
+              qrCode: validatedPixData.data.qrCode,
+              amount: validatedPixData.data.amount,
+              qrCodeBase64: validatedPixData.data.qrCodeBase64,
+              ticketUrl: validatedPixData.data.ticketUrl,
+              instructions: validatedPixData.data.instructions
+            };
+            options.onPixQRCode?.(pixData);
           } else {
             console.error('[Polling] Invalid PIX data:', validatedPixData.error);
           }

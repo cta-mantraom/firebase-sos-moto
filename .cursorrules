@@ -1,0 +1,284 @@
+# Memoryys - Regras de Desenvolvimento e Configuração de Agentes
+
+## 🚨 DIRETRIZES CRÍTICAS DE PAGAMENTO
+
+### **FILOSOFIA FUNDAMENTAL: SEGURANÇA PRIMEIRO**
+**NUNCA** aceitar pagamentos sem confirmação real. **SEMPRE** aguardar webhook do MercadoPago.
+
+### **🔴 FLUXO DE PAGAMENTO CORRETO (OBRIGATÓRIO)**
+
+#### **1. PRÉ-PAGAMENTO**
+- ✅ Coletar dados do usuário no frontend
+- ✅ Validar campos obrigatórios (nome, email, telefone, tipo sanguíneo, contatos)
+- ✅ **CACHE LOCAL**: Salvar em `sessionStorage` ANTES de enviar ao backend
+- ✅ Coletar Device ID do MercadoPago (CRÍTICO para aprovação)
+
+#### **2. DURANTE PAGAMENTO**
+```javascript
+// CORRETO - NÃO REDIRECIONAR NO onSubmit
+onSubmit={async (paymentData) => {
+  // 1. Salvar em cache local
+  sessionStorage.setItem('pendingPayment', JSON.stringify({
+    ...formData,
+    paymentData,
+    timestamp: Date.now()
+  }));
+  
+  // 2. Iniciar polling - NÃO REDIRECIONAR
+  startPolling(paymentId);
+  
+  // 3. Para PIX - mostrar QR Code
+  if (paymentData.payment_method === 'pix') {
+    showPixQRCode(paymentData);
+  }
+}}
+```
+
+#### **3. PÓS-PAGAMENTO**
+- ✅ **POLLING**: Verificar status a cada 3 segundos via `/api/check-status`
+- ✅ **AGUARDAR**: Só redirecionar quando status = "approved"
+- ✅ **BANCO**: Dados só são salvos após webhook confirmar pagamento
+- ✅ **CLEANUP**: Limpar sessionStorage após sucesso
+
+### **❌ PRÁTICAS PROIBIDAS**
+1. **NUNCA** chamar `onSuccess()` imediatamente no `onSubmit`
+2. **NUNCA** redirecionar sem confirmação do webhook
+3. **NUNCA** salvar no banco antes do pagamento ser aprovado
+4. **NUNCA** confiar apenas no retorno do Payment Brick
+5. **NUNCA** ignorar a configuração de polling do backend
+
+## 🤖 CONFIGURAÇÃO DOS AGENTES
+
+### **frontend-agent**
+**Responsabilidades:**
+- Implementar polling de status de pagamento
+- Cache local com sessionStorage/localStorage
+- Componentes React com TypeScript strict
+- Tratamento de PIX com QR Code modal
+- Estado de loading durante processamento
+
+**Regras:**
+```typescript
+// SEMPRE implementar polling
+const pollPaymentStatus = async (paymentId: string) => {
+  const maxAttempts = 40; // 2 minutos
+  const interval = 3000; // 3 segundos
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    const response = await fetch(`/api/check-status?paymentId=${paymentId}`);
+    const data = await response.json();
+    
+    if (data.status === 'approved') {
+      // SÓ AGORA redirecionar
+      router.push(`/success?id=${data.uniqueUrl}`);
+      return;
+    }
+    
+    if (data.status === 'rejected') {
+      handlePaymentError();
+      return;
+    }
+    
+    await sleep(interval);
+  }
+};
+```
+
+### **backend-agent**
+**Responsabilidades:**
+- Endpoints de API com validação Zod
+- Integração MercadoPago com Device ID
+- Processamento assíncrono via QStash
+- Firebase/Firestore após confirmação
+
+**Regras:**
+- Endpoint `/api/create-payment` retorna config de polling
+- Endpoint `/api/check-status` verifica status real
+- Webhook processa pagamento e atualiza status
+- Só salvar profile após status = "approved"
+
+### **payment-agent**
+**Responsabilidades:**
+- Device ID collection (CRÍTICO)
+- HMAC validation no webhook
+- Payment Brick configuration
+- PIX QR Code handling
+
+**Regras Específicas:**
+```typescript
+// Device ID é OBRIGATÓRIO
+if (!deviceId) {
+  throw new Error('Device ID missing - payment will fail');
+}
+
+// PIX precisa de tratamento especial
+if (paymentMethod === 'pix') {
+  // Mostrar QR Code
+  // Aguardar confirmação
+  // Não redirecionar até aprovado
+}
+```
+
+### **medical-validator**
+**Responsabilidades:**
+- Validação de dados médicos
+- LGPD compliance
+- Cache seguro de dados sensíveis
+
+**Regras:**
+- Dados médicos em sessionStorage (temporário)
+- Criptografia opcional para dados sensíveis
+- Limpeza automática após 24h ou sucesso
+- Validação de campos obrigatórios
+
+### **deploy-orchestrator**
+**Responsabilidades:**
+- Build e deploy sem quebrar fluxo
+- Variáveis de ambiente corretas
+- Testes de integração pagamento
+
+**Checklist Deploy:**
+- [ ] Polling implementado no frontend
+- [ ] Cache local funcionando
+- [ ] PIX QR Code modal implementado
+- [ ] Webhook processando corretamente
+- [ ] Status sendo atualizado no banco
+
+## 📊 FLUXO COMPLETO CORRETO
+
+```mermaid
+graph LR
+    A[Usuário preenche form] --> B[Cache em sessionStorage]
+    B --> C[Coleta Device ID]
+    C --> D[Envia para backend]
+    D --> E[Backend cria preferência]
+    E --> F[Retorna config polling]
+    F --> G[Frontend NÃO redireciona]
+    G --> H{Tipo pagamento?}
+    H -->|PIX| I[Mostra QR Code]
+    H -->|Cartão| J[Aguarda processamento]
+    I --> K[Polling status]
+    J --> K
+    K --> L{Status?}
+    L -->|pending| K
+    L -->|approved| M[Webhook salva no banco]
+    M --> N[Frontend detecta aprovação]
+    N --> O[Redireciona para /success]
+    L -->|rejected| P[Mostra erro]
+```
+
+## 🔧 IMPLEMENTAÇÃO IMEDIATA
+
+### **Arquivo: src/components/MercadoPagoCheckout.tsx**
+```typescript
+// REMOVER linha 186-195 (onSubmit atual)
+// SUBSTITUIR por:
+onSubmit={async (paymentData) => {
+  setProcessing(true);
+  
+  // 1. Cache local
+  const paymentCache = {
+    formData: props.formData,
+    paymentData,
+    uniqueUrl,
+    paymentId,
+    timestamp: Date.now()
+  };
+  sessionStorage.setItem('pendingPayment', JSON.stringify(paymentCache));
+  
+  // 2. PIX handling
+  if (paymentData.payment_method === 'pix') {
+    setShowPixModal(true);
+    setPixQRCode(paymentData.qr_code);
+  }
+  
+  // 3. Start polling - NO REDIRECT
+  startPolling(paymentId, {
+    onSuccess: (data) => {
+      sessionStorage.removeItem('pendingPayment');
+      onSuccess(data, uniqueUrl);
+    },
+    onError: (error) => {
+      setProcessing(false);
+      onError(error);
+    }
+  });
+}}
+```
+
+### **Arquivo: src/hooks/usePaymentPolling.ts** (CRIAR)
+```typescript
+export const usePaymentPolling = () => {
+  const [status, setStatus] = useState<PaymentStatus>('pending');
+  const [polling, setPolling] = useState(false);
+  
+  const startPolling = useCallback(async (
+    paymentId: string,
+    options: PollingOptions
+  ) => {
+    setPolling(true);
+    let attempts = 0;
+    const maxAttempts = options.maxAttempts || 40;
+    const interval = options.interval || 3000;
+    
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/check-status?paymentId=${paymentId}`);
+        const data = await response.json();
+        
+        setStatus(data.status);
+        
+        if (data.status === 'approved') {
+          options.onSuccess?.(data);
+          return;
+        }
+        
+        if (data.status === 'rejected' || data.status === 'cancelled') {
+          options.onError?.(new Error(data.message));
+          return;
+        }
+        
+        if (data.status === 'pending_pix' && data.pixData) {
+          options.onPixQRCode?.(data.pixData);
+        }
+        
+        attempts++;
+        if (attempts < maxAttempts && data.status === 'pending') {
+          setTimeout(poll, interval);
+        } else if (attempts >= maxAttempts) {
+          options.onTimeout?.();
+        }
+      } catch (error) {
+        options.onError?.(error as Error);
+      }
+    };
+    
+    // Start first poll
+    setTimeout(poll, 1000);
+  }, []);
+  
+  return { status, polling, startPolling };
+};
+```
+
+## 🎯 MÉTRICAS DE SUCESSO
+
+- **Taxa de Aprovação**: > 85% (com Device ID)
+- **Pagamentos Falsos**: 0%
+- **PIX Funcional**: 100%
+- **Cache Recovery**: 100% dos dados recuperáveis
+- **Timeout Handling**: Máximo 2 minutos de espera
+
+## 📝 NOTAS IMPORTANTES
+
+1. **Device ID é CRÍTICO**: Sem ele, aprovação cai de 85% para 40%
+2. **PIX precisa QR Code**: Mostrar ANTES de qualquer redirecionamento
+3. **Polling é OBRIGATÓRIO**: Backend já está pronto, frontend precisa implementar
+4. **Cache local SEMPRE**: Previne perda de dados em caso de erro
+5. **Webhook é a VERDADE**: Só ele confirma pagamento real
+
+---
+
+**Última Atualização**: 24/08/2025
+**Versão**: 2.0 - Alinhado com estratégia de polling e cache local
+**Status**: CRÍTICO - Implementar imediatamente

@@ -17,6 +17,8 @@ const RedisConfigSchema = z.object({
 export interface RedisConfigType {
   url?: string;
   token?: string;
+  qstashSigningKey?: string; // Added for backward compatibility
+  qstashToken?: string; // Added for backward compatibility
   qstash: {
     url?: string;
     token?: string;
@@ -35,6 +37,8 @@ class RedisConfig {
       this.instance = {
         url: validated.UPSTASH_REDIS_REST_URL,
         token: validated.UPSTASH_REDIS_REST_TOKEN,
+        qstashSigningKey: validated.QSTASH_CURRENT_SIGNING_KEY, // For backward compatibility
+        qstashToken: validated.QSTASH_TOKEN || validated.UPSTASH_REDIS_REST_TOKEN, // For backward compatibility
         qstash: {
           url: validated.QSTASH_URL,
           token: validated.QSTASH_TOKEN,

@@ -4,6 +4,9 @@ import { initMercadoPago } from "@mercadopago/sdk-react";
 // Removed Firebase Functions - using Vercel API directly
 import { toast } from "@/hooks/use-toast";
 import { UserProfile } from "@/schemas/profile";
+import { usePaymentPolling } from "@/hooks/usePaymentPolling";
+import { PaymentStatus, PixData } from "@/components/PaymentStatus";
+import { PaymentCache } from "@/utils/paymentCache";
 
 // Extended window interface for MercadoPago Device ID
 declare global {
@@ -29,6 +32,11 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   const [uniqueUrl, setUniqueUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [pixData, setPixData] = useState<PixData | null>(null);
+  
+  // Hook de polling para verificar status do pagamento
+  const { status, polling, progress, message, startPolling } = usePaymentPolling();
 
   const createPreference = React.useCallback(async () => {
     try {
@@ -93,6 +101,37 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       const data = await response.json();
       setPreferenceId(data.preferenceId);
       setUniqueUrl(data.uniqueUrl); // Save the uniqueUrl for redirect
+      setPaymentId(data.paymentId); // Save paymentId for polling
+      
+      // Salvar dados no cache local ANTES do pagamento
+      const formDataForCache = {
+        name: userData.name || '',
+        surname: undefined, // UserProfile não tem surname
+        email: userData.email || '',
+        phone: userData.phone || '',
+        birthDate: undefined, // UserProfile não tem birthDate
+        age: userData.age,
+        bloodType: userData.bloodType || '',
+        allergies: userData.allergies || [],
+        medications: userData.medications || [],
+        medicalConditions: userData.medicalConditions || [],
+        healthPlan: userData.healthPlan,
+        preferredHospital: userData.preferredHospital,
+        medicalNotes: userData.medicalNotes,
+        emergencyContacts: userData.emergencyContacts?.map(contact => ({
+          name: contact.name || '',
+          phone: contact.phone || '',
+          relationship: contact.relationship || 'Não especificado'
+        })) || [],
+        selectedPlan: planType,
+        deviceId: window.MP_DEVICE_SESSION_ID || undefined
+      };
+      
+      const cacheSuccess = PaymentCache.saveFormData(formDataForCache, window.MP_DEVICE_SESSION_ID || undefined);
+      
+      if (cacheSuccess) {
+        console.log("[MercadoPago] Form data cached successfully");
+      }
     } catch (error) {
       console.error("Error creating preference:", error);
       toast({
@@ -184,13 +223,63 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           },
         }}
         onSubmit={async (paymentData) => {
-          console.log("Payment submitted:", paymentData);
-          // Pass uniqueUrl along with payment data
-          if (uniqueUrl) {
-            onSuccess(paymentData, uniqueUrl);
+          console.log("🔄 Payment submitted - Starting verification process");
+          console.log("Payment data:", paymentData);
+          console.log("Device ID:", window.MP_DEVICE_SESSION_ID);
+          
+          // CRÍTICO: NÃO REDIRECIONAR IMEDIATAMENTE!
+          // Atualizar cache com dados do pagamento
+          if (uniqueUrl && paymentId) {
+            PaymentCache.addPaymentInfo(
+              paymentData,
+              uniqueUrl,
+              paymentId,
+              preferenceId || undefined
+            );
+            
+            console.log("✅ Payment data cached, starting polling...");
+            
+            // Iniciar polling para verificar status do pagamento
+            startPolling(paymentId, {
+              interval: 3000, // Verificar a cada 3 segundos
+              maxAttempts: 40, // Máximo 2 minutos
+              onSuccess: (data) => {
+                console.log("✅ Payment approved by polling:", data);
+                // Limpar cache após sucesso
+                PaymentCache.clear();
+                // SÓ AGORA chamar onSuccess após confirmação real
+                if (uniqueUrl) {
+                  onSuccess(paymentData, uniqueUrl);
+                }
+              },
+              onError: (error) => {
+                console.error("❌ Payment failed:", error);
+                PaymentCache.clear();
+                toast({
+                  title: "Pagamento não aprovado",
+                  description: error.message || "Verifique os dados e tente novamente",
+                  variant: "destructive",
+                });
+                onError(error);
+              },
+              onTimeout: () => {
+                console.error("⏱️ Payment timeout");
+                PaymentCache.clear();
+                toast({
+                  title: "Tempo limite excedido",
+                  description: "O pagamento está demorando mais que o esperado. Verifique com seu banco.",
+                  variant: "destructive",
+                });
+                onError(new Error("Tempo limite excedido"));
+              },
+              onPixQRCode: (pixQRData) => {
+                console.log("📱 PIX QR Code received:", pixQRData);
+                setPixData(pixQRData);
+              }
+            });
           } else {
-            console.error("No uniqueUrl available");
-            onError(new Error("No unique URL available"));
+            console.error("Missing uniqueUrl or paymentId");
+            onError(new Error("Dados de pagamento incompletos"));
           }
         }}
         onError={(error) => {
@@ -203,6 +292,16 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           onError(new Error("Payment failed"));
         }}
       />
+      
+      {/* Componente de status de pagamento - mostrar durante polling */}
+      {polling && (
+        <PaymentStatus 
+          status={status}
+          message={message}
+          progress={progress}
+          pixData={pixData || undefined}
+        />
+      )}
     </div>
   );
 };

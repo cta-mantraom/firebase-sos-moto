@@ -8,6 +8,7 @@ export enum JobType {
   SEND_EMAIL = 'SEND_EMAIL',
   UPDATE_CACHE = 'UPDATE_CACHE',
   CLEANUP = 'CLEANUP',
+  PROCESS_PAYMENT_WEBHOOK = 'PROCESS_PAYMENT_WEBHOOK',
 }
 
 export enum JobStatus {
@@ -79,7 +80,25 @@ export type EmailJobData = z.infer<typeof EmailJobDataSchema>;
 export type QRCodeJobData = z.infer<typeof QRCodeJobDataSchema>;
 export type CacheJobData = z.infer<typeof CacheJobDataSchema>;
 
-export type JobData = ProcessingJobData | EmailJobData | QRCodeJobData | CacheJobData;
+// Webhook job data specific to payment processing
+export interface PaymentWebhookJobData {
+  jobType: JobType.PROCESS_PAYMENT_WEBHOOK;
+  paymentId: string;
+  webhookData: {
+    id: string;
+    type: string;
+    action: string;
+    dateCreated: string;
+    liveMode: boolean;
+  };
+  correlationId: string;
+  requestId: string;
+  receivedAt: string;
+  retryCount: number;
+  maxRetries: number;
+}
+
+export type JobData = ProcessingJobData | EmailJobData | QRCodeJobData | CacheJobData | PaymentWebhookJobData;
 
 // Queue Configuration
 export interface QueueConfig {

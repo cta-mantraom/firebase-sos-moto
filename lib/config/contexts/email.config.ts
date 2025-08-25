@@ -13,6 +13,7 @@ const EmailConfigSchema = z.object({
     .min(1, "AWS SES secret key is required"),
   AWS_SES_FROM_EMAIL: z.string().email().default("contact@memoryys.com"),
   AWS_SES_REPLY_TO_EMAIL: z.string().email().default("contact@memoryys.com"),
+  AWS_SES_CONFIGURATION_SET: z.string().optional(),
 });
 
 export interface EmailConfigType {
@@ -22,6 +23,7 @@ export interface EmailConfigType {
     secretAccessKey: string;
     fromEmail: string;
     replyTo: string;
+    configurationSet?: string;
   };
 }
 
@@ -39,6 +41,7 @@ class EmailConfig {
           secretAccessKey: validated.AWS_SES_SECRET_ACCESS_KEY,
           fromEmail: validated.AWS_SES_FROM_EMAIL,
           replyTo: validated.AWS_SES_REPLY_TO_EMAIL,
+          configurationSet: validated.AWS_SES_CONFIGURATION_SET,
         },
       };
     }

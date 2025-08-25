@@ -13,6 +13,7 @@ import {
 } from '../../types/queue.types.js';
 import { PlanType } from '../../domain/profile/profile.types.js';
 import { logInfo, logError } from '../../utils/logger.js';
+import { generateCorrelationId } from '../../utils/ids.js';
 import { getRedisConfig, getAppConfig } from '../../config/index.js';
 
 /**
@@ -450,6 +451,34 @@ export class QStashService {
       };
     }
   }
+
+  /**
+   * Publishes a job to a specific queue (alias for publishJob)
+   * This method provides compatibility with the payment webhook processor
+   */
+  async publishToQueue(
+    queueName: string,
+    jobData: JobData,
+    options: PublishOptions = {}
+  ): Promise<string> {
+    const correlationId = jobData.correlationId || generateCorrelationId();
+    
+    logInfo('Publishing to queue', {
+      correlationId,
+      queueName,
+      jobType: jobData.jobType,
+    });
+
+    const response = await this.publishJob(
+      jobData,
+      queueName,
+      options,
+      correlationId
+    );
+
+    return response.messageId;
+  }
+
 }
 
 export const qstashService = new QStashService();

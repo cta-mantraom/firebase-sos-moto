@@ -1,5 +1,39 @@
-import { MemorialData } from '../types/index.js';
 import { logInfo, logError } from '../utils/logger.js';
+
+// Type definition (moved inline after types/index.js deletion)
+export interface MemorialData {
+  unique_url?: string;
+  name: string;
+  phone?: string;
+  birthDate?: string;
+  blood_type?: string | null;
+  bloodType?: string;
+  allergies: string[];
+  medications: string[];
+  medical_conditions?: string[];
+  medicalConditions?: string[];
+  emergency_contacts?: Array<{
+    name: string;
+    phone: string;
+    relationship?: string;
+  }>;
+  emergencyContacts?: Array<{
+    name: string;
+    phone: string;
+    relationship: string;
+  }>;
+  email?: string;
+  qr_code?: string;
+  qrCodeUrl?: string;
+  vehicleInfo?: string;
+  health_plan?: string | null;
+  preferred_hospital?: string | null;
+  medical_notes?: string | null;
+  plan_type?: 'basic' | 'premium';
+  created_at?: string;
+  qr_code_data?: string | null;
+  qr_code_image_url?: string | null;
+}
 
 export class FirebaseService {
   async getProfile(uniqueUrl: string, correlationId: string): Promise<MemorialData | null> {
@@ -63,7 +97,6 @@ export class FirebaseService {
             relationship: contact.mapValue?.fields?.relationship?.stringValue || '',
           };
         }) || [],
-        age: parseInt(fields.age?.integerValue || '0'),
         email: fields.email?.stringValue || '',
         health_plan: fields.healthPlan?.stringValue || null,
         preferred_hospital: fields.preferredHospital?.stringValue || null,

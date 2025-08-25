@@ -14,6 +14,7 @@ import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { MercadoPagoCheckout } from '@/components/MercadoPagoCheckout';
 import { ArrowLeft, Heart, User, Phone, AlertTriangle, QrCode, CreditCard } from 'lucide-react';
 import { FormData, Plan, CheckoutData } from '@/types';
+import { PaymentCache } from '@/utils/paymentCache';
 
 const CreateProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -50,6 +51,47 @@ const CreateProfile: React.FC = () => {
     }));
   };
 
+  // Recuperar dados do cache se existirem
+  useEffect(() => {
+    const cachedData = PaymentCache.get();
+    if (cachedData && cachedData.formData) {
+      console.log('[CreateProfile] Recovered data from cache');
+      const cached = cachedData.formData;
+      
+      // Mapear dados do cache para o formato do formulário
+      setFormData({
+        nomeCompleto: cached.name || '',
+        idade: cached.age?.toString() || '',
+        telefone: cached.phone || '',
+        email: cached.email || '',
+        tipoSanguineo: cached.bloodType || '',
+        alergias: cached.allergies?.join(', ') || '',
+        medicamentos: cached.medications?.join(', ') || '',
+        condicoesMedicas: cached.medicalConditions?.join(', ') || '',
+        planoSaude: cached.healthPlan || '',
+        hospitalPreferencia: cached.preferredHospital || '',
+        observacoesMedicas: cached.medicalNotes || '',
+        contatoPrimarioNome: cached.emergencyContacts?.[0]?.name || '',
+        contatoPrimarioTelefone: cached.emergencyContacts?.[0]?.phone || '',
+        contatoPrimarioRelacao: cached.emergencyContacts?.[0]?.relationship || '',
+        contatoSecundarioNome: cached.emergencyContacts?.[1]?.name || '',
+        contatoSecundarioTelefone: cached.emergencyContacts?.[1]?.phone || '',
+        contatoSecundarioRelacao: cached.emergencyContacts?.[1]?.relationship || ''
+      });
+      
+      setSelectedPlan(cached.selectedPlan || 'basic');
+      
+      // Informar usuário
+      const ageMinutes = PaymentCache.getAge();
+      if (ageMinutes !== null && ageMinutes > 0) {
+        toast({
+          title: "Dados recuperados",
+          description: `Recuperamos seus dados salvos há ${ageMinutes} minuto(s).`,
+        });
+      }
+    }
+  }, []); // Executar apenas uma vez na montagem
+  
   // Generate QR code URL based on form data
   useEffect(() => {
     if (formData.nomeCompleto) {
@@ -77,13 +119,20 @@ const CreateProfile: React.FC = () => {
   };
 
   const handlePaymentSuccess = (paymentData: unknown, uniqueUrl: string) => {
-    console.log('Payment successful:', paymentData, 'UniqueURL:', uniqueUrl);
+    // Este método agora é chamado APENAS após confirmação real do pagamento via polling
+    console.log('✅ Payment CONFIRMED by webhook:', paymentData, 'UniqueURL:', uniqueUrl);
+    
     toast({
-      title: "Pagamento realizado com sucesso!",
-      description: "Você receberá um email de confirmação em breve.",
+      title: "Pagamento aprovado!",
+      description: "Seu perfil de emergência foi criado com sucesso.",
+      duration: 5000,
     });
-    // Navigate to success page with the uniqueUrl as query parameter
-    navigate(`/success?id=${uniqueUrl}`);
+    
+    // Pequeno delay para o usuário ver a mensagem de sucesso
+    setTimeout(() => {
+      // Agora sim podemos redirecionar - pagamento foi confirmado
+      navigate(`/success?id=${uniqueUrl}`);
+    }, 1500);
   };
 
   const handlePaymentError = (error: Error) => {

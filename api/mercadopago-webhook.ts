@@ -1,248 +1,365 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getFirestore } from "firebase-admin/firestore";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirebaseConfig, getPaymentConfig } from "../lib/config/index.js";
-import { MercadoPagoWebhookSchema } from "../lib/domain/payment/payment.validators.js";
-import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
-import { PaymentRepository } from "../lib/repositories/payment.repository.js";
+import crypto from "crypto";
+import { z } from "zod";
 import { QStashService } from "../lib/services/queue/qstash.service.js";
-import { QueueService } from "../lib/services/notification/queue.service.js";
 import { logInfo, logError, logWarning } from "../lib/utils/logger.js";
-import { JobType } from "../lib/types/queue.types.js";
-import { PlanType } from "../lib/domain/profile/profile.types.js";
+import { generateCorrelationId } from "../lib/utils/ids.js";
+import { getPaymentConfig } from "../lib/config/index.js";
+import { JobType, PaymentWebhookJobData } from "../lib/types/queue.types.js";
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  const firebaseConfig = getFirebaseConfig();
-  initializeApp({
-    credential: cert({
-      projectId: firebaseConfig.projectId,
-      clientEmail: firebaseConfig.clientEmail,
-      privateKey: firebaseConfig.privateKey,
-    }),
-  });
-}
+// Minimal webhook schema - only what we need for validation
+const WebhookNotificationSchema = z.object({
+  id: z.string(),
+  live_mode: z.boolean(),
+  type: z.string(),
+  date_created: z.string(),
+  user_id: z.number().optional(),
+  api_version: z.string().optional(),
+  action: z.string(),
+  data: z.object({
+    id: z.string(), // Payment ID
+  }),
+});
+
+type WebhookNotification = z.infer<typeof WebhookNotificationSchema>;
 
 /**
- * MercadoPago Webhook Handler
- *
- * Responsibilities:
- * - Validate webhook HMAC signature
- * - Fetch payment details from MercadoPago
- * - Log payment information
- * - Enqueue processing jobs for approved payments (asynchronous flow)
- *
- * IMPORTANT: This handler follows async pattern - it only enqueues jobs
- * and does NOT process payments directly
+ * MercadoPago Webhook Handler - Optimized for Performance
+ * 
+ * CRITICAL RESPONSIBILITIES:
+ * 1. Validate HMAC signature (security)
+ * 2. Enqueue job for async processing (performance)
+ * 3. Return quickly (< 3 seconds)
+ * 
+ * DOES NOT:
+ * - Fetch payment details (done in async job)
+ * - Process profiles (done in async job)
+ * - Save to database (done in async job)
+ * 
+ * This ensures maximum performance and reliability
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const correlationId = crypto.randomUUID();
+  const startTime = Date.now();
+  const correlationId = generateCorrelationId();
+
+  // CORS headers for MercadoPago
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "content-type, x-signature, x-request-id");
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // Only accept POST
+  if (req.method !== "POST") {
+    return res.status(405).json({ 
+      error: "Method not allowed",
+      correlationId 
+    });
+  }
 
   try {
-    // Only accept POST requests
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
-
-    logInfo("Webhook received", {
-      correlationId,
-      headers: {
-        "x-signature": req.headers["x-signature"] ? "present" : "missing",
-        "x-request-id": req.headers["x-request-id"] ? "present" : "missing",
-      },
-    });
-
-    // Initialize services
-    const paymentConfig = getPaymentConfig();
-    const mercadoPagoService = new MercadoPagoService({
-      accessToken: paymentConfig.accessToken,
-      webhookSecret: paymentConfig.webhookSecret,
-      publicKey: paymentConfig.publicKey,
-    });
-
-    const paymentRepository = new PaymentRepository();
-    const qstashService = new QStashService();
-    const queueService = new QueueService(qstashService);
-
-    // Validate HMAC signature using MercadoPagoService
+    // Step 1: Extract and validate headers
     const signature = req.headers["x-signature"] as string;
     const requestId = req.headers["x-request-id"] as string;
 
     if (!signature || !requestId) {
-      logWarning("Missing webhook headers", { correlationId });
-      return res.status(401).json({ error: "Missing signature headers" });
+      logWarning("Missing webhook headers", {
+        correlationId,
+        hasSignature: !!signature,
+        hasRequestId: !!requestId,
+      });
+      
+      // Return 401 for missing auth headers
+      return res.status(401).json({ 
+        error: "Missing authentication headers",
+        correlationId 
+      });
     }
 
-    // Parse webhook data first to get data.id for validation
-    const webhookData = MercadoPagoWebhookSchema.parse(req.body);
+    // Step 2: Parse webhook body (minimal validation)
+    const webhookData = WebhookNotificationSchema.safeParse(req.body);
+    
+    if (!webhookData.success) {
+      logWarning("Invalid webhook format", {
+        correlationId,
+        errors: webhookData.error.errors,
+      });
+      
+      // Return 200 to prevent retries for malformed data
+      return res.status(200).json({ 
+        status: "invalid_format",
+        correlationId 
+      });
+    }
 
-    // Validate signature with MercadoPagoService
-    const isValid = await mercadoPagoService.validateWebhook(
+    const notification = webhookData.data;
+
+    // Step 3: Validate HMAC signature
+    const isValidSignature = validateHMACSignature(
       signature,
       requestId,
-      webhookData.data.id
+      notification.data.id,
+      getPaymentConfig().webhookSecret
+    );
+
+    if (!isValidSignature) {
+      logError("Invalid HMAC signature", new Error("HMAC validation failed"), {
+        correlationId,
+        requestId,
+        dataId: notification.data.id,
+      });
+      
+      // Return 401 for invalid signature
+      return res.status(401).json({ 
+        error: "Invalid signature",
+        correlationId 
+      });
+    }
+
+    // Step 4: Handle test webhooks quickly
+    if (notification.action === "test") {
+      logInfo("Test webhook received", {
+        correlationId,
+        processingTime: Date.now() - startTime,
+      });
+      
+      return res.status(200).json({ 
+        status: "test_ok",
+        correlationId 
+      });
+    }
+
+    // Step 5: Only process payment.updated notifications
+    if (notification.type !== "payment" || notification.action !== "payment.updated") {
+      logInfo("Webhook ignored - not a payment update", {
+        correlationId,
+        type: notification.type,
+        action: notification.action,
+        processingTime: Date.now() - startTime,
+      });
+      
+      return res.status(200).json({ 
+        status: "ignored",
+        correlationId 
+      });
+    }
+
+    // Step 6: Enqueue job for async processing (CRITICAL)
+    try {
+      const qstashService = new QStashService();
+      
+      // Create minimal job payload - fetch details in processor
+      const jobPayload: PaymentWebhookJobData = {
+        jobType: JobType.PROCESS_PAYMENT_WEBHOOK,
+        paymentId: notification.data.id,
+        webhookData: {
+          id: notification.id,
+          type: notification.type,
+          action: notification.action,
+          dateCreated: notification.date_created,
+          liveMode: notification.live_mode,
+        },
+        correlationId,
+        requestId,
+        receivedAt: new Date().toISOString(),
+        retryCount: 0,
+        maxRetries: 5,
+      };
+
+      // Enqueue to QStash with high priority
+      const jobId = await qstashService.publishToQueue(
+        "payment-webhook-processor",
+        jobPayload,
+        {
+          deduplicationId: `webhook-${notification.id}`,
+          contentBasedDeduplication: true,
+          retries: 3,
+          delay: 0, // Process immediately
+        }
+      );
+
+      logInfo("Webhook job enqueued successfully", {
+        correlationId,
+        jobId,
+        paymentId: notification.data.id,
+        processingTime: Date.now() - startTime,
+      });
+
+      // Step 7: Return success immediately
+      return res.status(200).json({
+        status: "enqueued",
+        jobId,
+        correlationId,
+        processingTime: Date.now() - startTime,
+      });
+
+    } catch (enqueueError) {
+      // Log error but still return 200 to prevent MercadoPago retries
+      logError("Failed to enqueue webhook job", enqueueError as Error, {
+        correlationId,
+        paymentId: notification.data.id,
+      });
+
+      // Try fallback queue or mark for manual processing
+      try {
+        // Simple fallback: log to a "failed_webhooks" collection for manual retry
+        await logFailedWebhook(notification, correlationId, requestId);
+      } catch (fallbackError) {
+        logError("Fallback logging also failed", fallbackError as Error, {
+          correlationId,
+        });
+      }
+
+      // Still return 200 to prevent webhook storm
+      return res.status(200).json({
+        status: "enqueue_failed_logged",
+        correlationId,
+        processingTime: Date.now() - startTime,
+      });
+    }
+
+  } catch (error) {
+    logError("Unexpected webhook error", error as Error, {
+      correlationId,
+      processingTime: Date.now() - startTime,
+    });
+
+    // Return 200 for any error to prevent webhook retry storms
+    return res.status(200).json({
+      status: "error_logged",
+      correlationId,
+      processingTime: Date.now() - startTime,
+    });
+  }
+}
+
+/**
+ * Validate HMAC signature using MercadoPago's algorithm
+ * 
+ * MercadoPago signature format:
+ * - Header: x-signature: ts=<timestamp>,v1=<hash>
+ * - Manifest: id:<data.id>;request-id:<x-request-id>;ts:<timestamp>;
+ * - Hash: HMAC-SHA256(manifest, webhook_secret)
+ */
+function validateHMACSignature(
+  signature: string,
+  requestId: string,
+  dataId: string,
+  webhookSecret: string
+): boolean {
+  try {
+    // Parse signature header: "ts=<timestamp>,v1=<hash>"
+    const parts = signature.split(',');
+    const tsPart = parts.find(p => p.startsWith('ts='));
+    const v1Part = parts.find(p => p.startsWith('v1='));
+
+    if (!tsPart || !v1Part) {
+      logWarning("Invalid signature format", {
+        signature: signature.substring(0, 50), // Log only part for security
+      });
+      return false;
+    }
+
+    const timestamp = tsPart.replace('ts=', '');
+    const receivedHash = v1Part.replace('v1=', '');
+
+    // Check timestamp is recent (within 5 minutes)
+    const currentTime = Math.floor(Date.now() / 1000);
+    const signatureTime = parseInt(timestamp, 10);
+    const timeDiff = currentTime - signatureTime;
+
+    if (timeDiff > 300 || timeDiff < -300) { // 5 minutes tolerance
+      logWarning("Webhook timestamp too old or in future", {
+        timeDiff,
+        currentTime,
+        signatureTime,
+      });
+      return false;
+    }
+
+    // Build manifest string
+    const manifest = `id:${dataId};request-id:${requestId};ts:${timestamp};`;
+
+    // Calculate expected hash
+    const expectedHash = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(manifest)
+      .digest('hex');
+
+    // Constant-time comparison to prevent timing attacks
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(expectedHash),
+      Buffer.from(receivedHash)
     );
 
     if (!isValid) {
-      logError(
-        "Invalid webhook signature",
-        new Error("HMAC validation failed"),
-        {
-          correlationId,
-          requestId,
-        }
-      );
-      return res.status(401).json({ error: "Invalid signature" });
-    }
-
-    // Handle test notifications
-    if (webhookData.action === "test") {
-      logInfo("Test webhook received", { correlationId });
-      return res.status(200).json({ status: "test webhook processed" });
-    }
-
-    // Only process payment.updated notifications
-    if (
-      webhookData.type !== "payment" ||
-      webhookData.action !== "payment.updated"
-    ) {
-      logInfo("Webhook ignored", {
-        correlationId,
-        type: webhookData.type,
-        action: webhookData.action,
-      });
-      return res.status(200).json({ status: "ignored" });
-    }
-
-    // Get payment details using MercadoPagoService
-    const payment = await mercadoPagoService.getPaymentDetails(
-      webhookData.data.id
-    );
-
-    // Log payment using repository
-    await paymentRepository.savePaymentLog(
-      webhookData.data.id,
-      "payment_webhook_received",
-      {
-        externalReference: payment.external_reference || "",
-        status: payment.status,
-        statusDetail: payment.status_detail || "",
-        amount: payment.transaction_amount,
-        paymentMethodId: payment.payment_method_id,
-        paymentTypeId: payment.payment_type_id,
-        payerEmail: payment.payer.email,
-        payerIdentification: payment.payer.identification
-          ? {
-              type: payment.payer.identification.type,
-              number: payment.payer.identification.number,
-            }
-          : undefined,
-        metadata: payment.metadata || {},
-        deviceId: payment.metadata?.device_id || null, // Device ID from MercadoPago metadata
-        webhookReceivedAt: new Date(),
-        webhookAction: webhookData.action,
-        webhookType: webhookData.type,
-        processedAt: new Date(),
-      },
-      correlationId
-    );
-
-    // If payment is approved, enqueue processing job (ASYNC FLOW)
-    if (payment.status === "approved" && payment.external_reference) {
-      const profileId = payment.external_reference;
-
-      logInfo("Payment approved, enqueueing processing job", {
-        correlationId,
-        profileId,
-        paymentId: payment.id.toString(),
-        amount: payment.transaction_amount,
-      });
-
-      try {
-        // IMPORTANT: Only enqueue job, DO NOT process directly
-        const jobId = await queueService.enqueueProcessingJob({
-          jobType: JobType.PROCESS_PROFILE,
-          profileId: profileId,
-          uniqueUrl: profileId,
-          paymentId: payment.id.toString(),
-          planType:
-            payment.transaction_amount === 85
-              ? PlanType.PREMIUM
-              : PlanType.BASIC,
-          profileData: {
-            paymentId: payment.id,
-            status: payment.status,
-            amount: payment.transaction_amount,
-            payerEmail: payment.payer.email,
-            metadata: payment.metadata || {},
-            deviceId: payment.metadata?.device_id || null, // Device ID from payment
-          },
-          paymentData: {
-            id: payment.id.toString(),
-            status: payment.status,
-            amount: payment.transaction_amount,
-            externalReference: payment.external_reference || profileId,
-          },
-          correlationId,
-          retryCount: 0,
-          maxRetries: 5,
-        });
-
-        logInfo("Processing job enqueued successfully", {
-          correlationId,
-          jobId,
-          profileId,
-          paymentId: payment.id.toString(),
-        });
-      } catch (error) {
-        logError("Failed to enqueue processing job", error as Error, {
-          correlationId,
-          profileId,
-          paymentId: payment.id.toString(),
-        });
-
-        // Mark payment as approved but enqueueing failed (for manual retry)
-        const db = getFirestore();
-        await db
-          .collection("pending_profiles")
-          .doc(profileId)
-          .update({
-            paymentId: webhookData.data.id,
-            paymentData: payment,
-            status: "payment_approved_enqueue_failed",
-            error: (error as Error).message,
-            correlationId,
-            updatedAt: new Date(),
-          });
-      }
-    } else {
-      logInfo("Payment not approved or missing reference", {
-        correlationId,
-        status: payment.status,
-        hasReference: !!payment.external_reference,
+      logWarning("HMAC validation failed", {
+        manifestLength: manifest.length,
+        hashLength: receivedHash.length,
       });
     }
 
-    // Return success immediately (webhook processed)
-    return res.status(200).json({
-      status: "processed",
+    return isValid;
+
+  } catch (error) {
+    logError("Error during HMAC validation", error as Error);
+    return false;
+  }
+}
+
+/**
+ * Fallback: Log failed webhook for manual processing
+ */
+async function logFailedWebhook(
+  notification: WebhookNotification,
+  correlationId: string,
+  requestId: string
+): Promise<void> {
+  try {
+    // Import Firebase only when needed (lazy loading)
+    const { getFirestore } = await import("firebase-admin/firestore");
+    const { initializeApp, getApps, cert } = await import("firebase-admin/app");
+    const { getFirebaseConfig } = await import("../lib/config/index.js");
+
+    // Initialize Firebase if needed
+    if (!getApps().length) {
+      const firebaseConfig = getFirebaseConfig();
+      initializeApp({
+        credential: cert({
+          projectId: firebaseConfig.projectId,
+          clientEmail: firebaseConfig.clientEmail,
+          privateKey: firebaseConfig.privateKey,
+        }),
+      });
+    }
+
+    const db = getFirestore();
+    
+    // Save to failed_webhooks collection for manual retry
+    await db
+      .collection("failed_webhooks")
+      .doc(`${notification.id}_${Date.now()}`)
+      .set({
+        notification,
+        correlationId,
+        requestId,
+        failedAt: new Date().toISOString(),
+        status: "enqueue_failed",
+        needsManualRetry: true,
+      });
+
+    logInfo("Failed webhook logged for manual retry", {
       correlationId,
+      notificationId: notification.id,
+      paymentId: notification.data.id,
     });
   } catch (error) {
-    logError("Webhook processing error", error as Error, { correlationId });
-
-    // Return 200 to avoid MercadoPago retries for malformed data
-    if (error instanceof Error && error.name === "ZodError") {
-      return res.status(200).json({
-        status: "invalid_data",
-        error: "Invalid webhook data format",
-        correlationId,
-      });
-    }
-
-    return res.status(500).json({
-      error: "Internal server error",
+    logError("Failed to log webhook for manual retry", error as Error, {
       correlationId,
     });
+    throw error;
   }
 }

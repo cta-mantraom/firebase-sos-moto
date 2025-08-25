@@ -16,6 +16,7 @@ const AppConfigSchema = z.object({
 export interface AppConfigType {
   frontendUrl: string;
   backendUrl: string;
+  publicUrl: string; // Added for backward compatibility
   environment: 'development' | 'test' | 'production';
   isProduction: boolean;
   isDevelopment: boolean;
@@ -39,6 +40,7 @@ class AppConfig {
       this.instance = {
         frontendUrl,
         backendUrl,
+        publicUrl: frontendUrl, // Use frontendUrl as publicUrl for backward compatibility
         environment: validated.NODE_ENV,
         isProduction: validated.NODE_ENV === 'production',
         isDevelopment: validated.NODE_ENV === 'development',

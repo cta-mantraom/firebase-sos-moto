@@ -1,11 +1,37 @@
 // Vercel Function para buscar dados do perfil
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateUUID } from '../lib/utils/validation.js';
 import { generateCorrelationId } from '../lib/utils/ids.js';
 import { logInfo, logError } from '../lib/utils/logger.js';
 import { firebaseService } from '../lib/services/firebase.js';
 import { redisService } from '../lib/services/redis.js';
-import { ProfileResponse, MemorialData, createSuccessResponse, createErrorResponse } from '../lib/types/index.js';
+
+// UUID validation function (moved inline after validation.js deletion)
+function validateUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  // Also accept simple alphanumeric IDs for backward compatibility
+  const simpleIdRegex = /^[a-zA-Z0-9_-]{8,}$/;
+  return uuidRegex.test(uuid) || simpleIdRegex.test(uuid);
+}
+
+// Type definitions (moved inline after types/index.js deletion)
+interface ProfileResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  source: string;
+  correlationId: string;
+  cached: boolean;
+}
+
+function createErrorResponse(message: string, correlationId: string): ProfileResponse {
+  return {
+    success: false,
+    error: message,
+    source: 'database',
+    correlationId,
+    cached: false
+  };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = generateCorrelationId();

@@ -4,8 +4,8 @@ import { initMercadoPago } from "@mercadopago/sdk-react";
 // Removed Firebase Functions - using Vercel API directly
 import { toast } from "@/hooks/use-toast";
 import { UserProfile } from "@/schemas/profile";
-import { usePaymentPolling } from "@/hooks/usePaymentPolling";
-import { PaymentStatus, PixData } from "@/components/PaymentStatus";
+import { usePaymentPolling, type PixData } from "@/hooks/usePaymentPolling";
+import { PaymentStatus } from "@/components/PaymentStatus";
 import { PaymentCache } from "@/utils/paymentCache";
 
 // Extended window interface for MercadoPago Device ID
@@ -67,7 +67,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
             email: userData.email,
             name: userData.name,
             phone: userData.phone,
-            surname: userData.surname || "",
+            surname: "", // UserProfile não tem surname
           },
           planType: planType,
           externalReference: externalReference,
@@ -75,11 +75,11 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           // Profile fields
           selectedPlan: planType,
           name: userData.name,
-          surname: userData.surname || "",
+          surname: "", // UserProfile não tem surname
           email: userData.email,
           phone: userData.phone,
           age: userData.age,
-          birthDate: userData.birthDate || "",
+          birthDate: "", // UserProfile não tem birthDate
           bloodType: userData.bloodType,
           allergies: userData.allergies,
           medications: userData.medications,

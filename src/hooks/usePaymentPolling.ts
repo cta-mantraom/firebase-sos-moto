@@ -1,12 +1,35 @@
 import { useState, useCallback } from 'react';
+import { z } from 'zod';
+
+// Schema para validação dos dados PIX
+const PixDataSchema = z.object({
+  qrCode: z.string(),
+  qrCodeBase64: z.string().optional(),
+  ticketUrl: z.string().optional(),
+  amount: z.number(),
+  instructions: z.array(z.string()).optional()
+});
+
+// Schema para validação dos dados de sucesso
+const SuccessDataSchema = z.object({
+  status: z.string(),
+  profileUrl: z.string().optional(),
+  qrCodeUrl: z.string().optional(),
+  message: z.string().optional(),
+  redirectUrl: z.string().optional()
+});
+
+// Tipos inferidos dos schemas
+export type PixData = z.infer<typeof PixDataSchema>;
+export type SuccessData = z.infer<typeof SuccessDataSchema>;
 
 export interface PollingOptions {
   interval?: number;
   maxAttempts?: number;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: SuccessData) => void;
   onError?: (error: Error) => void;
   onTimeout?: () => void;
-  onPixQRCode?: (pixData: any) => void;
+  onPixQRCode?: (pixData: PixData) => void;
 }
 
 export type PaymentStatus = 
@@ -46,13 +69,21 @@ export const usePaymentPolling = () => {
         setMessage(data.message || 'Aguardando confirmação...');
         setProgress(data.progress || Math.min(attempts * 2.5, 95));
         
-        // Status aprovado - sucesso!
+        // Status aprovado - sucesso com validação
         if (data.status === 'approved') {
           console.log(`[Polling] Payment approved! Profile URL: ${data.profileUrl}`);
           setPolling(false);
           setProgress(100);
           setMessage('Pagamento aprovado! Redirecionando...');
-          setTimeout(() => options.onSuccess?.(data), 1000);
+          
+          // Validar dados antes de chamar onSuccess
+          const validatedData = SuccessDataSchema.safeParse(data);
+          if (validatedData.success) {
+            setTimeout(() => options.onSuccess?.(validatedData.data), 1000);
+          } else {
+            console.error('[Polling] Invalid success data:', validatedData.error);
+            options.onError?.(new Error('Dados de sucesso inválidos'));
+          }
           return;
         }
         
@@ -64,10 +95,17 @@ export const usePaymentPolling = () => {
           return;
         }
         
-        // PIX - mostrar QR Code
+        // PIX - mostrar QR Code com validação
         if (data.status === 'pending_pix' && data.pixData) {
           console.log(`[Polling] PIX QR Code available`);
-          options.onPixQRCode?.(data.pixData);
+          
+          // Validar dados PIX antes de chamar onPixQRCode
+          const validatedPixData = PixDataSchema.safeParse(data.pixData);
+          if (validatedPixData.success) {
+            options.onPixQRCode?.(validatedPixData.data);
+          } else {
+            console.error('[Polling] Invalid PIX data:', validatedPixData.error);
+          }
         }
         
         // Status processing - pagamento aprovado mas perfil sendo criado

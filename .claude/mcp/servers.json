@@ -28,29 +28,34 @@
 
     "mercadopago": {
       "command": "npx",
-      "args": ["mercadopago-mcp-server"],
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.mercadopago.com/mcp",
+        "--header",
+        "Authorization:${MERCADOPAGO_AUTH_HEADER}"
+      ],
       "transport": {
         "type": "stdio"
       },
       "env": {
-        "MERCADOPAGO_ACCESS_TOKEN": "",
-        "MERCADOPAGO_PUBLIC_KEY": "",
-        "MERCADOPAGO_WEBHOOK_SECRET": ""
+        "MERCADOPAGO_AUTH_HEADER": "Bearer APP_USR-5108188262341537-081023-e21756c4420f9faff3fe4500635efb24-2208672851"
       },
-      "description": "MercadoPago payment processing and webhook management",
+      "description": "MercadoPago oficial MCP Server - Documentação e geração de código",
       "capabilities": [
-        "create_payment_preference",
-        "get_payment_status",
-        "manage_webhooks",
-        "validate_webhook_signature",
-        "get_payment_methods",
-        "create_customer",
-        "get_approval_metrics"
+        "search-documentation",
+        "generate-integration-code",
+        "test-cards-info",
+        "payment-methods-by-country",
+        "best-practices",
+        "payment-processing-examples",
+        "webhook-validation-examples"
       ],
       "usage_context": [
-        "payment-agent: Direct payment processing and validation",
-        "backend-agent: Webhook management and processing",
-        "deploy-orchestrator: Payment system health checks"
+        "payment-agent: Buscar documentação e gerar código de integração para Payment Brick e PIX",
+        "backend-agent: Consultar best practices, webhook validation e processamento de pagamentos",
+        "frontend-agent: Gerar código do Payment Brick e integração React",
+        "deploy-orchestrator: Validar configurações antes do deploy"
       ]
     },
 
@@ -186,9 +191,15 @@
 
   "integration_rules": {
     "payment_workflow": {
-      "description": "MercadoPago payment processing requires Upstash for queuing",
+      "description": "MercadoPago MCP para documentação + SDK Node.js para processar pagamentos + Upstash para filas",
       "required_servers": ["mercadopago", "upstash", "firebase"],
-      "validation": "payment-agent validates all payment-related MCP calls"
+      "validation": "payment-agent consulta docs via MCP, processa pagamentos via SDK Node.js",
+      "mcp_usage": {
+        "documentation": "Usar MCP para buscar exemplos e best practices",
+        "code_generation": "MCP gera código para process-payment endpoint",
+        "test_cards": "MCP fornece cartões de teste atualizados",
+        "processing": "SDK Node.js mercadopago v2.8.0 para processar pagamentos reais"
+      }
     },
 
     "deploy_workflow": {
@@ -241,11 +252,11 @@
 
     "access_control": {
       "agent_permissions": {
-        "frontend-agent": ["shadcn"],
-        "backend-agent": ["vercel", "firebase", "upstash", "aws-ses"],
-        "payment-agent": ["mercadopago", "upstash"],
+        "frontend-agent": ["shadcn", "mercadopago"],
+        "backend-agent": ["vercel", "firebase", "upstash", "aws-ses", "mercadopago"],
+        "payment-agent": ["mercadopago", "upstash", "firebase"],
         "medical-validator": ["firebase", "upstash"],
-        "deploy-orchestrator": ["vercel", "firebase", "upstash", "aws-ses"]
+        "deploy-orchestrator": ["vercel", "firebase", "upstash", "aws-ses", "mercadopago"]
       }
     },
 

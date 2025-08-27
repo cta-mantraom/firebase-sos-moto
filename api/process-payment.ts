@@ -162,13 +162,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         blood_type: pendingProfile.bloodType,
         has_device_id: hasDeviceId,
       },
-      // CRITICAL: Device ID must be at root level
-      device_id: data.deviceId || undefined,
       // Additional configurations
       binary_mode: false, // Allow pending status for PIX
       capture: true, // Capture payment immediately
       three_d_secure_mode: hasDeviceId ? "optional" : undefined, // Enable 3DS when we have Device ID
       additional_info: {
+        // CRITICAL: Device ID must be in additional_info for MercadoPago API
+        device_session_id: data.deviceId || undefined,
         items: [{
           id: `memoryys-${pendingProfile.planType}`,
           title: `Perfil de Emergência ${pendingProfile.planType}`,
@@ -176,11 +176,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           category_id: "services",
           quantity: 1,
           unit_price: data.transaction_amount,
+          // currency_id removed - not allowed in items
         }],
         payer: {
           first_name: pendingProfile.name?.split(' ')[0] || "",
           last_name: pendingProfile.surname || pendingProfile.name?.split(' ').slice(1).join(' ') || "",
         },
+        // Add IP address if available for fraud prevention
+        ip_address: req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || undefined,
       },
     };
 

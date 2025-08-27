@@ -477,7 +477,20 @@ const processEmergencyData = (data: unknown) => {
 
 ## 🚨 PROBLEMAS CRÍTICOS DO BACKEND
 
-### **REPOSITORY PATTERN IGNORADO**
+**📄 Documentação Completa**: `.claude/docs/PAYMENT_CRITICAL_ISSUES.md`
+
+### **1. DUPLICAÇÃO DE ENDPOINTS**
+- ❌ `api/check-payment-status.ts` duplica `api/check-status.ts`
+- ❌ `api/processors/final-processor.ts` duplica `api/processors/payment-webhook-processor.ts`
+- ✅ **AÇÃO**: Deletar os duplicados e usar apenas os endpoints principais
+
+### **2. WEBHOOK PODE NÃO SER CHAMADO**
+- ❌ `notification_url` configurada incorretamente
+- ❌ Se `BACKEND_URL` estiver errado, webhook nunca é chamado
+- ❌ Pagamento aprovado mas perfil nunca criado
+- ✅ **AÇÃO**: Validar configuração da URL do webhook com getAppConfig()
+
+### **3. REPOSITORY PATTERN IGNORADO**
 ```typescript
 // ❌ NUNCA FAZER - Acesso direto
 const doc = await db.collection('payments').doc(id).get();
@@ -487,11 +500,29 @@ import { PaymentRepository } from '@/lib/repositories/payment.repository';
 const payment = await paymentRepository.findById(id);
 ```
 
-### **ENDPOINTS DUPLICADOS PARA REMOVER**
-- `api/check-payment-status.ts` → DELETAR (usar `check-status.ts`)
-- `api/processors/final-processor.ts` → DELETAR (usar `payment-webhook-processor.ts`)
+### **4. CACHE LOCAL PERIGOSO (24 HORAS)**
+- ❌ PaymentCache salvando dados sensíveis por 24h
+- ❌ localStorage/sessionStorage com dados de pagamento
+- ❌ Dados antigos interferindo em novos pagamentos
+- ✅ **AÇÃO**: Implementar TTL máximo de 1 hora para cache
 
-### **PROCESSAMENTO ANTES DA APROVAÇÃO**
+### **5. MODAL APARECE TARDE DEMAIS**
+- ❌ Frontend mostra modal apenas após polling=true
+- ❌ Polling só inicia após process-payment responder
+- ❌ Usuário pode fechar janela antes do modal
+- ✅ **AÇÃO**: Coordenar com frontend para modal aparecer IMEDIATAMENTE
+
+### **6. VERIFICAÇÃO DE DUPLICAÇÃO AUSENTE**
+```typescript
+// ❌ PROBLEMA - Mesmo paymentId processado múltiplas vezes
+// ✅ SOLUÇÃO - Idempotency check
+const existingPayment = await PaymentRepository.findById(paymentId);
+if (existingPayment?.status === 'approved') {
+  throw new Error('Payment already processed');
+}
+```
+
+### **7. PERFIL CRIADO ANTES DA APROVAÇÃO**
 ```typescript
 // ❌ PROBLEMA ATUAL
 // pending_profiles criado antes do pagamento aprovado
@@ -503,21 +534,6 @@ if (paymentStatus === 'approved') {
 }
 ```
 
-### **CACHE PERIGOSO (24 HORAS)**
-- PaymentCache com expiração de 24 HORAS
-- Dados sensíveis ficam muito tempo no cache
-- Pode interferir em novos pagamentos
-
-### **VERIFICAÇÃO DE DUPLICAÇÃO AUSENTE**
-```typescript
-// ❌ PROBLEMA - Mesmo paymentId processado múltiplas vezes
-// ✅ SOLUÇÃO - Idempotency check
-const existingPayment = await PaymentRepository.findById(paymentId);
-if (existingPayment?.status === 'approved') {
-  throw new Error('Payment already processed');
-}
-```
-
-Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para lista completa.
+**🔥 IMPACTO**: Sistema aceita pagamentos falsos, duplicação de dados, perda de receita
 
 O backend é a espinha dorsal do sistema Memoryys. Cada função pode fazer a diferença entre vida e morte em uma emergência médica. Mantenha sempre o foco na confiabilidade, performance e precisão dos dados médicos!

@@ -343,25 +343,98 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 ## 🚨 PROBLEMAS CRÍTICOS FRONTEND DESCOBERTOS
 
-### **1. Sistema Aceita Pagamentos Falsos**
+**📄 Documentação completa**: `.claude/docs/PAYMENT_CRITICAL_ISSUES.md`
+
+### **1. DUPLICAÇÃO DE ENDPOINTS (Backend Impacta Frontend)**
+- **Problema**: Frontend pode chamar endpoint errado devido a duplicações
+- **APIs duplicadas**: `check-payment-status.ts` vs `check-status.ts`
+- **Impacto**: Respostas inconsistentes, estados diferentes
+- **Solução**: SEMPRE usar apenas `check-status.ts`
+
+### **2. WEBHOOK PODE NÃO SER CHAMADO (Polling Infinito)**
+- **Problema**: Frontend fica em polling infinito esperando confirmação
+- **Causa**: `notification_url` incorreta, webhook nunca dispara
+- **Impacto**: Usuário fica travado na tela de pagamento
+- **Solução**: Implementar timeout de 5 minutos no polling com fallback
+
+### **3. REPOSITORY PATTERN IGNORADO (Validações Bypassed)**
+- **Problema**: APIs chamadas pelo frontend podem não usar Repository
+- **Impacto**: Validações bypassed, dados incorretos retornados
+- **Risco**: Frontend recebe dados não validados
+- **Solução**: Garantir que todas APIs usem PaymentRepository
+
+### **4. Sistema Aceita Pagamentos Falsos**
 - **Problema**: Redirecionamento prematuro no onSubmit
 - **Impacto**: Fraude facilitada
 - **Solução**: Implementar polling de status
 
-### **2. PIX Não Mostra QR Code**
+### **5. PIX Não Mostra QR Code**
 - **Problema**: Redireciona antes de mostrar QR
 - **Impacto**: Impossível pagar via PIX
 - **Solução**: Aguardar renderização do QR Code
 
-### **3. Valores dos Planos**
-- **Basic**: R$ 5,00 (teste temporário)
-- **Premium**: R$ 85,00
+### **6. SEM VERIFICAÇÃO DE DUPLICAÇÃO (Múltiplos Cliques)**
+```typescript
+// ❌ PROBLEMA ATUAL - Sem proteção
+<Button onClick={handlePayment}>Pagar</Button>
 
-### **4. Cache Local Perigoso (24h)**
+// ✅ SOLUÇÃO - Com debounce e verificação
+const [isProcessing, setIsProcessing] = useState(false);
+
+<Button 
+  onClick={handlePayment}
+  disabled={isProcessing}
+>
+  {isProcessing ? 'Processando...' : 'Pagar'}
+</Button>
+
+// handlePayment com proteção
+const handlePayment = useCallback(
+  debounce(async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    
+    // Verificar se paymentId já existe
+    const exists = await checkPaymentExists(paymentId);
+    if (exists) {
+      showError('Pagamento já processado');
+      return;
+    }
+    
+    await processPayment();
+    setIsProcessing(false);
+  }, 1000),
+  [paymentId, isProcessing]
+);
+```
+
+### **7. PERFIL CRIADO ANTES DA APROVAÇÃO (Disconnect UI/Backend)**
+- **Problema**: UI mostra "sucesso" mas perfil pode não existir
+- **Causa**: `pending_profiles` criado antes da confirmação
+- **Impacto**: Usuário vê QR Code mas dados não existem
+- **Solução**: Validar perfil existe antes de mostrar success
+```typescript
+// ✅ VALIDAÇÃO ANTES DE MOSTRAR SUCCESS
+const handleSuccess = async (paymentId: string) => {
+  // Verificar se perfil foi criado
+  const profile = await checkProfile(paymentId);
+  
+  if (!profile || profile.status !== 'active') {
+    // Aguardar criação ou mostrar erro
+    setLoading(true);
+    await pollProfileCreation(paymentId);
+  }
+  
+  // SÓ ENTÃO mostrar QR Code
+  navigate('/success');
+};
+```
+
+### **8. Cache Local Perigoso (24h)**
 - **Problema**: PaymentCache com expiração de 24 HORAS
 - **Solução**: Máximo 1 hora para dados sensíveis
 
-### **5. Modal Aparece Tarde Demais**
+### **9. Modal Aparece Tarde Demais**
 ```typescript
 // ❌ PROBLEMA ATUAL
 onSubmit: async () => {
@@ -377,15 +450,9 @@ onSubmit: async () => {
 }
 ```
 
-### **6. Sem Verificação de Estado do Payment**
-- **Problema**: Frontend não verifica se paymentId já foi processado
-- **Solução**: Verificar estado antes de iniciar novo fluxo
-
-### **7. Dados do Formulário Perdidos no Cache**
-- **Problema**: Cache de 24h pode interferir em novo preenchimento
-- **Solução**: Limpar cache após completar ou falhar pagamento
-
-Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para detalhes.
+### **10. Valores dos Planos**
+- **Basic**: R$ 5,00 (teste temporário)
+- **Premium**: R$ 85,00
 
 ## 🎯 Objetivos de Qualidade - NOVA ARQUITETURA
 

@@ -29,7 +29,7 @@ dist-ssr
 .docMp
 .kiro
 .trae
-.claude
+#.claude
 configClaude
 update-domain.sh
 fix-imports.sh

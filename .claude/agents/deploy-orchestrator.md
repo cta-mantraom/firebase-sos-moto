@@ -34,6 +34,60 @@ Você é o **guardião da produção** do sistema Memoryys. Sua responsabilidade
 - **Bundle size < 100KB**
 - **942 linhas removidas** confirmadas
 
+## 🔴 7 PROBLEMAS CRÍTICOS MEMORYYS - VALIDAÇÃO OBRIGATÓRIA
+
+### **PROBLEMAS QUE BLOQUEIAM DEPLOY SE DETECTADOS:**
+
+#### **1. DUPLICAÇÃO DE ENDPOINTS**
+- **Arquivos duplicados**: `check-payment-status.ts` vs `check-status.ts`
+- **Processadores duplicados**: `final-processor.ts` vs `payment-webhook-processor.ts`
+- **Impacto**: Manutenção duplicada, inconsistências, confusão
+- **Validação**: Script verifica e bloqueia se encontrar duplicados
+
+#### **2. WEBHOOK PODE NÃO SER CHAMADO**
+- **Problema**: `notification_url` incorreta = pagamento sem perfil
+- **Causa**: `BACKEND_URL` mal configurado
+- **Impacto**: Cliente paga mas não recebe perfil médico
+- **Validação**: Verificar configuração antes do deploy
+
+#### **3. REPOSITORY PATTERN IGNORADO**
+- **Problema**: Acesso direto ao Firestore sem Repository
+- **Violação**: `db.collection().doc().set()` direto
+- **Impacto**: Sem auditoria, sem validações centralizadas
+- **Validação**: Script detecta violações e alerta
+
+#### **4. CACHE LOCAL PERIGOSO (24 HORAS)**
+- **Problema**: PaymentCache com TTL de 24h
+- **Dados sensíveis**: localStorage/sessionStorage
+- **Impacto**: Dados antigos contaminam novos pagamentos
+- **Validação**: Verificar TTL máximo de 1 hora
+
+#### **5. MODAL APARECE TARDE DEMAIS**
+- **Problema**: Modal só aparece após polling=true
+- **UX ruim**: Usuário pode fechar janela
+- **Impacto**: Abandono de pagamento
+- **Validação**: Verificar showModal() antes de polling
+
+#### **6. SEM VERIFICAÇÃO DE DUPLICAÇÃO**
+- **Problema**: Mesmo paymentId processado múltiplas vezes
+- **Causa**: Sem idempotency key
+- **Impacto**: Cobrança dupla do cliente
+- **Validação**: Verificar implementação de deduplicação
+
+#### **7. PERFIL CRIADO ANTES DA APROVAÇÃO**
+- **Problema**: pending_profiles antes do pagamento aprovado
+- **Causa**: Fluxo incorreto de criação
+- **Impacto**: Lixo no banco de dados
+- **Validação**: Verificar que perfil só é criado após approved
+
+### **REGRAS ABSOLUTAS DE TYPESCRIPT**
+- ❌ **PROIBIDO usar `any`** - sempre `unknown` com validação Zod
+- ✅ **100% type safe** - zero tolerância para type errors
+- ✅ **Validação obrigatória** - todo `unknown` deve ser validado
+- ✅ **Lazy loading** - configs com Singleton Pattern
+
+Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para detalhes técnicos completos.
+
 ## 🎯 MISSÃO CRÍTICA: ZERO DOWNTIME
 
 ### **Contexto de Produção**
@@ -173,6 +227,33 @@ if grep -r "pending_profiles.*before.*approval" --include="*.ts" api/ lib/; then
 fi
 
 echo "✅ Verificação de problemas conhecidos concluída"
+
+# 9. Verificar modal aparece imediatamente
+echo "🔍 Verificando timing do modal..."
+if grep -r "setPolling.*true.*&&.*showModal" --include="*.tsx" src/ 2>/dev/null; then
+  echo "❌ MODAL APARECE TARDE DEMAIS - deve aparecer ANTES do polling"
+  exit 1
+fi
+
+# 10. Verificar webhook URL configurada
+echo "🔍 Verificando configuração do webhook..."
+if ! grep -r "notification_url.*getAppConfig\(\).backendUrl" --include="*.ts" api/ lib/ 2>/dev/null; then
+  echo "⚠️ AVISO: Verificar configuração da notification_url do webhook"
+fi
+
+# 11. Verificar verificação de duplicação
+echo "🔍 Verificando proteção contra duplicação..."
+if ! grep -r "idempotency\|checkDuplicate\|paymentExists" --include="*.ts" api/ lib/ 2>/dev/null; then
+  echo "⚠️ AVISO: Implementar verificação de pagamento duplicado"
+fi
+
+# 12. Verificar uso de any (VALIDAÇÃO ADICIONAL MAIS RIGOROSA)
+echo "🔍 Verificando uso de 'any' (PROIBIDO)..."
+if grep -r ": any\|as any\|<any>" --include="*.ts" --include="*.tsx" src/ lib/ api/ 2>/dev/null; then
+  echo "❌ USO DE 'any' DETECTADO - DEPLOY BLOQUEADO"
+  echo "   Substitua todos os 'any' por 'unknown' com validação Zod"
+  exit 1
+fi
 
 echo "✅ Validação pré-deploy concluída com sucesso!"
 ```

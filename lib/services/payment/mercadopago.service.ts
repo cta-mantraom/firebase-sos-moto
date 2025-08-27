@@ -107,7 +107,19 @@ const CreatePaymentSchema = z.object({
     }),
   }),
   additional_info: z.object({
-    items: z.array(PreferenceItemSchema),
+    // CRITICAL: Device ID must be here, not at root level
+    device_session_id: z.string().optional(),
+    // IP address for fraud prevention
+    ip_address: z.string().optional(),
+    items: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      quantity: z.number().positive(),
+      unit_price: z.number().positive(),
+      description: z.string().optional(),
+      category_id: z.string().optional(),
+      // NO currency_id here - not allowed in items
+    })),
     payer: z.object({
       first_name: z.string().optional(),
       last_name: z.string().optional(),
@@ -122,10 +134,14 @@ const CreatePaymentSchema = z.object({
       }).optional(),
     }).optional(),
   }).optional(),
-  device_id: z.string().optional(),
+  // device_id removed from root - must be in additional_info
   capture: z.boolean().optional(),
   external_reference: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
+  notification_url: z.string().optional(),
+  statement_descriptor: z.string().optional(),
+  binary_mode: z.boolean().optional(),
+  three_d_secure_mode: z.string().optional(),
 });
 
 // Tipos derivados dos schemas
@@ -229,7 +245,8 @@ export class MercadoPagoService {
       const validatedData = CreatePaymentSchema.parse(data);
 
       // CRÍTICO: Validar Device ID para aprovação
-      if (!validatedData.device_id) {
+      const hasDeviceId = validatedData.additional_info?.device_session_id;
+      if (!hasDeviceId) {
         logWarning('No Device ID provided - approval rate will be impacted!');
       }
 
@@ -252,7 +269,7 @@ export class MercadoPagoService {
         status: paymentDetails.status,
         amount: paymentDetails.transaction_amount,
         method: paymentDetails.payment_method_id,
-        hasDeviceId: !!validatedData.device_id,
+        hasDeviceId: !!validatedData.additional_info?.device_session_id,
       });
 
       return paymentDetails;

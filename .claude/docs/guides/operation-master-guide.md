@@ -165,32 +165,40 @@ Os agentes são acionados através de **trigger patterns** e podem ser chamados:
 
 **Trigger Patterns**: `mercadopago`, `payment`, `device id`, `hmac`, `webhook`, `checkout`
 
+**🚨 REQUISITOS CRÍTICOS MERCADOPAGO**:
+- **Device ID**: OBRIGATÓRIO para 85%+ taxa de aprovação
+- **HMAC Validation**: OBRIGATÓRIO em todos os webhooks
+- **Processamento Assíncrono**: Webhooks APENAS enfileiram jobs
+
 **Exemplos de Prompts**:
 
 ```typescript
 // Prompt 1: Device ID Crítico
-"Garantir que 100% dos pagamentos tenham Device ID coletado antes do checkout"
+"Garantir que 100% dos pagamentos tenham Device ID (MP_DEVICE_SESSION_ID) coletado antes do checkout"
 
 // Prompt 2: Taxa de Aprovação
-"Otimizar preferência MercadoPago para taxa de aprovação 85%+"
+"Otimizar preferência MercadoPago para taxa de aprovação 85%+ com Device ID obrigatório"
 
 // Prompt 3: HMAC Security
-"Implementar validação HMAC rigorosa no webhook mercadopago-webhook.ts"
+"Implementar validação HMAC rigorosa no webhook mercadopago-webhook.ts usando MercadoPagoService.validateWebhook()"
 
 // Prompt 4: Webhook Performance
-"Otimizar webhook para responder em < 5 segundos e processar assincronamente"
+"Webhook deve APENAS validar HMAC e enfileirar job QStash, NUNCA processar síncronamente"
 
 // Prompt 5: Payment Recovery
 "Implementar retry logic para pagamentos falhados com exponential backoff"
 ```
 
-**Fluxo de Execução**:
+**Fluxo de Execução CORRETO**:
 1. Detecta padrão payment
 2. Task tool aciona `payment-agent`
-3. Payment Agent verifica Device ID obrigatório
+3. Payment Agent verifica Device ID obrigatório (MP_DEVICE_SESSION_ID)
 4. Implementa com MercadoPagoService (nunca API direta)
-5. Hook MercadoPago valida integração
-6. Valida HMAC e processamento assíncrono
+5. Hook MercadoPago valida:
+   - Device ID presente em 100% dos pagamentos
+   - HMAC validation implementado
+   - Webhook apenas enfileira, nunca processa
+6. Taxa de aprovação deve ser 85%+
 
 ### **🏥 Medical Validator**
 
@@ -384,9 +392,13 @@ await mcp.firebase.backupCollection('profiles', { anonymize: true });
 echo "let test: any = 'invalid';" > test.ts
 # Esperado: Hook deve bloquear com erro
 
-# Testar hook MercadoPago
-grep -r "createHmac" api/
-# Esperado: Validação HMAC encontrada
+# Testar hook MercadoPago - CRÍTICO
+python3 .claude/hooks/mercadopago-validator.py
+# Deve verificar:
+# ✅ Device ID (MP_DEVICE_SESSION_ID) collection
+# ✅ HMAC validation em webhooks
+# ✅ Webhook apenas enfileira jobs (não processa)
+# ✅ Taxa de aprovação será 85%+ com Device ID
 
 # Testar hook Secrets
 echo 'export const token = "APP_USR-secret";' > test.ts
@@ -440,6 +452,10 @@ claude mcp test mcp-firebase-memoryys
 | Hook Response | Time | < 2s |
 | Agent Response | Time | < 10s |
 | MCP Connectivity | Status | Connected |
+| **MercadoPago** | **Device ID** | **100% presente** |
+| **MercadoPago** | **HMAC Validation** | **100% implementado** |
+| **MercadoPago** | **Webhook Async** | **100% assíncrono** |
+| **MercadoPago** | **Taxa Aprovação** | **85%+** |
 
 ---
 
@@ -528,6 +544,11 @@ watch -n 60 'curl -w "%{time_total}" https://memoryys.com/api/health'
 - **MCP Connectivity**: 99.9%
 - **Build Success Rate**: 100%
 - **Deploy Success Rate**: > 95%
+- **MercadoPago Device ID**: 100% dos pagamentos
+- **MercadoPago HMAC**: 100% validado
+- **MercadoPago Taxa Aprovação**: 85%+ (crítico para receita)
+- **Webhook Response Time**: < 5s (timeout MercadoPago)
+- **Webhook Processing**: 100% assíncrono (nunca síncrono)
 
 ### **Alertas Configurados**
 

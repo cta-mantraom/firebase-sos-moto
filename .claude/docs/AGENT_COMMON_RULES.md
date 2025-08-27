@@ -44,6 +44,7 @@ function process(data: unknown): ProcessData {
 ### **Código e Arquivos**
 - ❌ Criar backups (.bak, .backup, .old)
 - ❌ Duplicar código existente
+- ❌ Criar endpoints duplicados (check-status.ts vs check-payment-status.ts)
 - ❌ Criar logger local (usar centralizado)
 - ❌ Usar process.env diretamente
 - ❌ Modificar arquitetura DDD existente
@@ -52,18 +53,25 @@ function process(data: unknown): ProcessData {
 - ❌ Usar lib/utils/validation.ts (ARQUIVO DELETADO)
 - ❌ Usar lib/types/api.types.ts (ARQUIVO DELETADO)
 - ❌ Usar lib/services/payment/payment.processor.ts (ARQUIVO DELETADO)
+- ❌ Usar api/check-payment-status.ts (DUPLICADO - usar check-status.ts)
 
 ### **Dados e Segurança**
 - ❌ Salvar em banco antes do pagamento aprovado
 - ❌ Expor secrets em logs
 - ❌ Processar CPF (campo removido do sistema)
 - ❌ Redirecionar no onSubmit do Payment Brick
+- ❌ Salvar dados sensíveis em cache local por mais de 1h
+- ❌ Processar mesmo paymentId múltiplas vezes (duplicação)
+- ❌ Criar perfil antes da aprovação do pagamento
+- ❌ Acessar Firestore diretamente sem usar Repository Pattern
 
 ### **Desenvolvimento**
 - ❌ Usar `any` em TypeScript
 - ❌ Chamar APIs externas diretamente
 - ❌ Criar services para funcionalidades existentes
 - ❌ Processar síncronamente em webhooks
+- ❌ Ignorar Repository Pattern (SEMPRE usar PaymentRepository/ProfileRepository)
+- ❌ Modal de aguardo aparecer tarde demais (deve ser IMEDIATO)
 
 ---
 
@@ -103,11 +111,15 @@ const firebaseConfig = getFirebaseConfig();
 firebaseConfig.projectId         // ✅
 ```
 
-### **Services Existentes**
+### **Services e Repositories Existentes**
 - MercadoPago: `MercadoPagoService`
 - Firebase: `FirebaseService`  
 - Email: `EmailService`
 - QStash: `QStashService`
+- **SEMPRE USAR**:
+  - `PaymentRepository` para acessar dados de pagamento
+  - `ProfileRepository` para acessar dados de perfil
+  - **NUNCA** acessar Firestore diretamente
 
 ---
 
@@ -163,11 +175,17 @@ api/
 
 ---
 
-## 🚨 PROBLEMAS CRÍTICOS ATUAIS
+## 🚨 PROBLEMAS CRÍTICOS DESCOBERTOS
 
 1. **Sistema aceita pagamentos falsos** - Redirecionamento prematuro
 2. **PIX não mostra QR Code** - Redireciona antes
-3. **validateHMACSignature duplicado** - Usar MercadoPagoService
+3. **Duplicação de endpoints** - check-status.ts vs check-payment-status.ts
+4. **Repository Pattern ignorado** - Acesso direto ao Firestore
+5. **Cache local perigoso** - 24 horas de dados sensíveis
+6. **Modal aparece tarde** - Usuário pode fechar antes
+7. **Sem verificação de duplicação** - Mesmo pagamento processado múltiplas vezes
+8. **Perfil criado antes da aprovação** - Lixo no banco se falhar
+9. **Webhook pode não ser chamado** - notification_url pode falhar
 
 ---
 
@@ -186,10 +204,16 @@ api/
 - [ ] Verifiquei se é análise ou implementação
 - [ ] Usei utilities centralizadas
 - [ ] Não criei código duplicado
+- [ ] Não criei endpoints duplicados
 - [ ] Não usei `any` em TypeScript
 - [ ] Não salvei antes da aprovação do pagamento
 - [ ] Incluí correlationId nos logs
 - [ ] Usei config centralizada (não process.env)
+- [ ] Usei Repository Pattern (NUNCA Firestore direto)
+- [ ] Verifiquei duplicação de pagamento antes de processar
+- [ ] Modal de aguardo aparece IMEDIATAMENTE
+- [ ] Cache local tem expiração máxima de 1 hora
+- [ ] Perfil criado APENAS após aprovação confirmada
 
 ---
 

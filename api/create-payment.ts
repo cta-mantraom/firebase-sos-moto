@@ -362,8 +362,8 @@ function buildPreferenceData(
       ],
       installments: 12,
       default_installments: 1,
-      // Configurações adicionais para habilitar PIX
-      default_payment_method_id: "pix", // PIX como padrão se disponível
+      // PIX é habilitado automaticamente quando disponível
+      // Não definir default_payment_method_id para permitir todos os métodos disponíveis
     },
     expires: true,
     expiration_date_from: new Date().toISOString(),

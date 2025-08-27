@@ -12,8 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { QRCodePreview } from '@/components/QRCodePreview';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { MercadoPagoCheckout } from '@/components/MercadoPagoCheckout';
-import { ArrowLeft, Heart, User, Phone, AlertTriangle, QrCode, CreditCard } from 'lucide-react';
-import { FormData, Plan, CheckoutData } from '@/types';
+import { ArrowLeft, Heart, User, Phone, AlertTriangle, CreditCard } from 'lucide-react';
+import { FormData, Plan } from '@/types';
 import { PaymentCache } from '@/utils/paymentCache';
 
 const CreateProfile: React.FC = () => {

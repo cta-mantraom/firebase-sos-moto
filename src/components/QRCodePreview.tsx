@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, Heart, Phone, AlertTriangle, Clock, Shield, CheckCircle } from 'lucide-react';
+import { QrCode, Heart, Phone, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormData } from '@/types';
 

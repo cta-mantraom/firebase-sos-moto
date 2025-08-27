@@ -1,5 +1,5 @@
 // lib/services/redis.ts - Redis cache client (Node.js environment)
-import { logInfo, logError, logWarning } from '../utils/logger.js';
+import { logInfo, logWarning } from '../utils/logger.js';
 import { getRedisConfig } from '../config/index.js';
 
 class RedisService {

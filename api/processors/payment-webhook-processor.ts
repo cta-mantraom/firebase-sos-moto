@@ -34,7 +34,7 @@ if (!getApps().length) {
   }
 }
 
-// Job payload schema from webhook
+// Job payload schema from webhook - must match PaymentWebhookJobData interface
 const WebhookJobSchema = z.object({
   jobType: z.literal(JobType.PROCESS_PAYMENT_WEBHOOK),
   paymentId: z.string(),
@@ -446,7 +446,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const retryJobData: PaymentWebhookJobData = {
         jobType: job.jobType,
         paymentId: job.paymentId,
-        webhookData: job.webhookData,
+        webhookData: job.webhookData as PaymentWebhookJobData['webhookData'],
         correlationId: job.correlationId,
         requestId: job.requestId,
         receivedAt: job.receivedAt,

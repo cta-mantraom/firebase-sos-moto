@@ -5,10 +5,8 @@ import {
   PaymentMethod,
   PaymentType,
   RefundStatus,
-  PaymentDataSchema,
   MercadoPagoPayment,
 } from './payment.types.js';
-import { z } from 'zod';
 
 export class Payment {
   private readonly _id: string;

@@ -1,11 +1,10 @@
-import { getFirestore, Firestore, CollectionReference, Query, FieldPath } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, CollectionReference, Query } from 'firebase-admin/firestore';
 import { Payment } from '../domain/payment/payment.entity.js';
 import {
   PaymentData,
   PaymentStatus,
   PaymentMethod,
   PaymentType,
-  PaymentProcessingResult,
 } from '../domain/payment/payment.types.js';
 import { PaymentQueryData, PaymentStatsQueryData } from '../domain/payment/payment.validators.js';
 import { logInfo, logError } from '../utils/logger.js';
@@ -21,13 +20,11 @@ export class PaymentRepository {
   private readonly db: Firestore;
   private readonly paymentsCollection: CollectionReference;
   private readonly paymentEventsCollection: CollectionReference;
-  private readonly paymentStatsCollection: CollectionReference;
 
   constructor() {
     this.db = getFirestore();
     this.paymentsCollection = this.db.collection('payments');
     this.paymentEventsCollection = this.db.collection('payment_events');
-    this.paymentStatsCollection = this.db.collection('payment_stats');
   }
 
   /**

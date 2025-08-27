@@ -1,4 +1,4 @@
-import { getFirestore, Firestore, CollectionReference, DocumentReference, Query } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, CollectionReference, Query } from 'firebase-admin/firestore';
 import { Profile } from '../domain/profile/profile.entity.js';
 import {
   ProfileData,

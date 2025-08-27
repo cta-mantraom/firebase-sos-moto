@@ -23,24 +23,13 @@ import {
 } from '../../domain/profile/profile.types.js';
 import { generateUniqueUrl } from '../../utils/ids.js';
 
-export interface ProfileServiceConfig {
-  maxRetries: number;
-  cacheEnabled: boolean;
-}
-
 export class ProfileService {
   private readonly profileRepository: ProfileRepository;
-  private readonly config: ProfileServiceConfig;
 
   constructor(
-    profileRepository: ProfileRepository,
-    config?: Partial<ProfileServiceConfig>
+    profileRepository: ProfileRepository
   ) {
     this.profileRepository = profileRepository;
-    this.config = {
-      maxRetries: config?.maxRetries ?? 3,
-      cacheEnabled: config?.cacheEnabled ?? true,
-    };
   }
 
   /**

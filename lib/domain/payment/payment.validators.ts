@@ -5,9 +5,6 @@ import {
   PaymentType,
   RefundStatus,
   PaymentData,
-  MercadoPagoPayment,
-  WebhookData,
-  PaymentProcessingResult,
 } from './payment.types.js';
 import { PlanType } from '../profile/profile.types.js';
 

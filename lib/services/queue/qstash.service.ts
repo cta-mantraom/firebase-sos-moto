@@ -1,11 +1,8 @@
 import { Client } from '@upstash/qstash';
 import {
   JobType,
-  JobStatus,
   JobData,
   EmailJobData,
-  JobOptions,
-  JobResult,
   QStashMessage,
   QStashResponse,
   QStashJobStatus,

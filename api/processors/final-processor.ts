@@ -1,15 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { ProcessingJobDataSchema } from '../../lib/types/queue.types.js';
 import { Profile } from '../../lib/domain/profile/profile.entity.js';
 import { BloodType, PlanType } from '../../lib/domain/profile/profile.types.js';
 import { ProfileRepository } from '../../lib/repositories/profile.repository.js';
-import { Payment } from '../../lib/domain/payment/payment.entity.js';
 import { PaymentRepository } from '../../lib/repositories/payment.repository.js';
 import { QStashService } from '../../lib/services/queue/qstash.service.js';
 import { logInfo, logError } from '../../lib/utils/logger.js';

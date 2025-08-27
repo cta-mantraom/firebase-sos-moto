@@ -1,4 +1,4 @@
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
 import { storage } from '../firebase-admin.js';
 import { getFirebaseConfig } from '../../config/index.js';

@@ -1,12 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-import { z } from "zod";
 import { getEmailConfig } from "../../lib/config/index.js";
 import { EmailJobDataSchema } from "../../lib/types/queue.types.js";
 import { Email } from "../../lib/domain/notification/email.entity.js";
 import {
   EmailTemplate,
-  EmailStatus,
   EmailPriority,
   PaymentConfirmationData,
   PaymentFailureData,

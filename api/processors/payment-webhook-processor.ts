@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
-import crypto from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { MercadoPagoService } from "../../lib/services/payment/mercadopago.service.js";
 import { PaymentRepository } from "../../lib/repositories/payment.repository.js";
 import { ProfileService } from "../../lib/services/profile/profile.service.js";
@@ -8,7 +8,7 @@ import { QRCodeService } from "../../lib/services/profile/qrcode.service.js";
 import { EmailService } from "../../lib/services/notification/email.service.js";
 import { QStashService } from "../../lib/services/queue/qstash.service.js";
 import { logInfo, logError, logWarning } from "../../lib/utils/logger.js";
-import { generateProfileId, generateCorrelationId } from "../../lib/utils/ids.js";
+import { generateProfileId } from "../../lib/utils/ids.js";
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirebaseConfig, getPaymentConfig, getRedisConfig } from "../../lib/config/index.js";
@@ -52,7 +52,7 @@ const WebhookJobSchema = z.object({
   maxRetries: z.number(),
 });
 
-type WebhookJob = z.infer<typeof WebhookJobSchema>;
+// Type for webhook job (used for validation)
 
 /**
  * Validate QStash signature to ensure request is from QStash
@@ -72,13 +72,12 @@ function validateQStashSignature(
 
     // QStash signature format: base64(hmac-sha256(payload))
     const payload = JSON.stringify(req.body);
-    const expectedSignature = crypto
-      .createHmac("sha256", signingKey)
+    const expectedSignature = createHmac("sha256", signingKey)
       .update(payload)
       .digest("base64");
 
     // Constant-time comparison
-    const isValid = crypto.timingSafeEqual(
+    const isValid = timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
     );
@@ -445,8 +444,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Enqueue for retry
       const qstashService = new QStashService();
       const retryJobData: PaymentWebhookJobData = {
-        ...job,
+        jobType: job.jobType,
+        paymentId: job.paymentId,
+        webhookData: job.webhookData,
+        correlationId: job.correlationId,
+        requestId: job.requestId,
+        receivedAt: job.receivedAt,
         retryCount: job.retryCount + 1,
+        maxRetries: job.maxRetries,
       };
       await qstashService.publishToQueue(
         "payment-webhook-processor",

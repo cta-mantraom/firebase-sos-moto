@@ -11,7 +11,6 @@ import {
   EmailAttachment,
   TemplateDataSchema,
 } from "./email.types.js";
-import { z } from "zod";
 
 export class Email {
   private readonly _id: string;

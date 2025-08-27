@@ -1,6 +1,6 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { z } from 'zod';
-import crypto from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
 import { generateCorrelationId } from '../../utils/ids.js';
 
@@ -272,11 +272,9 @@ export class MercadoPagoService {
       // Usar SDK para buscar pagamentos
       const response = await this.payment.search({
         options: {
+          external_reference: externalReference,
           criteria: 'desc',
           sort: 'date_created',
-        },
-        filters: {
-          external_reference: externalReference,
         },
       });
 
@@ -450,12 +448,12 @@ export class MercadoPagoService {
       const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
       
       // Gerar HMAC
-      const hmac = crypto.createHmac('sha256', this.config.webhookSecret);
+      const hmac = createHmac('sha256', this.config.webhookSecret);
       hmac.update(manifest);
       const expectedHash = hmac.digest('hex');
 
       // Comparação segura contra timing attacks
-      const isValid = crypto.timingSafeEqual(
+      const isValid = timingSafeEqual(
         Buffer.from(expectedHash),
         Buffer.from(v1)
       );
@@ -479,12 +477,6 @@ export class MercadoPagoService {
    * Valida o Device ID do MercadoPago
    * CRÍTICO: Para taxa de aprovação
    */
-  private validateDeviceId(deviceId: string): boolean {
-    // Device ID deve ter formato específico do MercadoPago
-    // Exemplo: "MP_DEVICE_SESSION_ID" com 32+ caracteres
-    const deviceIdPattern = /^[a-zA-Z0-9_-]{20,}$/;
-    return deviceIdPattern.test(deviceId);
-  }
 
   /**
    * Formata mensagens de erro do MercadoPago

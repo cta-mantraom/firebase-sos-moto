@@ -30,11 +30,11 @@ if (!getApps().length) {
 const ProcessPaymentSchema = z.object({
   paymentId: z.string().min(1, "Payment ID is required"), // Our internal payment ID
   uniqueUrl: z.string().min(1, "Unique URL is required"),
-  token: z.string().optional(), // Card token from Payment Brick
-  issuer_id: z.string().optional(),
+  token: z.string().optional(), // Card token from Payment Brick (not needed for PIX)
+  issuer_id: z.union([z.string(), z.number()]).optional(), // Can be string or number
   payment_method_id: z.string().min(1, "Payment method is required"),
   transaction_amount: z.number().positive(),
-  installments: z.number().int().positive().default(1),
+  installments: z.number().int().positive().optional().default(1),
   payer: z.object({
     email: z.string().email(),
     identification: z.object({
@@ -108,9 +108,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Initialize MercadoPago service
+    const paymentConfig = getPaymentConfig();
     const mercadoPagoService = new MercadoPagoService({
-      accessToken: getPaymentConfig().mercadopago.accessToken,
-      webhookSecret: getPaymentConfig().mercadopago.webhookSecret,
+      accessToken: paymentConfig.accessToken,
+      webhookSecret: paymentConfig.webhookSecret,
+      publicKey: paymentConfig.publicKey,
     });
 
     // Get pending profile to verify it exists
@@ -137,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Build payment data for MercadoPago SDK CreatePaymentData schema
     const paymentData: any = {
       token: data.token, // Card token from Payment Brick (not needed for PIX)
-      issuer_id: data.issuer_id ? parseInt(data.issuer_id) : undefined,
+      issuer_id: data.issuer_id ? (typeof data.issuer_id === 'string' ? parseInt(data.issuer_id, 10) : data.issuer_id) : undefined,
       payment_method_id: data.payment_method_id,
       transaction_amount: data.transaction_amount,
       installments: data.installments || 1,

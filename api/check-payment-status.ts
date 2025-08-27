@@ -8,7 +8,6 @@ import { getPaymentConfig } from "../lib/config/index.js";
 // Schema de validação para query params
 const QuerySchema = z.object({
   paymentId: z.string().min(1, "Payment ID é obrigatório"),
-  preferenceId: z.string().optional(),
   deviceId: z.string().optional(), // Device ID para rastreamento
 });
 
@@ -59,13 +58,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const { paymentId, preferenceId, deviceId } = queryValidation.data;
+    const { paymentId, deviceId } = queryValidation.data;
 
     // CRÍTICO: Log Device ID para monitorar taxa de aprovação
     logInfo("Checking payment status", {
       correlationId,
       paymentId,
-      preferenceId,
       hasDeviceId: !!deviceId,
       deviceId: deviceId ? deviceId.substring(0, 10) + '...' : null, // Log parcial por segurança
     });

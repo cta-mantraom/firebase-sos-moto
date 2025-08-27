@@ -28,17 +28,19 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   onSuccess,
   onError,
 }) => {
-  const [preferenceId, setPreferenceId] = useState<string | null>(null);
-  const [uniqueUrl, setUniqueUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(null);
+  const [processingStarted, setProcessingStarted] = useState(false);
+  
+  // Generate IDs once on mount
+  const [paymentId] = useState(() => `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+  const [uniqueUrl] = useState(() => `profile_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   
   // Hook de polling para verificar status do pagamento
   const { status, polling, progress, message, startPolling } = usePaymentPolling();
 
-  const createPreference = React.useCallback(async () => {
+  const createPendingProfile = React.useCallback(async () => {
     try {
       setLoading(true);
 
@@ -64,37 +66,20 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       const currentDeviceId = window.MP_DEVICE_SESSION_ID;
       console.log("✅ Device ID collected successfully:", currentDeviceId);
 
-      // Generate external reference
-      const externalReference = `sos_moto_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(7)}`;
-
-      // Call Vercel API to create preference with Device ID
-      const response = await fetch("/api/create-payment", {
+      // Create pending profile in Firestore
+      const response = await fetch("/api/create-pending-profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          // Payment fields required by validation schema
-          amount: planType === "premium" ? 85.0 : 5.0,
-          payer: {
-            email: userData.email,
-            name: userData.name,
-            phone: userData.phone,
-            surname: "", // UserProfile não tem surname
-          },
-          planType: planType,
-          externalReference: externalReference,
-
-          // Profile fields
+          uniqueUrl,
+          paymentId,
           selectedPlan: planType,
           name: userData.name,
-          surname: "", // UserProfile não tem surname
           email: userData.email,
           phone: userData.phone,
           age: userData.age,
-          birthDate: "", // UserProfile não tem birthDate
           bloodType: userData.bloodType,
           allergies: userData.allergies,
           medications: userData.medications,
@@ -103,20 +88,17 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           preferredHospital: userData.preferredHospital,
           medicalNotes: userData.medicalNotes,
           emergencyContacts: userData.emergencyContacts,
-
-          // CRITICAL: Device ID is MANDATORY for 85%+ approval rate
-          deviceId: currentDeviceId || window.MP_DEVICE_SESSION_ID,  // Use collected Device ID
+          deviceId: currentDeviceId,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to create payment`);
+        const error = await response.json();
+        throw new Error(error.message || `HTTP ${response.status}: Failed to create pending profile`);
       }
 
       const data = await response.json();
-      setPreferenceId(data.preferenceId);
-      setUniqueUrl(data.uniqueUrl); // Save the uniqueUrl for redirect
-      setPaymentId(data.paymentId); // Save paymentId for polling
+      console.log("✅ Pending profile created:", data);
       
       // Salvar dados no cache local ANTES do pagamento
       const formDataForCache = {
@@ -139,26 +121,26 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           relationship: contact.relationship || 'Não especificado'
         })) || [],
         selectedPlan: planType,
-        deviceId: window.MP_DEVICE_SESSION_ID || undefined
+        deviceId: currentDeviceId
       };
       
-      const cacheSuccess = PaymentCache.saveFormData(formDataForCache, window.MP_DEVICE_SESSION_ID || undefined);
+      const cacheSuccess = PaymentCache.saveFormData(formDataForCache, currentDeviceId);
       
       if (cacheSuccess) {
         console.log("[MercadoPago] Form data cached successfully");
       }
     } catch (error) {
-      console.error("Error creating preference:", error);
+      console.error("Error creating pending profile:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a preferência de pagamento",
+        description: "Não foi possível preparar o pagamento. Tente novamente.",
         variant: "destructive",
       });
       onError(error as Error);
     } finally {
       setLoading(false);
     }
-  }, [planType, userData, onError]);
+  }, [planType, userData, onError, paymentId, uniqueUrl]);
 
   useEffect(() => {
     // Initialize MercadoPago SDK
@@ -187,8 +169,8 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         setDeviceId(deviceIdValue);
         console.log("✅ Device ID successfully loaded:", deviceIdValue);
         console.log("📊 Expected approval rate: 85%+ with Device ID");
-        // Create payment preference after Device ID is ready
-        createPreference();
+        // Create pending profile after Device ID is ready
+        createPendingProfile();
       } else if (attempts < maxAttempts) {
         attempts++;
         // Retry after 100ms
@@ -206,7 +188,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         // Only continue in development for testing
         if (import.meta.env.DEV) {
           console.warn("DEV MODE: Continuing without Device ID");
-          createPreference();
+          createPendingProfile();
         } else {
           onError(new Error("Device ID obrigatório não carregado"));
         }
@@ -222,7 +204,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         script.parentNode.removeChild(script);
       }
     };
-  }, [createPreference]);
+  }, [createPendingProfile]);
 
   if (loading) {
     return (
@@ -235,16 +217,11 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
     );
   }
 
-  if (!preferenceId) {
+  if (!deviceId) {
     return (
       <div className="text-center p-8">
-        <p className="text-red-500">Erro ao carregar checkout</p>
-        <button
-          onClick={createPreference}
-          className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
-        >
-          Tentar novamente
-        </button>
+        <p className="text-yellow-500">Preparando sistema de segurança...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mt-4"></div>
       </div>
     );
   }
@@ -254,7 +231,6 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       <Payment
         initialization={{
           amount: planType === "premium" ? 85.0 : 5.0,
-          preferenceId: preferenceId,
         }}
         customization={{
           paymentMethods: {
@@ -279,50 +255,79 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
             hideFormTitle: false, // Mostrar título do formulário
           },
         }}
-        onSubmit={async (paymentData) => {
+        onSubmit={async (paymentFormData) => {
           console.log("🔄 Payment submitted - Processing payment directly");
-          console.log("Payment data:", paymentData);
+          console.log("Payment form data:", paymentFormData);
           console.log("Device ID:", window.MP_DEVICE_SESSION_ID);
+          
+          // Prevent multiple submissions
+          if (processingStarted) {
+            console.log("⚠️ Payment already processing, ignoring duplicate submission");
+            return;
+          }
+          setProcessingStarted(true);
           
           // CRITICAL: Ensure Device ID is included for 85%+ approval rate
           if (!window.MP_DEVICE_SESSION_ID) {
             console.error("❌ Payment submitted without Device ID - High rejection risk!");
           }
           
-          const enrichedPaymentData = {
-            ...paymentData,
-            deviceId: window.MP_DEVICE_SESSION_ID || deviceId,  // Use collected or current Device ID
+          // Extract the actual payment data from the formData wrapper
+          const actualPaymentData = paymentFormData.formData || paymentFormData;
+          
+          // Build correct payment structure for process-payment endpoint
+          const paymentRequest = {
+            // IDs
+            paymentId: paymentId,
+            uniqueUrl: uniqueUrl,
+            deviceId: window.MP_DEVICE_SESSION_ID || deviceId,
+            
+            // Payment method data
+            token: actualPaymentData.token,
+            issuer_id: actualPaymentData.issuer_id || actualPaymentData.issuerId,
+            payment_method_id: actualPaymentData.payment_method_id || actualPaymentData.paymentMethodId,
+            transaction_amount: planType === "premium" ? 85.0 : 5.0,
+            installments: actualPaymentData.installments || 1,
+            
+            // Payer data
+            payer: {
+              email: actualPaymentData.payer?.email || userData.email,
+              identification: actualPaymentData.payer?.identification || {
+                type: "CPF",
+                number: actualPaymentData.payer?.identification?.number || "00000000000"
+              }
+            },
+            
+            // Additional metadata
+            metadata: {
+              plan_type: planType,
+              blood_type: userData.bloodType,
+              device_id: window.MP_DEVICE_SESSION_ID || deviceId,
+            }
           };
           
-          console.log("💳 Payment data enriched with Device ID:", enrichedPaymentData.deviceId);
+          console.log("💳 Sending payment request:", paymentRequest);
           
-          // CRÍTICO: NOVO FLUXO - Processar pagamento diretamente
-          if (uniqueUrl && paymentId) {
-            try {
-              // Atualizar cache antes de processar
-              PaymentCache.addPaymentInfo(
-                enrichedPaymentData,
-                uniqueUrl,
-                paymentId,
-                preferenceId || undefined
-              );
-              
-              console.log("📤 Sending payment to process-payment endpoint...");
-              
-              // NOVO: Chamar endpoint de processamento direto
-              const processResponse = await fetch('/api/process-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  ...enrichedPaymentData,
-                  paymentId,
-                  uniqueUrl,
-                  deviceId: enrichedPaymentData.deviceId,
-                }),
-              });
-              
-              const processData = await processResponse.json();
-              console.log("📥 Process payment response:", processData);
+          try {
+            // Update cache before processing
+            PaymentCache.addPaymentInfo(
+              actualPaymentData,
+              uniqueUrl,
+              paymentId,
+              undefined
+            );
+            
+            console.log("📤 Sending payment to process-payment endpoint...");
+            
+            // Call process-payment endpoint with correct structure
+            const processResponse = await fetch('/api/process-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(paymentRequest),
+            });
+            
+            const processData = await processResponse.json();
+            console.log("📥 Process payment response:", processData);
               
               // Handle PIX QR Code response
               if (processData.status === 'pending_pix' && processData.pixData) {
@@ -375,9 +380,10 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
               }
               
               // Handle immediate rejection
-              if (processData.status === 'rejected' || processData.status === 'error') {
+              if (processData.status === 'rejected' || processData.status === 'error' || !processData.success) {
                 console.error("❌ Payment rejected:", processData.message);
                 PaymentCache.clear();
+                setProcessingStarted(false); // Allow retry
                 toast({
                   title: "Pagamento não aprovado",
                   description: processData.message || "Verifique os dados do cartão",
@@ -428,6 +434,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
             } catch (error) {
               console.error("❌ Error processing payment:", error);
               PaymentCache.clear();
+              setProcessingStarted(false); // Allow retry
               toast({
                 title: "Erro ao processar pagamento",
                 description: "Ocorreu um erro inesperado. Tente novamente.",
@@ -435,10 +442,6 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
               });
               onError(error as Error);
             }
-          } else {
-            console.error("Missing uniqueUrl or paymentId");
-            onError(new Error("Dados de pagamento incompletos"));
-          }
         }}
         onError={(error) => {
           console.error("Payment error:", error);

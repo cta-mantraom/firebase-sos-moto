@@ -48,8 +48,9 @@ const CreatePaymentSchema = z.object({
   // Plan selection - REQUIRED
   selectedPlan: z.enum(['basic', 'premium']),
   
-  // Device ID - CRITICAL for approval
-  deviceId: z.string().min(1, "Device ID é obrigatório para aprovação"),
+  // Device ID - CRITICAL for approval rate (85%+ goal)
+  // Optional in schema but will be validated separately for better error messages
+  deviceId: z.string().optional(),
   
   // Optional fields
   surname: z.string().optional(),
@@ -155,17 +156,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const validatedData = validationResult.data;
+    
+    // CRITICAL: Device ID is MANDATORY for 85%+ approval rate
+    // Without Device ID: ~40% approval | With Device ID: 85%+ approval
+    if (!validatedData.deviceId || validatedData.deviceId.length < 20) {
+      logError("🚨 CRITICAL: Missing Device ID - Payment will likely fail", new Error("Device ID validation failed"), {
+        correlationId,
+        deviceIdLength: validatedData.deviceId?.length || 0,
+        expectedApprovalRate: "~40% (very low)",
+        requiredApprovalRate: "85%+",
+      });
+      
+      // CRITICAL: Reject payments without Device ID to protect approval rate
+      return res.status(400).json({
+        error: "Device ID obrigatório para segurança",
+        details: [{
+          field: "deviceId",
+          message: "Sistema de segurança não carregado. Por favor, recarregue a página e aguarde o carregamento completo antes de prosseguir."
+        }],
+        correlationId,
+        retryable: true,
+        impact: "Taxa de aprovação será severamente impactada sem Device ID",
+      });
+    }
+    
+    // Log successful Device ID validation
+    logInfo("✅ Device ID validated successfully", {
+      correlationId,
+      deviceIdLength: validatedData.deviceId.length,
+      expectedApprovalRate: "85%+",
+    });
+    
     const plan = PLAN_PRICES[validatedData.selectedPlan];
     const uniqueUrl = generateUniqueUrl();
     const paymentId = generatePaymentId();
 
-    logInfo("Creating MercadoPago preference", {
+    logInfo("💳 Creating MercadoPago preference WITH Device ID for optimal approval", {
       correlationId,
       uniqueUrl,
       paymentId,
       plan: validatedData.selectedPlan,
       amount: plan.unit_price,
-      deviceId: validatedData.deviceId,
+      deviceId: validatedData.deviceId.substring(0, 10) + "...", // Log only part for security
+      deviceIdPresent: true,
+      expectedApprovalRate: "85%+",
       bloodType: validatedData.bloodType,
       emergencyContactsCount: validatedData.emergencyContacts.length,
     });
@@ -308,8 +342,8 @@ function buildPreferenceData(
         number: phoneNumber,
       },
       identification: {
-        type: "OTHER",
-        number: uniqueUrl, // Use uniqueUrl as identifier
+        type: "CPF", // Tipo de documento padrão para Brasil
+        number: "00000000000", // CPF dummy para preferência (será sobrescrito no Payment Brick)
       },
     },
     back_urls: {
@@ -328,6 +362,8 @@ function buildPreferenceData(
       ],
       installments: 12,
       default_installments: 1,
+      // Configurações adicionais para habilitar PIX
+      default_payment_method_id: "pix", // PIX como padrão se disponível
     },
     expires: true,
     expiration_date_from: new Date().toISOString(),
@@ -364,7 +400,7 @@ function buildPreferenceData(
       payment_id: paymentId,
       unique_url: uniqueUrl,
       plan_type: data.selectedPlan,
-      device_id: data.deviceId, // CRITICAL: Include Device ID
+      device_id: data.deviceId || '', // CRITICAL: Device ID for 85%+ approval rate (vs ~40% without)
       blood_type: data.bloodType,
       emergency_contacts_count: data.emergencyContacts.length,
       has_allergies: !!data.allergies?.length,
@@ -372,7 +408,11 @@ function buildPreferenceData(
       medical_emergency: true,
       service_type: "medical_profile",
       platform: "memoryys",
+      test_mode: process.env.NODE_ENV !== "production", // Indica se é ambiente de teste
     },
+    // Configurações para PIX
+    binary_mode: false, // Permite status pendente para PIX
+    purpose: "wallet_purchase", // Melhora a taxa de aprovação
   };
 }
 

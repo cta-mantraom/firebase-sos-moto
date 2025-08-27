@@ -1,6 +1,8 @@
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { logInfo, logError, logWarning } from '../../utils/logger.js';
+import { generateCorrelationId } from '../../utils/ids.js';
 
 // Schemas de validação
 const PreferenceItemSchema = z.object({
@@ -10,6 +12,7 @@ const PreferenceItemSchema = z.object({
   unit_price: z.number().positive(),
   description: z.string().optional(),
   currency_id: z.string().default('BRL'),
+  category_id: z.string().optional(),
 });
 
 const PayerSchema = z.object({
@@ -45,14 +48,15 @@ const PreferenceDataSchema = z.object({
   expires: z.boolean().optional(),
   expiration_date_from: z.string().optional(),
   expiration_date_to: z.string().optional(),
-  payment_methods: z.object({
-    excluded_payment_methods: z.array(z.object({ id: z.string() })).optional(),
-    excluded_payment_types: z.array(z.object({ id: z.string() })).optional(),
-    installments: z.number().optional(),
-    default_installments: z.number().optional(),
-  }).optional(),
+  payment_methods: z.any().optional(), // SDK aceita estrutura complexa
+  metadata: z.record(z.any()).optional(),
+  additional_info: z.any().optional(),
+  binary_mode: z.boolean().optional(),
+  purpose: z.string().optional(),
+  statement_descriptor: z.string().optional(),
 });
 
+// Schema expandido para incluir dados PIX
 const PaymentDetailsSchema = z.object({
   id: z.number(),
   status: z.string(),
@@ -62,6 +66,7 @@ const PaymentDetailsSchema = z.object({
   date_created: z.string(),
   date_approved: z.string().nullable(),
   date_last_updated: z.string(),
+  date_of_expiration: z.string().optional(),
   payer: z.object({
     email: z.string().email(),
     identification: z.object({
@@ -76,6 +81,15 @@ const PaymentDetailsSchema = z.object({
   additional_info: z.object({
     items: z.array(z.unknown()).optional(),
     payer: z.record(z.unknown()).optional(),
+  }).optional(),
+  // Dados PIX
+  point_of_interaction: z.object({
+    transaction_data: z.object({
+      qr_code: z.string().optional(),
+      qr_code_base64: z.string().optional(),
+      ticket_url: z.string().optional(),
+      bank_info: z.record(z.unknown()).optional(),
+    }).optional(),
   }).optional(),
 });
 
@@ -110,6 +124,8 @@ const CreatePaymentSchema = z.object({
   }).optional(),
   device_id: z.string().optional(),
   capture: z.boolean().optional(),
+  external_reference: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 // Tipos derivados dos schemas
@@ -126,57 +142,77 @@ export interface PreferenceResponse {
   external_reference: string;
 }
 
-export interface MercadoPagoConfig {
+export interface MercadoPagoServiceConfig {
   accessToken: string;
   webhookSecret: string;
   publicKey: string;
-  baseUrl?: string;
 }
 
+/**
+ * MercadoPago Service usando SDK oficial
+ * CRÍTICO: Sempre usar SDK, NUNCA chamadas diretas à API
+ */
 export class MercadoPagoService {
-  private readonly config: MercadoPagoConfig;
-  private readonly baseUrl: string;
+  private readonly config: MercadoPagoServiceConfig;
+  private readonly client: MercadoPagoConfig;
+  private readonly preference: Preference;
+  private readonly payment: Payment;
 
-  constructor(config: MercadoPagoConfig) {
+  constructor(config: MercadoPagoServiceConfig) {
     this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.mercadopago.com';
+    
+    // Inicializar cliente MercadoPago com SDK oficial
+    this.client = new MercadoPagoConfig({
+      accessToken: config.accessToken,
+      options: {
+        timeout: 5000,
+        idempotencyKey: generateCorrelationId(),
+      }
+    });
+    
+    // Inicializar recursos
+    this.preference = new Preference(this.client);
+    this.payment = new Payment(this.client);
   }
 
   /**
    * Cria uma preferência de pagamento no MercadoPago
+   * USANDO SDK OFICIAL
    */
   async createPreference(data: PreferenceData): Promise<PreferenceResponse> {
     try {
       // Validar dados de entrada
       const validatedData = PreferenceDataSchema.parse(data);
 
-      const response = await fetch(`${this.baseUrl}/checkout/preferences`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.config.accessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': this.generateIdempotencyKey(),
-        },
-        body: JSON.stringify(validatedData),
+      // CRÍTICO: Adicionar device fingerprinting se disponível
+      const enrichedData = {
+        ...validatedData,
+        purpose: validatedData.purpose || 'wallet_purchase',
+      };
+
+      // Criar preferência usando SDK oficial
+      const response = await this.preference.create({
+        body: enrichedData as unknown as Parameters<typeof this.preference.create>[0]['body'],
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        logError('Failed to create MercadoPago preference', new Error(error.message), {
-          status: response.status,
-          error,
-        });
-        throw new Error(`MercadoPago API error: ${error.message || response.statusText}`);
+      if (!response.id) {
+        throw new Error('Failed to create preference: No ID returned');
       }
-
-      const result = await response.json();
       
       logInfo('MercadoPago preference created', {
-        preferenceId: result.id,
-        externalReference: result.external_reference,
+        preferenceId: response.id,
+        externalReference: response.external_reference,
+        initPoint: response.init_point,
       });
 
-      return result as PreferenceResponse;
+      return {
+        id: response.id,
+        init_point: response.init_point || '',
+        sandbox_init_point: response.sandbox_init_point,
+        collector_id: response.collector_id || 0,
+        date_created: response.date_created || new Date().toISOString(),
+        external_reference: response.external_reference || '',
+      };
     } catch (error) {
       logError('Error creating MercadoPago preference', error as Error);
       throw error;
@@ -185,44 +221,38 @@ export class MercadoPagoService {
 
   /**
    * Cria um pagamento direto (para cartão ou PIX)
+   * USANDO SDK OFICIAL
    */
   async createPayment(data: CreatePaymentData): Promise<PaymentDetails> {
     try {
       // Validar dados de entrada
       const validatedData = CreatePaymentSchema.parse(data);
 
-      // Validar Device ID se fornecido
-      if (validatedData.device_id && !this.validateDeviceId(validatedData.device_id)) {
-        logWarning('Invalid Device ID provided', { deviceId: validatedData.device_id });
+      // CRÍTICO: Validar Device ID para aprovação
+      if (!validatedData.device_id) {
+        logWarning('No Device ID provided - approval rate will be impacted!');
       }
 
-      const response = await fetch(`${this.baseUrl}/v1/payments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.config.accessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': this.generateIdempotencyKey(),
-        },
-        body: JSON.stringify(validatedData),
+      // Criar pagamento usando SDK oficial
+      const response = await this.payment.create({
+        body: {
+          ...validatedData,
+          capture: validatedData.capture !== false, // Default true
+        } as unknown as Parameters<typeof this.payment.create>[0]['body'],
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        logError('Failed to create payment', new Error(error.message), {
-          status: response.status,
-          error,
-        });
-        throw new Error(`Payment creation failed: ${error.message || response.statusText}`);
+      if (!response.id) {
+        throw new Error('Failed to create payment: No ID returned');
       }
 
-      const result = await response.json();
-      const paymentDetails = PaymentDetailsSchema.parse(result);
+      const paymentDetails = PaymentDetailsSchema.parse(response);
 
       logInfo('Payment created', {
         paymentId: paymentDetails.id,
         status: paymentDetails.status,
         amount: paymentDetails.transaction_amount,
         method: paymentDetails.payment_method_id,
+        hasDeviceId: !!validatedData.device_id,
       });
 
       return paymentDetails;
@@ -233,7 +263,157 @@ export class MercadoPagoService {
   }
 
   /**
+   * Busca pagamento pelo external_reference
+   * CRÍTICO: Necessário para polling do frontend
+   * USANDO SDK OFICIAL
+   */
+  async searchPaymentByExternalReference(externalReference: string): Promise<PaymentDetails | null> {
+    try {
+      // Usar SDK para buscar pagamentos
+      const response = await this.payment.search({
+        options: {
+          criteria: 'desc',
+          sort: 'date_created',
+        },
+        filters: {
+          external_reference: externalReference,
+        },
+      });
+
+      // Se não houver resultados, retornar null
+      if (!response.results || response.results.length === 0) {
+        logInfo('No payment found for external reference', {
+          externalReference,
+        });
+        return null;
+      }
+
+      // Pegar o pagamento mais recente
+      const payment = response.results[0];
+      const paymentDetails = PaymentDetailsSchema.parse(payment);
+
+      logInfo('Payment found by external reference', {
+        externalReference,
+        paymentId: paymentDetails.id,
+        status: paymentDetails.status,
+        paymentMethod: paymentDetails.payment_method_id,
+      });
+
+      return paymentDetails;
+    } catch (error) {
+      logError('Error searching payment by external reference', error as Error, { externalReference });
+      throw error;
+    }
+  }
+
+  /**
+   * Busca detalhes de um pagamento
+   * USANDO SDK OFICIAL
+   */
+  async getPaymentDetails(paymentId: string): Promise<PaymentDetails> {
+    try {
+      // Converter para número se necessário
+      const numericId = typeof paymentId === 'string' ? parseInt(paymentId, 10) : paymentId;
+      
+      if (isNaN(numericId)) {
+        throw new Error(`Invalid payment ID: ${paymentId}`);
+      }
+
+      // Buscar usando SDK oficial
+      const response = await this.payment.get({ id: numericId });
+
+      if (!response.id) {
+        throw new Error(`Payment not found: ${paymentId}`);
+      }
+
+      const paymentDetails = PaymentDetailsSchema.parse(response);
+
+      logInfo('Payment details retrieved', {
+        paymentId: paymentDetails.id,
+        status: paymentDetails.status,
+        paymentMethod: paymentDetails.payment_method_id,
+      });
+
+      return paymentDetails;
+    } catch (error) {
+      logError('Error getting payment details', error as Error, { paymentId });
+      throw error;
+    }
+  }
+
+  /**
+   * Captura um pagamento previamente autorizado
+   * USANDO SDK OFICIAL
+   */
+  async capturePayment(paymentId: string, amount?: number): Promise<PaymentDetails> {
+    try {
+      const numericId = typeof paymentId === 'string' ? parseInt(paymentId, 10) : paymentId;
+      
+      if (isNaN(numericId)) {
+        throw new Error(`Invalid payment ID: ${paymentId}`);
+      }
+
+      // Capturar usando SDK oficial
+      const response = await this.payment.capture({
+        id: numericId,
+        transaction_amount: amount,
+      });
+
+      if (!response.id) {
+        throw new Error(`Failed to capture payment: ${paymentId}`);
+      }
+
+      const paymentDetails = PaymentDetailsSchema.parse(response);
+
+      logInfo('Payment captured', {
+        paymentId: paymentDetails.id,
+        amount: paymentDetails.transaction_amount,
+        status: paymentDetails.status,
+      });
+
+      return paymentDetails;
+    } catch (error) {
+      logError('Error capturing payment', error as Error, { paymentId });
+      throw error;
+    }
+  }
+
+  /**
+   * Cancela um pagamento ou reserva
+   * USANDO SDK OFICIAL
+   */
+  async cancelPayment(paymentId: string): Promise<PaymentDetails> {
+    try {
+      const numericId = typeof paymentId === 'string' ? parseInt(paymentId, 10) : paymentId;
+      
+      if (isNaN(numericId)) {
+        throw new Error(`Invalid payment ID: ${paymentId}`);
+      }
+
+      // Cancelar usando SDK oficial
+      const response = await this.payment.cancel({ id: numericId });
+
+      if (!response.id) {
+        throw new Error(`Failed to cancel payment: ${paymentId}`);
+      }
+
+      const paymentDetails = PaymentDetailsSchema.parse(response);
+
+      logInfo('Payment cancelled', {
+        paymentId: paymentDetails.id,
+        status: paymentDetails.status,
+      });
+
+      return paymentDetails;
+    } catch (error) {
+      logError('Error cancelling payment', error as Error, { paymentId });
+      throw error;
+    }
+  }
+
+  /**
    * Valida a assinatura HMAC do webhook
+   * CRÍTICO: Segurança obrigatória
    */
   async validateWebhook(signature: string, requestId: string, dataId: string): Promise<boolean> {
     try {
@@ -252,6 +432,20 @@ export class MercadoPagoService {
         return false;
       }
 
+      // Verificar timestamp recente (5 minutos)
+      const currentTime = Math.floor(Date.now() / 1000);
+      const signatureTime = parseInt(ts, 10);
+      const timeDiff = currentTime - signatureTime;
+
+      if (timeDiff > 300 || timeDiff < -300) {
+        logWarning('Webhook timestamp too old or in future', {
+          timeDiff,
+          currentTime,
+          signatureTime,
+        });
+        return false;
+      }
+
       // Formato: id:[data.id];request-id:[x-request-id];ts:[timestamp];
       const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
       
@@ -260,7 +454,11 @@ export class MercadoPagoService {
       hmac.update(manifest);
       const expectedHash = hmac.digest('hex');
 
-      const isValid = expectedHash === v1;
+      // Comparação segura contra timing attacks
+      const isValid = crypto.timingSafeEqual(
+        Buffer.from(expectedHash),
+        Buffer.from(v1)
+      );
 
       if (!isValid) {
         logWarning('Invalid webhook signature', {
@@ -278,141 +476,13 @@ export class MercadoPagoService {
   }
 
   /**
-   * Busca detalhes de um pagamento
-   */
-  async getPaymentDetails(paymentId: string): Promise<PaymentDetails> {
-    try {
-      const response = await fetch(`${this.baseUrl}/v1/payments/${paymentId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.config.accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        logError('Failed to get payment details', new Error(error.message), {
-          paymentId,
-          status: response.status,
-        });
-        throw new Error(`Failed to get payment details: ${error.message || response.statusText}`);
-      }
-
-      const result = await response.json();
-      const paymentDetails = PaymentDetailsSchema.parse(result);
-
-      logInfo('Payment details retrieved', {
-        paymentId: paymentDetails.id,
-        status: paymentDetails.status,
-      });
-
-      return paymentDetails;
-    } catch (error) {
-      logError('Error getting payment details', error as Error, { paymentId });
-      throw error;
-    }
-  }
-
-  /**
-   * Captura um pagamento previamente autorizado
-   */
-  async capturePayment(paymentId: string, amount?: number): Promise<PaymentDetails> {
-    try {
-      const body: { capture: boolean; transaction_amount?: number } = {
-        capture: true,
-      };
-
-      if (amount !== undefined) {
-        body.transaction_amount = amount;
-      }
-
-      const response = await fetch(`${this.baseUrl}/v1/payments/${paymentId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${this.config.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        logError('Failed to capture payment', new Error(error.message || 'Unknown error'), {
-          paymentId,
-          amount,
-          status: response.status,
-        });
-        throw new Error(`Failed to capture payment: ${error.message || response.statusText}`);
-      }
-
-      const result = await response.json();
-      const paymentDetails = PaymentDetailsSchema.parse(result);
-
-      logInfo('Payment captured', {
-        paymentId: paymentDetails.id,
-        amount: paymentDetails.transaction_amount,
-        status: paymentDetails.status,
-      });
-
-      return paymentDetails;
-    } catch (error) {
-      logError('Error capturing payment', error as Error, { paymentId });
-      throw error;
-    }
-  }
-
-  /**
-   * Cancela um pagamento ou reserva
-   */
-  async cancelPayment(paymentId: string): Promise<PaymentDetails> {
-    try {
-      const response = await fetch(`${this.baseUrl}/v1/payments/${paymentId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${this.config.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'cancelled' }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        logError('Failed to cancel payment', new Error(error.message || 'Unknown error'), {
-          paymentId,
-          status: response.status,
-        });
-        throw new Error(`Failed to cancel payment: ${error.message || response.statusText}`);
-      }
-
-      const result = await response.json();
-      const paymentDetails = PaymentDetailsSchema.parse(result);
-
-      logInfo('Payment cancelled', {
-        paymentId: paymentDetails.id,
-        status: paymentDetails.status,
-      });
-
-      return paymentDetails;
-    } catch (error) {
-      logError('Error cancelling payment', error as Error, { paymentId });
-      throw error;
-    }
-  }
-
-  /**
-   * Gera uma chave de idempotência única
-   */
-  private generateIdempotencyKey(): string {
-    return crypto.randomUUID();
-  }
-
-  /**
    * Valida o Device ID do MercadoPago
+   * CRÍTICO: Para taxa de aprovação
    */
   private validateDeviceId(deviceId: string): boolean {
     // Device ID deve ter formato específico do MercadoPago
-    // Exemplo: "MP_DEVICE_SESSION_ID" com 32 caracteres hexadecimais
-    const deviceIdPattern = /^[a-f0-9]{32}$/i;
+    // Exemplo: "MP_DEVICE_SESSION_ID" com 32+ caracteres
+    const deviceIdPattern = /^[a-zA-Z0-9_-]{20,}$/;
     return deviceIdPattern.test(deviceId);
   }
 
@@ -430,6 +500,8 @@ export class MercadoPagoService {
       'cc_rejected_bad_filled_security_code': 'Código de segurança inválido.',
       'cc_rejected_insufficient_amount': 'Saldo insuficiente.',
       'cc_rejected_high_risk': 'Pagamento rejeitado por risco de fraude.',
+      'cc_rejected_invalid_installments': 'Número de parcelas inválido.',
+      'cc_rejected_max_attempts': 'Limite de tentativas excedido.',
     };
 
     return errorMessages[errorCode] || 'Erro ao processar pagamento. Tente novamente.';

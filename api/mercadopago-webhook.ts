@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import crypto from "crypto";
 import { z } from "zod";
+import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
 import { QStashService } from "../lib/services/queue/qstash.service.js";
 import { logInfo, logError, logWarning } from "../lib/utils/logger.js";
 import { generateCorrelationId } from "../lib/utils/ids.js";
@@ -24,19 +24,28 @@ const WebhookNotificationSchema = z.object({
 type WebhookNotification = z.infer<typeof WebhookNotificationSchema>;
 
 /**
- * MercadoPago Webhook Handler - Optimized for Performance
+ * MercadoPago Webhook Handler - CRITICAL SECURITY & PERFORMANCE
  * 
- * CRITICAL RESPONSIBILITIES:
- * 1. Validate HMAC signature (security)
- * 2. Enqueue job for async processing (performance)
- * 3. Return quickly (< 3 seconds)
+ * 🔒 SECURITY REQUIREMENTS:
+ * 1. HMAC signature validation is MANDATORY (prevents fraud)
+ * 2. Return 401 for invalid signatures
+ * 3. Use MercadoPagoService.validateWebhook() for consistency
  * 
- * DOES NOT:
- * - Fetch payment details (done in async job)
- * - Process profiles (done in async job)
- * - Save to database (done in async job)
+ * ⏱️ PERFORMANCE REQUIREMENTS:
+ * 1. ONLY enqueue jobs - NEVER process payments here
+ * 2. Return in < 3 seconds (MercadoPago timeout)
+ * 3. NO database operations, NO email sending, NO heavy processing
  * 
- * This ensures maximum performance and reliability
+ * 🚫 STRICTLY FORBIDDEN IN WEBHOOK:
+ * - Fetching payment details from MercadoPago API
+ * - Creating or updating profiles
+ * - Sending emails or notifications  
+ * - Any synchronous processing
+ * 
+ * ✅ ONLY ALLOWED:
+ * - HMAC validation
+ * - Enqueue job to QStash
+ * - Return response
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
@@ -97,27 +106,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const notification = webhookData.data;
 
-    // Step 3: Validate HMAC signature
-    const isValidSignature = validateHMACSignature(
+    // Step 3: Validate HMAC signature using MercadoPagoService
+    // CRÍTICO: Usar o serviço centralizado para garantir consistência
+    const mercadoPagoService = new MercadoPagoService(getPaymentConfig());
+    const isValidSignature = await mercadoPagoService.validateWebhook(
       signature,
       requestId,
-      notification.data.id,
-      getPaymentConfig().webhookSecret
+      notification.data.id
     );
 
     if (!isValidSignature) {
-      logError("Invalid HMAC signature", new Error("HMAC validation failed"), {
+      logError("🔒 SECURITY VIOLATION: Invalid HMAC signature", new Error("HMAC validation failed"), {
         correlationId,
         requestId,
         dataId: notification.data.id,
+        severity: "CRITICAL",
+        action: "BLOCKED",
+        warning: "Possible fraud attempt - webhook signature invalid",
       });
       
-      // Return 401 for invalid signature
+      // SECURITY: Return 401 for invalid signature
       return res.status(401).json({ 
-        error: "Invalid signature",
-        correlationId 
+        error: "Invalid signature - Security violation",
+        correlationId,
+        blocked: true
       });
     }
+    
+    // ✅ HMAC validated successfully - webhook is authentic
+    logInfo("🔒 HMAC signature validated successfully", {
+      correlationId,
+      requestId,
+    });
 
     // Step 4: Handle test webhooks quickly
     if (notification.action === "test") {
@@ -181,11 +201,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       );
 
-      logInfo("Webhook job enqueued successfully", {
+      logInfo("✅ Webhook job enqueued successfully - NO SYNC PROCESSING", {
         correlationId,
         jobId,
         paymentId: notification.data.id,
         processingTime: Date.now() - startTime,
+        note: "All processing happens asynchronously in QStash job",
       });
 
       // Step 7: Return success immediately
@@ -203,15 +224,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paymentId: notification.data.id,
       });
 
-      // Try fallback queue or mark for manual processing
-      try {
-        // Simple fallback: log to a "failed_webhooks" collection for manual retry
-        await logFailedWebhook(notification, correlationId, requestId);
-      } catch (fallbackError) {
-        logError("Fallback logging also failed", fallbackError as Error, {
-          correlationId,
-        });
-      }
+      // CRITICAL: NO sync processing, just log the failure
+      // Webhook MUST return quickly even on failure
+      logWarning("Webhook enqueue failed - needs manual retry", {
+        correlationId,
+        paymentId: notification.data.id,
+        notificationId: notification.id,
+        action: "MANUAL_RETRY_NEEDED",
+      });
 
       // Still return 200 to prevent webhook storm
       return res.status(200).json({
@@ -236,130 +256,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-/**
- * Validate HMAC signature using MercadoPago's algorithm
- * 
- * MercadoPago signature format:
- * - Header: x-signature: ts=<timestamp>,v1=<hash>
- * - Manifest: id:<data.id>;request-id:<x-request-id>;ts:<timestamp>;
- * - Hash: HMAC-SHA256(manifest, webhook_secret)
- */
-function validateHMACSignature(
-  signature: string,
-  requestId: string,
-  dataId: string,
-  webhookSecret: string
-): boolean {
-  try {
-    // Parse signature header: "ts=<timestamp>,v1=<hash>"
-    const parts = signature.split(',');
-    const tsPart = parts.find(p => p.startsWith('ts='));
-    const v1Part = parts.find(p => p.startsWith('v1='));
+// REMOVIDO: Função validateHMACSignature duplicada
+// Agora usando MercadoPagoService.validateWebhook() centralizado
+// Isso garante consistência e manutenção única da lógica HMAC
 
-    if (!tsPart || !v1Part) {
-      logWarning("Invalid signature format", {
-        signature: signature.substring(0, 50), // Log only part for security
-      });
-      return false;
-    }
-
-    const timestamp = tsPart.replace('ts=', '');
-    const receivedHash = v1Part.replace('v1=', '');
-
-    // Check timestamp is recent (within 5 minutes)
-    const currentTime = Math.floor(Date.now() / 1000);
-    const signatureTime = parseInt(timestamp, 10);
-    const timeDiff = currentTime - signatureTime;
-
-    if (timeDiff > 300 || timeDiff < -300) { // 5 minutes tolerance
-      logWarning("Webhook timestamp too old or in future", {
-        timeDiff,
-        currentTime,
-        signatureTime,
-      });
-      return false;
-    }
-
-    // Build manifest string
-    const manifest = `id:${dataId};request-id:${requestId};ts:${timestamp};`;
-
-    // Calculate expected hash
-    const expectedHash = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(manifest)
-      .digest('hex');
-
-    // Constant-time comparison to prevent timing attacks
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(expectedHash),
-      Buffer.from(receivedHash)
-    );
-
-    if (!isValid) {
-      logWarning("HMAC validation failed", {
-        manifestLength: manifest.length,
-        hashLength: receivedHash.length,
-      });
-    }
-
-    return isValid;
-
-  } catch (error) {
-    logError("Error during HMAC validation", error as Error);
-    return false;
-  }
-}
-
-/**
- * Fallback: Log failed webhook for manual processing
- */
-async function logFailedWebhook(
-  notification: WebhookNotification,
-  correlationId: string,
-  requestId: string
-): Promise<void> {
-  try {
-    // Import Firebase only when needed (lazy loading)
-    const { getFirestore } = await import("firebase-admin/firestore");
-    const { initializeApp, getApps, cert } = await import("firebase-admin/app");
-    const { getFirebaseConfig } = await import("../lib/config/index.js");
-
-    // Initialize Firebase if needed
-    if (!getApps().length) {
-      const firebaseConfig = getFirebaseConfig();
-      initializeApp({
-        credential: cert({
-          projectId: firebaseConfig.projectId,
-          clientEmail: firebaseConfig.clientEmail,
-          privateKey: firebaseConfig.privateKey,
-        }),
-      });
-    }
-
-    const db = getFirestore();
-    
-    // Save to failed_webhooks collection for manual retry
-    await db
-      .collection("failed_webhooks")
-      .doc(`${notification.id}_${Date.now()}`)
-      .set({
-        notification,
-        correlationId,
-        requestId,
-        failedAt: new Date().toISOString(),
-        status: "enqueue_failed",
-        needsManualRetry: true,
-      });
-
-    logInfo("Failed webhook logged for manual retry", {
-      correlationId,
-      notificationId: notification.id,
-      paymentId: notification.data.id,
-    });
-  } catch (error) {
-    logError("Failed to log webhook for manual retry", error as Error, {
-      correlationId,
-    });
-    throw error;
-  }
-}
+// REMOVIDO: Função logFailedWebhook que fazia processamento síncrono
+// Webhook DEVE apenas enfileirar jobs e retornar rapidamente
+// Qualquer logging de falha deve ser apenas em memória (logWarning)

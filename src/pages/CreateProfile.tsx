@@ -40,7 +40,6 @@ const CreateProfile: React.FC = () => {
   });
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -521,17 +520,15 @@ const CreateProfile: React.FC = () => {
               <Button 
                 size="lg" 
                 className="w-full btn-emergency py-4 text-lg"
-                disabled={!isFormValid || isSubmitting}
+                disabled={!isFormValid}
                 onClick={() => setShowConfirmModal(true)}
               >
-                {isSubmitting ? 'Processando...' : (
-                  isFormValid ? (
-                    <>
-                      <CreditCard className="mr-2 w-5 h-5" />
-                      Finalizar e Pagar {selectedPlan === 'basic' ? 'R$ 55,00' : 'R$ 85,00'}
-                    </>
-                  ) : 'Preencha os campos obrigatórios'
-                )}
+                {isFormValid ? (
+                  <>
+                    <CreditCard className="mr-2 w-5 h-5" />
+                    Finalizar e Pagar {selectedPlan === 'basic' ? 'R$ 55,00' : 'R$ 85,00'}
+                  </>
+                ) : 'Preencha os campos obrigatórios'}
               </Button>
               {!isFormValid && (
                 <p className="text-sm text-muted-foreground mt-3 text-center">
@@ -573,7 +570,7 @@ const CreateProfile: React.FC = () => {
           }] : undefined,
           selectedPlan
         }}
-        isLoading={isSubmitting}
+        isLoading={false}
       />
 
       {/* MercadoPago Checkout */}

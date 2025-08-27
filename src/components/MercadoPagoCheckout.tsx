@@ -276,6 +276,9 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           const actualPaymentData = paymentFormData.formData || paymentFormData;
           
           // Build correct payment structure for process-payment endpoint
+          // Type guard to safely access payment data fields
+          const paymentDataWithFields = actualPaymentData as any;
+          
           const paymentRequest = {
             // IDs
             paymentId: paymentId,
@@ -283,18 +286,18 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
             deviceId: window.MP_DEVICE_SESSION_ID || deviceId,
             
             // Payment method data
-            token: actualPaymentData.token,
-            issuer_id: actualPaymentData.issuer_id || actualPaymentData.issuerId,
-            payment_method_id: actualPaymentData.payment_method_id || actualPaymentData.paymentMethodId,
+            token: paymentDataWithFields.token,
+            issuer_id: paymentDataWithFields.issuer_id || paymentDataWithFields.issuerId,
+            payment_method_id: paymentDataWithFields.payment_method_id || paymentDataWithFields.paymentMethodId,
             transaction_amount: planType === "premium" ? 85.0 : 5.0,
-            installments: actualPaymentData.installments || 1,
+            installments: paymentDataWithFields.installments || 1,
             
             // Payer data
             payer: {
-              email: actualPaymentData.payer?.email || userData.email,
-              identification: actualPaymentData.payer?.identification || {
+              email: paymentDataWithFields.payer?.email || userData.email,
+              identification: paymentDataWithFields.payer?.identification || {
                 type: "CPF",
-                number: actualPaymentData.payer?.identification?.number || "00000000000"
+                number: paymentDataWithFields.payer?.identification?.number || "00000000000"
               }
             },
             
@@ -342,7 +345,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
                     console.log("✅ PIX Payment approved:", data);
                     PaymentCache.clear();
                     if (uniqueUrl) {
-                      onSuccess(enrichedPaymentData, uniqueUrl);
+                      onSuccess(paymentDataWithFields, uniqueUrl);
                     }
                   },
                   onError: (error) => {
@@ -374,7 +377,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
                 console.log("✅ Payment approved immediately!");
                 PaymentCache.clear();
                 if (uniqueUrl) {
-                  onSuccess(enrichedPaymentData, uniqueUrl);
+                  onSuccess(paymentDataWithFields, uniqueUrl);
                 }
                 return;
               }
@@ -402,7 +405,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
                   console.log("✅ Payment approved by polling:", data);
                   PaymentCache.clear();
                   if (uniqueUrl) {
-                    onSuccess(enrichedPaymentData, uniqueUrl);
+                    onSuccess(paymentDataWithFields, uniqueUrl);
                   }
                 },
                 onError: (error) => {

@@ -107,8 +107,7 @@ const CreatePaymentSchema = z.object({
     }),
   }),
   additional_info: z.object({
-    // CRITICAL: Device ID must be here, not at root level
-    device_session_id: z.string().optional(),
+    // Device ID is sent as header X-meli-session-id, not in body
     // IP address for fraud prevention
     ip_address: z.string().optional(),
     items: z.array(z.object({
@@ -147,7 +146,9 @@ const CreatePaymentSchema = z.object({
 // Tipos derivados dos schemas
 export type PreferenceData = z.infer<typeof PreferenceDataSchema>;
 export type PaymentDetails = z.infer<typeof PaymentDetailsSchema>;
-export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
+export type CreatePaymentData = z.infer<typeof CreatePaymentSchema> & {
+  deviceId?: string; // Device ID is passed separately and sent as header
+};
 
 export interface PreferenceResponse {
   id: string;
@@ -241,21 +242,33 @@ export class MercadoPagoService {
    */
   async createPayment(data: CreatePaymentData): Promise<PaymentDetails> {
     try {
+      // Extract deviceId before validation (it's not part of the schema)
+      const { deviceId, ...paymentData } = data;
+      
       // Validar dados de entrada
-      const validatedData = CreatePaymentSchema.parse(data);
+      const validatedData = CreatePaymentSchema.parse(paymentData);
 
       // CRÍTICO: Validar Device ID para aprovação
-      const hasDeviceId = validatedData.additional_info?.device_session_id;
-      if (!hasDeviceId) {
+      if (!deviceId) {
         logWarning('No Device ID provided - approval rate will be impacted!');
+      } else {
+        logInfo('Device ID will be sent as header X-meli-session-id', {
+          deviceIdLength: deviceId.length,
+          expectedApprovalRate: '85%+'
+        });
       }
 
-      // Criar pagamento usando SDK oficial
+      // Criar pagamento usando SDK oficial com Device ID como header
       const response = await this.payment.create({
         body: {
           ...validatedData,
           capture: validatedData.capture !== false, // Default true
         } as unknown as Parameters<typeof this.payment.create>[0]['body'],
+        requestOptions: deviceId ? {
+          headers: {
+            'X-meli-session-id': deviceId,
+          }
+        } : undefined,
       });
 
       if (!response.id) {
@@ -269,7 +282,7 @@ export class MercadoPagoService {
         status: paymentDetails.status,
         amount: paymentDetails.transaction_amount,
         method: paymentDetails.payment_method_id,
-        hasDeviceId: !!validatedData.additional_info?.device_session_id,
+        hasDeviceId: !!deviceId,
       });
 
       return paymentDetails;

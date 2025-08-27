@@ -167,8 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       capture: true, // Capture payment immediately
       three_d_secure_mode: hasDeviceId ? "optional" : undefined, // Enable 3DS when we have Device ID
       additional_info: {
-        // CRITICAL: Device ID must be in additional_info for MercadoPago API
-        device_session_id: data.deviceId || undefined,
+        // Device ID is sent as header X-meli-session-id, not in body
         items: [{
           id: `memoryys-${pendingProfile.planType}`,
           title: `Perfil de Emergência ${pendingProfile.planType}`,
@@ -202,8 +201,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Process payment using MercadoPago SDK
-    const paymentResponse = await mercadoPagoService.createPayment(paymentData);
+    // Process payment using MercadoPago SDK with Device ID as separate parameter
+    const paymentResponse = await mercadoPagoService.createPayment({
+      ...paymentData,
+      deviceId: data.deviceId, // Pass Device ID separately to be sent as header
+    });
 
     logInfo("Payment processed by MercadoPago", {
       correlationId,

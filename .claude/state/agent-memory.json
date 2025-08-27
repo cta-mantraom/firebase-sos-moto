@@ -1,6 +1,7 @@
 {
   "description": "Memória compartilhada entre agentes - Arquitetura Refatorada com Lazy Loading",
-  "lastUpdate": "2025-08-24",
+  "lastUpdate": "2025-08-27",
+  "agentsUpdated": "2025-08-27 - TODOS os agentes atualizados com problemas críticos",
   "domain": "memoryys.com",
   "systemState": {
     "architecture": "Domain-Driven Design (DDD) com Lazy Loading",
@@ -16,7 +17,28 @@
       "Redirecionamento prematuro no Payment Brick",
       "PIX não mostra QR Code",
       "Sistema aceita pagamentos falsos",
-      "942 linhas de código morto/duplicado"
+      "942 linhas de código morto/duplicado",
+      "Duplicação de endpoints (check-status vs check-payment-status)",
+      "Repository Pattern ignorado - acesso direto ao Firestore",
+      "Cache local perigoso - 24h de dados sensíveis",
+      "Modal de aguardo aparece tarde demais",
+      "Sem verificação de pagamento duplicado",
+      "Perfil criado antes da aprovação",
+      "Webhook pode não ser chamado"
+    ],
+    "duplicatedEndpoints": [
+      "api/check-payment-status.ts (REMOVER - usar check-status.ts)",
+      "api/processors/final-processor.ts (duplica payment-webhook-processor.ts)"
+    ],
+    "repositoryViolations": [
+      "api/process-payment.ts - salva direto no Firestore",
+      "api/check-status.ts - lê direto do Firestore",
+      "Deveria usar PaymentRepository e ProfileRepository"
+    ],
+    "securityIssues": [
+      "PaymentCache com expiração de 24 horas",
+      "Sem verificação de idempotency key",
+      "Perfil criado antes do pagamento aprovado"
     ],
     "utilities": {
       "logger": {
@@ -50,10 +72,15 @@
     "DELETAR lib/utils/validation.ts (validateHMACSignature duplicado)",
     "DELETAR lib/types/api.types.ts (95% duplicado)",
     "DELETAR lib/types/index.ts (conflitos)",
+    "DELETAR api/check-payment-status.ts (duplicado - usar check-status.ts)",
     "NUNCA usar any - sempre unknown com validação Zod",
     "SEMPRE usar getPaymentConfig() etc com lazy loading",
+    "SEMPRE usar Repository Pattern - nunca Firestore direto",
     "Não redirecionar no onSubmit - aguardar aprovação",
-    "Não adicionar complexidade desnecessária em validações médicas"
+    "Não adicionar complexidade desnecessária em validações médicas",
+    "Não criar endpoints duplicados",
+    "Não salvar cache local por mais de 1 hora",
+    "Modal de aguardo deve aparecer IMEDIATAMENTE"
   ],
   "newPatterns": [
     "import { getPaymentConfig } from '@/lib/config/contexts/payment.config'",

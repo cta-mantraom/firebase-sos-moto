@@ -280,7 +280,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           },
         }}
         onSubmit={async (paymentData) => {
-          console.log("🔄 Payment submitted - Starting verification process");
+          console.log("🔄 Payment submitted - Processing payment directly");
           console.log("Payment data:", paymentData);
           console.log("Device ID:", window.MP_DEVICE_SESSION_ID);
           
@@ -296,56 +296,145 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           
           console.log("💳 Payment data enriched with Device ID:", enrichedPaymentData.deviceId);
           
-          // CRÍTICO: NÃO REDIRECIONAR IMEDIATAMENTE!
-          // Atualizar cache com dados do pagamento enriquecidos
+          // CRÍTICO: NOVO FLUXO - Processar pagamento diretamente
           if (uniqueUrl && paymentId) {
-            PaymentCache.addPaymentInfo(
-              enrichedPaymentData,
-              uniqueUrl,
-              paymentId,
-              preferenceId || undefined
-            );
-            
-            console.log("✅ Payment data cached, starting polling...");
-            
-            // Iniciar polling para verificar status do pagamento
-            startPolling(paymentId, {
-              interval: 3000, // Verificar a cada 3 segundos
-              maxAttempts: 40, // Máximo 2 minutos
-              onSuccess: (data) => {
-                console.log("✅ Payment approved by polling:", data);
-                // Limpar cache após sucesso
+            try {
+              // Atualizar cache antes de processar
+              PaymentCache.addPaymentInfo(
+                enrichedPaymentData,
+                uniqueUrl,
+                paymentId,
+                preferenceId || undefined
+              );
+              
+              console.log("📤 Sending payment to process-payment endpoint...");
+              
+              // NOVO: Chamar endpoint de processamento direto
+              const processResponse = await fetch('/api/process-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...enrichedPaymentData,
+                  paymentId,
+                  uniqueUrl,
+                  deviceId: enrichedPaymentData.deviceId,
+                }),
+              });
+              
+              const processData = await processResponse.json();
+              console.log("📥 Process payment response:", processData);
+              
+              // Handle PIX QR Code response
+              if (processData.status === 'pending_pix' && processData.pixData) {
+                console.log("📱 PIX QR Code received from process-payment");
+                setPixData(processData.pixData);
+                
+                // Continue polling for PIX payment confirmation
+                startPolling(paymentId, {
+                  interval: 3000,
+                  maxAttempts: 60, // 3 minutes for PIX
+                  onSuccess: (data) => {
+                    console.log("✅ PIX Payment approved:", data);
+                    PaymentCache.clear();
+                    if (uniqueUrl) {
+                      onSuccess(enrichedPaymentData, uniqueUrl);
+                    }
+                  },
+                  onError: (error) => {
+                    console.error("❌ PIX Payment failed:", error);
+                    PaymentCache.clear();
+                    toast({
+                      title: "Pagamento PIX não confirmado",
+                      description: error.message || "Tente novamente",
+                      variant: "destructive",
+                    });
+                    onError(error);
+                  },
+                  onTimeout: () => {
+                    console.error("⏱️ PIX Payment timeout");
+                    PaymentCache.clear();
+                    toast({
+                      title: "PIX expirado",
+                      description: "O QR Code expirou. Tente novamente.",
+                      variant: "destructive",
+                    });
+                    onError(new Error("PIX expirado"));
+                  }
+                });
+                return; // Exit here for PIX flow
+              }
+              
+              // Handle immediate approval
+              if (processData.status === 'approved') {
+                console.log("✅ Payment approved immediately!");
                 PaymentCache.clear();
-                // SÓ AGORA chamar onSuccess após confirmação real
                 if (uniqueUrl) {
                   onSuccess(enrichedPaymentData, uniqueUrl);
                 }
-              },
-              onError: (error) => {
-                console.error("❌ Payment failed:", error);
+                return;
+              }
+              
+              // Handle immediate rejection
+              if (processData.status === 'rejected' || processData.status === 'error') {
+                console.error("❌ Payment rejected:", processData.message);
                 PaymentCache.clear();
                 toast({
                   title: "Pagamento não aprovado",
-                  description: error.message || "Verifique os dados e tente novamente",
+                  description: processData.message || "Verifique os dados do cartão",
                   variant: "destructive",
                 });
-                onError(error);
-              },
-              onTimeout: () => {
-                console.error("⏱️ Payment timeout");
-                PaymentCache.clear();
-                toast({
-                  title: "Tempo limite excedido",
-                  description: "O pagamento está demorando mais que o esperado. Verifique com seu banco.",
-                  variant: "destructive",
-                });
-                onError(new Error("Tempo limite excedido"));
-              },
-              onPixQRCode: (pixQRData) => {
-                console.log("📱 PIX QR Code received:", pixQRData);
-                setPixData(pixQRData);
+                onError(new Error(processData.message || "Pagamento recusado"));
+                return;
               }
-            });
+              
+              // For pending/in_process, start polling
+              console.log("⏳ Payment pending, starting polling...");
+              startPolling(paymentId, {
+                interval: 3000,
+                maxAttempts: 40,
+                onSuccess: (data) => {
+                  console.log("✅ Payment approved by polling:", data);
+                  PaymentCache.clear();
+                  if (uniqueUrl) {
+                    onSuccess(enrichedPaymentData, uniqueUrl);
+                  }
+                },
+                onError: (error) => {
+                  console.error("❌ Payment failed:", error);
+                  PaymentCache.clear();
+                  toast({
+                    title: "Pagamento não aprovado",
+                    description: error.message || "Verifique os dados e tente novamente",
+                    variant: "destructive",
+                  });
+                  onError(error);
+                },
+                onTimeout: () => {
+                  console.error("⏱️ Payment timeout");
+                  PaymentCache.clear();
+                  toast({
+                    title: "Tempo limite excedido",
+                    description: "O pagamento está demorando mais que o esperado.",
+                    variant: "destructive",
+                  });
+                  onError(new Error("Tempo limite excedido"));
+                },
+                onPixQRCode: (pixQRData) => {
+                  console.log("📱 Unexpected PIX QR Code in polling:", pixQRData);
+                  setPixData(pixQRData);
+                }
+              });
+              
+            } catch (error) {
+              console.error("❌ Error processing payment:", error);
+              PaymentCache.clear();
+              toast({
+                title: "Erro ao processar pagamento",
+                description: "Ocorreu um erro inesperado. Tente novamente.",
+                variant: "destructive",
+              });
+              onError(error as Error);
+            }
           } else {
             console.error("Missing uniqueUrl or paymentId");
             onError(new Error("Dados de pagamento incompletos"));

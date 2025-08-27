@@ -180,6 +180,21 @@ function generateEmergencyUrl(profileId: string): string {
 4. **Contatos de Emergência** - Lista completa
 5. **Demais informações** - Se disponíveis
 
+## 🔴 PROBLEMAS CRÍTICOS IDENTIFICADOS
+
+Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para lista completa de problemas que afetam validação de dados médicos:
+- Perfis criados antes da aprovação do pagamento
+- Cache com dados sensíveis por 24 horas
+- Repository Pattern sendo ignorado
+- Verificação de duplicação ausente
+- Modal de confirmação aparecer tarde demais
+
+### **IMPACTOS NA VALIDAÇÃO MÉDICA**
+- ❌ Dados médicos salvos prematuramente (antes da aprovação)
+- ❌ Cache longo pode interferir em novos perfis
+- ❌ Falta de idempotency pode criar perfis duplicados
+- ❌ Acesso direto ao Firestore bypass validações
+
 ## 🚨 REGRAS CRÍTICAS
 
 ### **SEMPRE**

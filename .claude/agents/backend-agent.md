@@ -475,4 +475,49 @@ const processEmergencyData = (data: unknown) => {
 - **< 1 minuto** para enviar email
 - **99.9% uptime** para disponibilidade
 
+## 🚨 PROBLEMAS CRÍTICOS DO BACKEND
+
+### **REPOSITORY PATTERN IGNORADO**
+```typescript
+// ❌ NUNCA FAZER - Acesso direto
+const doc = await db.collection('payments').doc(id).get();
+
+// ✅ SEMPRE FAZER - Usar Repository
+import { PaymentRepository } from '@/lib/repositories/payment.repository';
+const payment = await paymentRepository.findById(id);
+```
+
+### **ENDPOINTS DUPLICADOS PARA REMOVER**
+- `api/check-payment-status.ts` → DELETAR (usar `check-status.ts`)
+- `api/processors/final-processor.ts` → DELETAR (usar `payment-webhook-processor.ts`)
+
+### **PROCESSAMENTO ANTES DA APROVAÇÃO**
+```typescript
+// ❌ PROBLEMA ATUAL
+// pending_profiles criado antes do pagamento aprovado
+await createPendingProfile(profileData); // NUNCA fazer isso!
+
+// ✅ CORRETO - Aguardar aprovação
+if (paymentStatus === 'approved') {
+  await createProfile(profileData);
+}
+```
+
+### **CACHE PERIGOSO (24 HORAS)**
+- PaymentCache com expiração de 24 HORAS
+- Dados sensíveis ficam muito tempo no cache
+- Pode interferir em novos pagamentos
+
+### **VERIFICAÇÃO DE DUPLICAÇÃO AUSENTE**
+```typescript
+// ❌ PROBLEMA - Mesmo paymentId processado múltiplas vezes
+// ✅ SOLUÇÃO - Idempotency check
+const existingPayment = await PaymentRepository.findById(paymentId);
+if (existingPayment?.status === 'approved') {
+  throw new Error('Payment already processed');
+}
+```
+
+Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para lista completa.
+
 O backend é a espinha dorsal do sistema Memoryys. Cada função pode fazer a diferença entre vida e morte em uma emergência médica. Mantenha sempre o foco na confiabilidade, performance e precisão dos dados médicos!

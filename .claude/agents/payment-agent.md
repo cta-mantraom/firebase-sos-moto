@@ -111,6 +111,49 @@ const paymentId = generatePaymentId(); // payment_timestamp_uuid
 const correlationId = generateCorrelationId(); // req_timestamp_random
 ```
 
+## 🔴 PROBLEMAS CRÍTICOS DESCOBERTOS NA ANÁLISE
+
+### **1. DUPLICAÇÃO DE ENDPOINTS**
+- ❌ `check-payment-status.ts` e `check-status.ts` fazem a MESMA coisa
+- ❌ `final-processor.ts` duplica lógica do `payment-webhook-processor.ts`
+- ✅ **AÇÃO**: Usar apenas `check-status.ts` e `payment-webhook-processor.ts`
+
+### **2. REPOSITORY PATTERN VIOLADO**
+- ❌ Endpoints acessando Firestore diretamente sem usar PaymentRepository
+- ❌ `process-payment.ts` salva direto no Firestore
+- ❌ `check-status.ts` lê direto do Firestore
+- ✅ **SEMPRE usar**: `PaymentRepository` para TODOS os acessos a dados
+
+### **3. CACHE LOCAL PERIGOSO (24 HORAS)**
+- ❌ `PaymentCache` salva dados sensíveis em localStorage/sessionStorage
+- ❌ Expiração de 24 HORAS para dados de pagamento
+- ❌ Dados antigos podem interferir em novo pagamento
+- ✅ **AÇÃO**: Máximo 1 hora para dados sensíveis
+
+### **4. MODAL APARECE TARDE DEMAIS**
+- ❌ Modal "aguardando confirmação" só aparece após `polling=true`
+- ❌ Polling só inicia APÓS `process-payment` responder
+- ❌ Usuário pode fechar janela antes do modal aparecer
+- ✅ **AÇÃO**: Mostrar modal IMEDIATAMENTE no onSubmit
+
+### **5. SEM VERIFICAÇÃO DE DUPLICAÇÃO**
+- ❌ Mesmo `paymentId` pode ser processado múltiplas vezes
+- ❌ Risco de cobrança dupla ou erro de estado
+- ✅ **AÇÃO**: Implementar idempotency check antes de processar
+
+### **6. PERFIL CRIADO ANTES DA APROVAÇÃO**
+- ❌ `pending_profiles` é criado ANTES do pagamento ser aprovado
+- ❌ Se pagamento falhar, temos lixo no banco de dados
+- ✅ **AÇÃO**: NUNCA criar perfil até `status = 'approved'`
+
+### **7. WEBHOOK PODE NÃO SER CHAMADO**
+- ❌ `notification_url` pode estar incorreta
+- ❌ Se `BACKEND_URL` estiver errado, webhook nunca é chamado
+- ❌ Sistema fica esperando indefinidamente
+- ✅ **AÇÃO**: Validar URL do webhook na criação da preferência
+
+Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para análise completa dos problemas.
+
 ## 🚨 REGRAS ABSOLUTAMENTE CRÍTICAS
 
 ### **1. Device ID - OBRIGATÓRIO SEMPRE**

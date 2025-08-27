@@ -136,6 +136,44 @@ npm run build
 BUNDLE_SIZE=$(du -sh dist | cut -f1)
 echo "Bundle size: $BUNDLE_SIZE"
 
+# 8. Verificar problemas conhecidos
+echo "🔍 Verificando problemas críticos conhecidos..."
+
+# Verificar endpoints duplicados
+if [ -f "api/check-payment-status.ts" ]; then
+  echo "❌ ENDPOINT DUPLICADO: api/check-payment-status.ts"
+  echo "   Use api/check-status.ts ao invés"
+  exit 1
+fi
+
+if [ -f "api/processors/final-processor.ts" ]; then
+  echo "❌ PROCESSOR DUPLICADO: api/processors/final-processor.ts"
+  echo "   Use api/processors/payment-webhook-processor.ts ao invés"
+  exit 1
+fi
+
+# Verificar uso direto do Firestore
+echo "🔍 Verificando violações do Repository Pattern..."
+if grep -r "db\.collection.*\.doc.*\.set\|db\.collection.*\.doc.*\.get" --include="*.ts" api/; then
+  echo "⚠️ AVISO: Acesso direto ao Firestore detectado"
+  echo "   Use PaymentRepository ao invés"
+fi
+
+# Verificar cache perigoso
+if grep -r "localStorage.*24.*hours\|sessionStorage.*24.*hours" --include="*.ts" src/; then
+  echo "❌ CACHE PERIGOSO: 24 horas é muito tempo para dados sensíveis"
+  exit 1
+fi
+
+# Verificar criação prematura de perfis
+if grep -r "pending_profiles.*before.*approval" --include="*.ts" api/ lib/; then
+  echo "❌ PERFIL CRIADO ANTES DA APROVAÇÃO DETECTADO"
+  echo "   Aguarde status = 'approved' antes de criar perfil"
+  exit 1
+fi
+
+echo "✅ Verificação de problemas conhecidos concluída"
+
 echo "✅ Validação pré-deploy concluída com sucesso!"
 ```
 

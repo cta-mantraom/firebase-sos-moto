@@ -341,7 +341,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 </ErrorBoundary>
 ```
 
-## 🚨 PROBLEMAS CRÍTICOS ATUAIS
+## 🚨 PROBLEMAS CRÍTICOS FRONTEND DESCOBERTOS
 
 ### **1. Sistema Aceita Pagamentos Falsos**
 - **Problema**: Redirecionamento prematuro no onSubmit
@@ -356,6 +356,36 @@ import { ErrorBoundary } from 'react-error-boundary';
 ### **3. Valores dos Planos**
 - **Basic**: R$ 5,00 (teste temporário)
 - **Premium**: R$ 85,00
+
+### **4. Cache Local Perigoso (24h)**
+- **Problema**: PaymentCache com expiração de 24 HORAS
+- **Solução**: Máximo 1 hora para dados sensíveis
+
+### **5. Modal Aparece Tarde Demais**
+```typescript
+// ❌ PROBLEMA ATUAL
+onSubmit: async () => {
+  await processPayment(); // Modal só aparece DEPOIS
+  setPolling(true);      // Tarde demais!
+}
+
+// ✅ SOLUÇÃO
+onSubmit: async () => {
+  showModal(); // IMEDIATAMENTE
+  await processPayment();
+  setPolling(true);
+}
+```
+
+### **6. Sem Verificação de Estado do Payment**
+- **Problema**: Frontend não verifica se paymentId já foi processado
+- **Solução**: Verificar estado antes de iniciar novo fluxo
+
+### **7. Dados do Formulário Perdidos no Cache**
+- **Problema**: Cache de 24h pode interferir em novo preenchimento
+- **Solução**: Limpar cache após completar ou falhar pagamento
+
+Consulte `.claude/docs/PAYMENT_CRITICAL_ISSUES.md` para detalhes.
 
 ## 🎯 Objetivos de Qualidade - NOVA ARQUITETURA
 

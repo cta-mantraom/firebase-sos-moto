@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 .env.example
 .env
+.env.vercel
 dist
 dist-ssr
 *.local
@@ -29,7 +30,7 @@ dist-ssr
 .docMp
 .kiro
 .trae
-#.claude
+.claude
 configClaude
 update-domain.sh
 fix-imports.sh

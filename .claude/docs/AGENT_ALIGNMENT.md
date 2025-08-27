@@ -114,7 +114,71 @@ class MercadoPagoService {
 
 ---
 
-## 🚨 PROBLEMA CRÍTICO A RESOLVER
+## 🚨 PROBLEMAS CRÍTICOS DESCOBERTOS NA ANÁLISE
+
+### **1. DUPLICAÇÃO DE ENDPOINTS**
+- `check-payment-status.ts` e `check-status.ts` fazem a MESMA coisa
+- `final-processor.ts` duplica lógica do `payment-webhook-processor.ts`
+- **Impacto**: Confusão, manutenção duplicada, possíveis inconsistências
+- **Ação**: Usar apenas `check-status.ts`, remover `check-payment-status.ts`
+
+### **2. WEBHOOK PODE NÃO SER CHAMADO**
+- notification_url configurada como `https://memoryys.com/api/mercadopago-webhook`
+- Se BACKEND_URL não estiver correto ou MercadoPago não alcançar a URL
+- **Impacto**: Perfis nunca são criados após pagamento aprovado
+- **Ação**: Implementar fallback via polling se webhook falhar
+
+### **3. REPOSITORY PATTERN IGNORADO**
+- PaymentRepository existe mas só é usado em 2 processadores
+- `process-payment.ts` salva direto no Firestore sem usar repository
+- `check-status.ts` lê direto do Firestore sem usar repository
+- **Impacto**: Violação do DDD, sem auditoria, sem validações centralizadas
+- **Ação**: SEMPRE usar PaymentRepository para acesso a dados
+
+### **4. CACHE LOCAL PERIGOSO**
+- PaymentCache salva dados sensíveis em localStorage/sessionStorage
+- Expiração: 24 horas (!!) 
+- **Problema**: Usuário pode ter dados antigos interferindo em novo pagamento
+- **Impacto**: Pagamento com dados incorretos, possível fraude
+- **Ação**: Reduzir cache para máximo 1 hora ou eliminar completamente
+
+### **5. MODAL "AGUARDANDO CONFIRMAÇÃO" APARECE TARDE DEMAIS**
+- Só aparece quando polling === true
+- Polling só inicia APÓS process-payment responder
+- **Impacto**: Usuário pode fechar janela antes do modal aparecer
+- **Ação**: Modal deve aparecer IMEDIATAMENTE após submit
+
+### **6. NÃO EXISTE VERIFICAÇÃO DE PAGAMENTO DUPLICADO**
+- Mesmo paymentId pode ser processado múltiplas vezes
+- **Impacto**: Cobrança dupla do cliente
+- **Ação**: Implementar idempotency key e verificação antes de processar
+
+### **7. PERFIL CRIADO ANTES DA APROVAÇÃO**
+- `pending_profiles` é criado ANTES do pagamento
+- Se pagamento falhar, temos lixo no banco
+- **Correto**: Criar apenas após aprovação confirmada
+- **Ação**: Mover criação de perfil para APÓS status === 'approved'
+
+### **FLUXO CORRETO DESCOBERTO**
+
+```mermaid
+graph TD
+    A[Frontend: Coleta Device ID] --> B[Payment Brick Submit]
+    B --> C[API: process-payment]
+    C --> D[MercadoPago SDK: Create Payment]
+    D --> E[Frontend: Modal Aguardando]
+    E --> F[Polling: check-status]
+    F --> G{Status?}
+    G -->|pending| F
+    G -->|approved| H[Redirect: /success]
+    G -->|rejected| I[Mostrar erro]
+    
+    D --> J[MercadoPago: Webhook]
+    J --> K[API: mercadopago-webhook]
+    K --> L[Validar HMAC]
+    L --> M[Enfileirar: payment-webhook-processor]
+    M --> N[Criar perfil no Firebase]
+```
 
 ### **PAGAMENTOS FALSOS ACEITOS**
 
@@ -126,10 +190,17 @@ onSubmit: () => {
 
 // ✅ SOLUÇÃO OBRIGATÓRIA
 onSubmit: async (formData) => {
+  // Modal deve aparecer IMEDIATAMENTE
+  showWaitingModal();
+  
   const paymentId = await createPayment(formData);
   const status = await pollPaymentStatus(paymentId);
+  
   if (status === "approved") {
     window.location.href = "/success";
+  } else {
+    hideWaitingModal();
+    showError("Pagamento não aprovado");
   }
 };
 ```
@@ -183,11 +254,13 @@ import { getPaymentConfig } from '@/lib/config/contexts/payment.config';
 import { Payment } from '@/lib/domain/payment/payment.entity';
 import { CreatePaymentValidator } from '@/lib/domain/payment/payment.validators';
 import { MercadoPagoService } from '@/lib/services/payment/mercadopago.service';
+import { PaymentRepository } from '@/lib/repositories/payment.repository'; // SEMPRE USAR!
 
 // ❌ NUNCA USAR (DELETAR)
 // lib/services/payment/payment.processor.ts → 430 linhas nunca usadas
 // lib/utils/validation.ts → validateHMACSignature duplicado
 // lib/types/api.types.ts → schemas duplicados
+// api/check-payment-status.ts → DUPLICADO, usar check-status.ts
 ```
 
 **VALIDAÇÕES CRÍTICAS:**
@@ -195,6 +268,9 @@ import { MercadoPagoService } from '@/lib/services/payment/mercadopago.service';
 - HMAC validation no webhook
 - Nunca redirecionar no onSubmit
 - Aguardar status === 'approved'
+- SEMPRE usar PaymentRepository, nunca Firestore direto
+- Verificar duplicação de pagamento antes de processar
+- Modal de aguardo deve aparecer IMEDIATAMENTE após submit
 
 ### **2️⃣ BACKEND-AGENT**
 
@@ -324,6 +400,35 @@ Antes de qualquer implementação:
 - [ ] HMAC validado em webhooks?
 - [ ] Pagamento aguarda confirmação real?
 - [ ] Dados médicos com enum strict?
+- [ ] Usando PaymentRepository para TODOS os acessos a dados?
+- [ ] Verificação de pagamento duplicado implementada?
+- [ ] Modal de aguardo aparece IMEDIATAMENTE após submit?
+- [ ] Cache local tem expiração máxima de 1 hora?
+- [ ] Perfil criado APENAS após aprovação confirmada?
+
+---
+
+## 🔴 PROBLEMAS CRÍTICOS DESCOBERTOS NA ANÁLISE
+
+**DOCUMENTO COMPLETO**: `.claude/docs/PAYMENT_CRITICAL_ISSUES.md`
+
+### **PRINCIPAIS PROBLEMAS IDENTIFICADOS**
+1. **Duplicação de Endpoints** - check-payment-status.ts vs check-status.ts
+2. **Repository Pattern Violado** - Acesso direto ao Firestore 
+3. **Cache Local Perigoso** - 24 horas para dados sensíveis
+4. **Modal Tarde Demais** - Aparece após processamento
+5. **Sem Verificação de Duplicação** - Risco de cobrança dupla
+6. **Perfil Criado Prematuramente** - Antes da aprovação
+7. **Webhook Pode Falhar** - notification_url incorreta
+
+### **IMPACTOS NOS AGENTES**
+- **payment-agent**: Fluxo de pagamento com vulnerabilidades
+- **backend-agent**: Violações do padrão repository
+- **frontend-agent**: UX problemática e cache perigoso
+- **medical-validator**: Dados salvos antes da aprovação
+- **deploy-orchestrator**: Validações adicionais implementadas
+
+**⚠️ TODOS os agentes foram atualizados com estas informações críticas.**
 
 ---
 

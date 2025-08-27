@@ -31,6 +31,7 @@ dist-ssr
 .trae
 .claude
 configClaude
-
+update-domain.sh
+fix-imports.sh
 # Claude Code configuration
 .vercel

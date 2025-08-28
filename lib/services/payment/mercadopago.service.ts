@@ -208,14 +208,37 @@ export class MercadoPagoService {
       const validatedData = PreferenceDataSchema.parse(data);
 
       // CRÍTICO: Adicionar device fingerprinting se disponível
-      const enrichedData = {
+      // Garantir que items tenham todos os campos obrigatórios
+      const preferenceBody: Parameters<typeof this.preference.create>[0]['body'] = {
         ...validatedData,
         purpose: validatedData.purpose || 'wallet_purchase',
+        items: validatedData.items.map(item => ({
+          id: item.id,
+          title: item.title,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          description: item.description || '',
+          currency_id: item.currency_id || 'BRL',
+          category_id: item.category_id || 'services',
+        })),
+        payer: validatedData.payer,
+        back_urls: validatedData.back_urls,
+        notification_url: validatedData.notification_url,
+        external_reference: validatedData.external_reference,
+        auto_return: validatedData.auto_return,
+        expires: validatedData.expires,
+        expiration_date_from: validatedData.expiration_date_from,
+        expiration_date_to: validatedData.expiration_date_to,
+        payment_methods: validatedData.payment_methods,
+        metadata: validatedData.metadata,
+        additional_info: validatedData.additional_info,
+        binary_mode: validatedData.binary_mode,
+        statement_descriptor: validatedData.statement_descriptor,
       };
 
       // Criar preferência usando SDK oficial
       const response = await this.preference.create({
-        body: enrichedData,
+        body: preferenceBody,
       });
 
       if (!response.id) {

@@ -117,14 +117,14 @@ const CreatePaymentSchema = z.object({
     // IP address for fraud prevention
     ip_address: z.string().optional(),
     items: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      quantity: z.number().positive(),
-      unit_price: z.number().positive(),
+      id: z.string(), // Required by MercadoPago API
+      title: z.string(), // Required by MercadoPago API  
+      quantity: z.number().positive(), // Required
+      unit_price: z.number().positive(), // Required
       description: z.string().optional(),
       category_id: z.string().optional(),
       // NO currency_id here - not allowed in items
-    })),
+    })).optional(), // items array is optional but when present, each item must have required fields
     payer: z.object({
       first_name: z.string().optional(),
       last_name: z.string().optional(),
@@ -152,9 +152,8 @@ const CreatePaymentSchema = z.object({
 // Tipos derivados dos schemas
 export type PreferenceData = z.infer<typeof PreferenceDataSchema>;
 export type PaymentDetails = z.infer<typeof PaymentDetailsSchema>;
-export type CreatePaymentData = z.infer<typeof CreatePaymentSchema> & {
-  deviceId?: string; // Device ID is passed separately and sent as header
-};
+export type CreatePaymentData = z.infer<typeof CreatePaymentSchema>;
+// Note: Device ID is handled automatically by Payment Brick SDK, no need to pass it
 
 export interface PreferenceResponse {
   id: string;
@@ -248,32 +247,34 @@ export class MercadoPagoService {
    */
   async createPayment(data: CreatePaymentData): Promise<PaymentDetails> {
     try {
-      // Extract deviceId before validation (it's not part of the schema)
-      const { deviceId, ...paymentData } = data;
-      
       // Validar dados de entrada
-      const validatedData = CreatePaymentSchema.parse(paymentData);
+      const validatedData = CreatePaymentSchema.parse(data);
 
-      // CRÍTICO: Validar Device ID para aprovação
-      if (!deviceId) {
-        logWarning('No Device ID provided - approval rate will be impacted!');
-      } else {
-        logInfo('Device ID will be sent as header X-meli-session-id', {
-          deviceIdLength: deviceId.length,
-          expectedApprovalRate: '85%+'
-        });
-      }
+      // IMPORTANT: When using Payment Brick with MercadoPago SDK JS,
+      // Device ID is collected and sent AUTOMATICALLY by the SDK.
+      // We should NOT manually add it to avoid conflicts.
+      // See: https://www.mercadopago.com.br/developers/pt/docs/checkout-bricks/additional-content/security/device-id
+      logInfo('Creating payment - Device ID handled automatically by Payment Brick SDK', {
+        note: 'Payment Brick SDK auto-collects and sends Device ID',
+        expectedApprovalRate: '85%+ (automatic)'
+      })
 
-      // CRITICAL: Device ID must be in additional_info for SDK usage
-      // The Payment Brick handles sending it as header internally
+      // Ensure items have all required fields when present
       const paymentBody = {
         ...validatedData,
         capture: validatedData.capture !== false, // Default true
-        // Include Device ID in additional_info for fraud prevention
-        additional_info: deviceId ? {
+        // DO NOT manually add device_session_id - SDK handles it automatically
+        additional_info: validatedData.additional_info ? {
           ...validatedData.additional_info,
-          device_session_id: deviceId, // 85%+ approval rate with Device ID
-        } : validatedData.additional_info,
+          items: validatedData.additional_info.items?.map(item => ({
+            id: item.id!,
+            title: item.title!,
+            description: item.description || '',
+            category_id: item.category_id || 'services',
+            quantity: item.quantity!,
+            unit_price: item.unit_price!,
+          })),
+        } : undefined,
       };
       
       const response = await this.payment.create({
@@ -291,7 +292,7 @@ export class MercadoPagoService {
         status: paymentDetails.status,
         amount: paymentDetails.transaction_amount,
         method: paymentDetails.payment_method_id,
-        hasDeviceId: !!deviceId,
+        note: 'Device ID handled by SDK',
       });
 
       return paymentDetails;

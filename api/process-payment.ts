@@ -8,6 +8,19 @@ import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirebaseConfig } from "../lib/config/index.js";
 
+// Type for pending profile data from Firestore
+interface PendingProfileData {
+  planType: "basic" | "premium";
+  bloodType: string;
+  name: string;
+  surname?: string;
+  email: string;
+  phone: string;
+  paymentStatus?: string;
+  mercadoPagoPaymentId?: string | number;
+  createdAt: string;
+}
+
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
   try {
@@ -43,7 +56,7 @@ const ProcessPaymentSchema = z.object({
     }).optional(),
   }),
   metadata: z.record(z.unknown()).optional(),
-  deviceId: z.string().optional(), // CRITICAL: Device ID for 85%+ approval rate
+  // Device ID is handled automatically by Payment Brick SDK - no need to pass it
 });
 
 /**
@@ -95,7 +108,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = validation.data;
-    const hasDeviceId = !!data.deviceId;
 
     logInfo("Processing payment directly", {
       correlationId,
@@ -103,8 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uniqueUrl: data.uniqueUrl,
       paymentMethod: data.payment_method_id,
       amount: data.transaction_amount,
-      hasDeviceId,
-      deviceIdLength: data.deviceId?.length,
+      note: "Device ID handled automatically by Payment Brick SDK",
     });
 
     // Initialize MercadoPago service
@@ -134,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const pendingProfile = pendingProfileDoc.data()!;
+    const pendingProfile = pendingProfileDoc.data() as PendingProfileData;
 
     // Build payment data for MercadoPago SDK CreatePaymentData schema
     // Using CreatePaymentData type from MercadoPagoService
@@ -148,12 +159,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       description: `Memoryys - Perfil de Emergência ${pendingProfile.planType}`,
       payer: {
         email: data.payer.email,
-        identification: data.payer.identification?.type && data.payer.identification?.number
-          ? data.payer.identification
-          : {
-              type: "CPF",
-              number: "00000000000", // Will be overridden by Payment Brick
-            },
+        identification: {
+          type: data.payer.identification?.type || "CPF",
+          number: data.payer.identification?.number || "00000000000", // Default for PIX
+        },
       },
       external_reference: data.paymentId,
       statement_descriptor: "MEMORYYS",
@@ -164,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         unique_url: data.uniqueUrl,
         plan_type: pendingProfile.planType,
         blood_type: pendingProfile.bloodType,
-        has_device_id: hasDeviceId,
+        sdk_device_id: true, // Payment Brick SDK handles Device ID automatically
       },
       // Additional configurations
       binary_mode: false, // Allow pending status for PIX
@@ -185,24 +194,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         ip_address: (req.headers['x-forwarded-for'] || req.headers['x-real-ip']) as string | undefined,
       },
-      // Pass device ID separately for the service to handle as header
-      deviceId: data.deviceId,
+      // Device ID is handled automatically by Payment Brick SDK
     };
 
-    // Log Device ID status for debugging
-    if (hasDeviceId) {
-      logInfo("✅ Processing payment WITH Device ID", {
-        correlationId,
-        expectedApprovalRate: "85%+",
-        deviceIdLength: data.deviceId!.length,
-      });
-    } else {
-      logWarning("⚠️ Processing payment WITHOUT Device ID", {
-        correlationId,
-        expectedApprovalRate: "~40%",
-        warning: "Payment may be rejected due to missing Device ID",
-      });
-    }
+    // Device ID is collected and sent automatically by Payment Brick SDK
+    logInfo("✅ Payment Brick SDK handles Device ID automatically", {
+      correlationId,
+      expectedApprovalRate: "85%+",
+      note: "SDK auto-collects and sends Device ID for fraud prevention",
+    });
 
     // Process payment using MercadoPago SDK - Device ID will be sent as header
     const paymentResponse = await mercadoPagoService.createPayment(paymentData);
@@ -299,7 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         correlationId,
         mercadoPagoId: paymentResponse.id,
         statusDetail: paymentResponse.status_detail,
-        hasDeviceId,
+        sdkHandlesDeviceId: true,
       });
 
       return res.status(200).json({
@@ -326,11 +326,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     logError("Error processing payment", error as Error, {
       correlationId,
-      deviceId: req.body?.deviceId ? "present" : "missing",
+      note: "Device ID handled by Payment Brick SDK",
     });
 
     // Check if it's a MercadoPago API error
-    interface MercadoPagoAPIError {
+    interface MercadoPagoAPIError extends Error {
       response?: {
         data?: {
           message?: string;

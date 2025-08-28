@@ -163,22 +163,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pendingProfile = pendingProfileDoc.data() as PendingProfileData;
 
     // Build payment data for MercadoPago SDK CreatePaymentData schema
-    const paymentData: CreatePaymentData = {
-      token: data.token, // Card token from Payment Brick (not needed for PIX)
-      issuer_id: data.issuer_id
-        ? typeof data.issuer_id === "string"
-          ? parseInt(data.issuer_id, 10)
-          : data.issuer_id
-        : undefined,
-      payment_method_id: data.payment_method_id,
+    // PIX payments have different requirements than card payments
+    const isPix = data.payment_method_id === "pix" || data.payment_method_id === "bank_transfer";
+    
+    const basePaymentData = {
+      payment_method_id: isPix ? "pix" : data.payment_method_id,
       transaction_amount: data.transaction_amount,
-      installments: data.installments || 1,
       description: `Memoryys - Perfil de Emergência ${pendingProfile.planType}`,
       payer: {
         email: data.payer.email,
         identification: {
           type: data.payer.identification?.type || "CPF",
-          number: data.payer.identification?.number || "00000000000", // Will be overridden by Payment Brick
+          number: data.payer.identification?.number || "00000000000",
         },
       },
       external_reference: data.paymentId,
@@ -192,42 +188,88 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         blood_type: pendingProfile.bloodType,
         has_device_id: hasDeviceId,
       },
-      // Additional configurations
       binary_mode: false, // Allow pending status for PIX
       capture: true, // Capture payment immediately
-      // three_d_secure_mode removido - causava UNAUTHORIZED
-      additional_info: {
-        // CRITICAL: Device ID must go here for 85%+ approval
-        device_session_id: data.deviceId,
-        items: [
-          {
-            id: `memoryys-${pendingProfile.planType}`,
-            title: `Perfil de Emergência ${pendingProfile.planType}`,
-            description: "Acesso a informações médicas de emergência",
-            category_id: "services",
-            quantity: 1,
-            unit_price: data.transaction_amount,
-          },
-        ],
-        payer: {
-          first_name: pendingProfile.name?.split(" ")[0] || "",
-          last_name:
-            pendingProfile.surname ||
-            pendingProfile.name?.split(" ").slice(1).join(" ") ||
-            "",
-        },
-        // Add IP address if available for fraud prevention
-        ip_address: (() => {
-          const forwarded = req.headers["x-forwarded-for"];
-          const realIp = req.headers["x-real-ip"];
-          if (typeof forwarded === "string") return forwarded;
-          if (Array.isArray(forwarded)) return forwarded[0];
-          if (typeof realIp === "string") return realIp;
-          if (Array.isArray(realIp)) return realIp[0];
-          return undefined;
-        })(),
-      },
     };
+
+    // Add card-specific fields only for card payments
+    const paymentData: CreatePaymentData = isPix
+      ? {
+          ...basePaymentData,
+          // PIX doesn't need token, issuer_id, or installments
+          installments: 1,
+          additional_info: {
+            // PIX doesn't need device ID
+            ip_address: (() => {
+              const forwarded = req.headers["x-forwarded-for"];
+              const realIp = req.headers["x-real-ip"];
+              if (typeof forwarded === "string") return forwarded;
+              if (Array.isArray(forwarded)) return forwarded[0];
+              if (typeof realIp === "string") return realIp;
+              if (Array.isArray(realIp)) return realIp[0];
+              return undefined;
+            })(),
+            items: [
+              {
+                id: `memoryys-${pendingProfile.planType}`,
+                title: `Perfil de Emergência ${pendingProfile.planType}`,
+                description: "Acesso a informações médicas de emergência",
+                category_id: "services",
+                quantity: 1,
+                unit_price: data.transaction_amount,
+              },
+            ],
+            payer: {
+              first_name: pendingProfile.name?.split(" ")[0] || "",
+              last_name:
+                pendingProfile.surname ||
+                pendingProfile.name?.split(" ").slice(1).join(" ") ||
+                "",
+            },
+          },
+        }
+      : {
+          ...basePaymentData,
+          // Card payments need these fields
+          token: data.token,
+          issuer_id: data.issuer_id
+            ? typeof data.issuer_id === "string"
+              ? parseInt(data.issuer_id, 10)
+              : data.issuer_id
+            : undefined,
+          installments: data.installments || 1,
+          additional_info: {
+            // Device ID is critical for card payments (85%+ approval)
+            device_session_id: data.deviceId,
+            items: [
+              {
+                id: `memoryys-${pendingProfile.planType}`,
+                title: `Perfil de Emergência ${pendingProfile.planType}`,
+                description: "Acesso a informações médicas de emergência",
+                category_id: "services",
+                quantity: 1,
+                unit_price: data.transaction_amount,
+              },
+            ],
+            payer: {
+              first_name: pendingProfile.name?.split(" ")[0] || "",
+              last_name:
+                pendingProfile.surname ||
+                pendingProfile.name?.split(" ").slice(1).join(" ") ||
+                "",
+            },
+            // Add IP address if available for fraud prevention
+            ip_address: (() => {
+              const forwarded = req.headers["x-forwarded-for"];
+              const realIp = req.headers["x-real-ip"];
+              if (typeof forwarded === "string") return forwarded;
+              if (Array.isArray(forwarded)) return forwarded[0];
+              if (typeof realIp === "string") return realIp;
+              if (Array.isArray(realIp)) return realIp[0];
+              return undefined;
+            })(),
+          },
+        };
 
     // Log Device ID status for debugging
     if (hasDeviceId) {

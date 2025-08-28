@@ -236,12 +236,10 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           paymentMethods: {
             creditCard: "all",
             debitCard: "all",
-            // Remover boleto para acelerar checkout e melhorar aprovação
-            ticket: [], // Array vazio para desabilitar boleto
-            // Habilitar PIX e transferências bancárias
-            bankTransfer: "all",
-            mercadoPago: "all",
-            atm: "all",
+            bankTransfer: "all", // PIX está incluído aqui
+            // NÃO incluir ticket para desabilitar boleto
+            // NÃO incluir mercadoPago pois não temos preferenceId
+            // NÃO incluir atm pois não é disponível no Brasil
           },
           visual: {
             style: {

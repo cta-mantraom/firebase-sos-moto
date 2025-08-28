@@ -258,17 +258,18 @@ export class MercadoPagoService {
         });
       }
 
-      // Criar pagamento usando SDK oficial com Device ID como header
+      // Criar pagamento usando SDK oficial com Device ID no body
       const response = await this.payment.create({
         body: {
           ...validatedData,
           capture: validatedData.capture !== false, // Default true
-        } as unknown as Parameters<typeof this.payment.create>[0]['body'],
-        requestOptions: deviceId ? {
-          headers: {
-            'X-meli-session-id': deviceId,
+          // CRITICAL: Device ID must be in additional_info for Payment Brick
+          additional_info: {
+            ...validatedData.additional_info,
+            device_session_id: deviceId, // Device ID goes here for 85%+ approval
           }
-        } : undefined,
+        } as unknown as Parameters<typeof this.payment.create>[0]['body'],
+        // Removed custom header - not needed for Payment Brick
       });
 
       if (!response.id) {

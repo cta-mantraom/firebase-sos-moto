@@ -27,7 +27,7 @@ dist-ssr
 *.sw?
 
 # Documentation directories
-.docMp
+#.docMp
 .kiro
 .trae
 .claude

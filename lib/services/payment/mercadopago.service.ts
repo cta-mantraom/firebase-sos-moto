@@ -30,7 +30,7 @@ const PayerSchema = z.object({
   address: z.object({
     zip_code: z.string(),
     street_name: z.string(),
-    street_number: z.number(),
+    street_number: z.string(),
   }).optional(),
 });
 
@@ -48,9 +48,14 @@ const PreferenceDataSchema = z.object({
   expires: z.boolean().optional(),
   expiration_date_from: z.string().optional(),
   expiration_date_to: z.string().optional(),
-  payment_methods: z.any().optional(), // SDK aceita estrutura complexa
-  metadata: z.record(z.any()).optional(),
-  additional_info: z.any().optional(),
+  payment_methods: z.object({
+    excluded_payment_methods: z.array(z.object({ id: z.string() })).optional(),
+    excluded_payment_types: z.array(z.object({ id: z.string() })).optional(),
+    installments: z.number().optional(),
+    default_installments: z.number().optional(),
+  }).optional(),
+  metadata: z.record(z.unknown()).optional(),
+  additional_info: z.string().optional(),
   binary_mode: z.boolean().optional(),
   purpose: z.string().optional(),
   statement_descriptor: z.string().optional(),
@@ -99,6 +104,7 @@ const CreatePaymentSchema = z.object({
   description: z.string(),
   installments: z.number().positive().optional(),
   payment_method_id: z.string(),
+  issuer_id: z.number().optional(), // Optional, not needed for PIX
   payer: z.object({
     email: z.string().email(),
     identification: z.object({
@@ -128,7 +134,7 @@ const CreatePaymentSchema = z.object({
       }).optional(),
       address: z.object({
         street_name: z.string().optional(),
-        street_number: z.number().optional(),
+        street_number: z.string().optional(),
         zip_code: z.string().optional(),
       }).optional(),
     }).optional(),
@@ -209,7 +215,7 @@ export class MercadoPagoService {
 
       // Criar preferência usando SDK oficial
       const response = await this.preference.create({
-        body: enrichedData as unknown as Parameters<typeof this.preference.create>[0]['body'],
+        body: enrichedData,
       });
 
       if (!response.id) {
@@ -258,18 +264,20 @@ export class MercadoPagoService {
         });
       }
 
-      // Criar pagamento usando SDK oficial com Device ID no body
+      // CRITICAL: Device ID must be in additional_info for SDK usage
+      // The Payment Brick handles sending it as header internally
+      const paymentBody = {
+        ...validatedData,
+        capture: validatedData.capture !== false, // Default true
+        // Include Device ID in additional_info for fraud prevention
+        additional_info: deviceId ? {
+          ...validatedData.additional_info,
+          device_session_id: deviceId, // 85%+ approval rate with Device ID
+        } : validatedData.additional_info,
+      };
+      
       const response = await this.payment.create({
-        body: {
-          ...validatedData,
-          capture: validatedData.capture !== false, // Default true
-          // CRITICAL: Device ID must be in additional_info for Payment Brick
-          additional_info: {
-            ...validatedData.additional_info,
-            device_session_id: deviceId, // Device ID goes here for 85%+ approval
-          }
-        } as unknown as Parameters<typeof this.payment.create>[0]['body'],
-        // Removed custom header - not needed for Payment Brick
+        body: paymentBody,
       });
 
       if (!response.id) {

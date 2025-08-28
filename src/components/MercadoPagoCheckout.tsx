@@ -273,9 +273,26 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           // Extract the actual payment data from the formData wrapper
           const actualPaymentData = paymentFormData.formData || paymentFormData;
           
+          // Define proper type for payment data from Payment Brick
+          interface PaymentBrickData {
+            token?: string;
+            issuer_id?: string | number;
+            issuerId?: string | number;
+            payment_method_id?: string;
+            paymentMethodId?: string;
+            installments?: number;
+            payer?: {
+              email?: string;
+              identification?: {
+                type?: string;
+                number?: string;
+              };
+            };
+          }
+          
           // Build correct payment structure for process-payment endpoint
           // Type guard to safely access payment data fields
-          const paymentDataWithFields = actualPaymentData as any;
+          const paymentDataWithFields = actualPaymentData as PaymentBrickData;
           
           const paymentRequest = {
             // IDs

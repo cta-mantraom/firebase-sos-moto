@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
-import { MercadoPagoService } from "../lib/services/payment/mercadopago.service.js";
+import { MercadoPagoService, type CreatePaymentData } from "../lib/services/payment/mercadopago.service.js";
 import { getPaymentConfig, getAppConfig } from "../lib/config/index.js";
 import { logInfo, logError, logWarning } from "../lib/utils/logger.js";
 import { generateCorrelationId } from "../lib/utils/ids.js";
@@ -137,19 +137,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pendingProfile = pendingProfileDoc.data()!;
 
     // Build payment data for MercadoPago SDK CreatePaymentData schema
-    const paymentData: any = {
+    // Using CreatePaymentData type from MercadoPagoService
+    const paymentData: CreatePaymentData = {
       token: data.token, // Card token from Payment Brick (not needed for PIX)
-      issuer_id: data.issuer_id ? (typeof data.issuer_id === 'string' ? parseInt(data.issuer_id, 10) : data.issuer_id) : undefined,
+      issuer_id: data.payment_method_id === 'pix' ? undefined : 
+        (data.issuer_id ? (typeof data.issuer_id === 'string' ? parseInt(data.issuer_id, 10) : data.issuer_id) : undefined),
       payment_method_id: data.payment_method_id,
       transaction_amount: data.transaction_amount,
       installments: data.installments || 1,
       description: `Memoryys - Perfil de Emergência ${pendingProfile.planType}`,
       payer: {
         email: data.payer.email,
-        identification: data.payer.identification || {
-          type: "CPF",
-          number: "00000000000", // Will be overridden by Payment Brick
-        },
+        identification: data.payer.identification?.type && data.payer.identification?.number
+          ? data.payer.identification
+          : {
+              type: "CPF",
+              number: "00000000000", // Will be overridden by Payment Brick
+            },
       },
       external_reference: data.paymentId,
       statement_descriptor: "MEMORYYS",
@@ -167,8 +171,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       capture: true, // Capture payment immediately
       // three_d_secure_mode removido - causava UNAUTHORIZED
       additional_info: {
-        // CRITICAL: Device ID must go here for 85%+ approval
-        device_session_id: data.deviceId,
         items: [{
           id: `memoryys-${pendingProfile.planType}`,
           title: `Perfil de Emergência ${pendingProfile.planType}`,
@@ -181,9 +183,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           first_name: pendingProfile.name?.split(' ')[0] || "",
           last_name: pendingProfile.surname || pendingProfile.name?.split(' ').slice(1).join(' ') || "",
         },
-        // Add IP address if available for fraud prevention
-        ip_address: req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || undefined,
+        ip_address: (req.headers['x-forwarded-for'] || req.headers['x-real-ip']) as string | undefined,
       },
+      // Pass device ID separately for the service to handle as header
+      deviceId: data.deviceId,
     };
 
     // Log Device ID status for debugging
@@ -201,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Process payment using MercadoPago SDK - Device ID already in additional_info
+    // Process payment using MercadoPago SDK - Device ID will be sent as header
     const paymentResponse = await mercadoPagoService.createPayment(paymentData);
 
     logInfo("Payment processed by MercadoPago", {
@@ -327,7 +330,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Check if it's a MercadoPago API error
-    const apiError = error as any;
+    interface MercadoPagoAPIError {
+      response?: {
+        data?: {
+          message?: string;
+          error?: string;
+        };
+        status?: number;
+      };
+    }
+    
+    const apiError = error as MercadoPagoAPIError;
     if (apiError.response?.data) {
       const errorMessage = apiError.response.data.message || apiError.response.data.error;
       const statusCode = apiError.response.status;

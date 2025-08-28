@@ -26,39 +26,6 @@
       ]
     },
 
-    "mercadopago": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.mercadopago.com/mcp",
-        "--header",
-        "Authorization:${MERCADOPAGO_AUTH_HEADER}"
-      ],
-      "transport": {
-        "type": "stdio"
-      },
-      "env": {
-        "MERCADOPAGO_AUTH_HEADER": "Bearer APP_USR-5108188262341537-081023-e21756c4420f9faff3fe4500635efb24-2208672851"
-      },
-      "description": "MercadoPago oficial MCP Server - Documentação e geração de código",
-      "capabilities": [
-        "search-documentation",
-        "generate-integration-code",
-        "test-cards-info",
-        "payment-methods-by-country",
-        "best-practices",
-        "payment-processing-examples",
-        "webhook-validation-examples"
-      ],
-      "usage_context": [
-        "payment-agent: Buscar documentação e gerar código de integração para Payment Brick e PIX",
-        "backend-agent: Consultar best practices, webhook validation e processamento de pagamentos",
-        "frontend-agent: Gerar código do Payment Brick e integração React",
-        "deploy-orchestrator: Validar configurações antes do deploy"
-      ]
-    },
-
     "shadcn": {
       "command": "npx",
       "args": ["shadcn-mcp-server"],
@@ -253,10 +220,22 @@
     "access_control": {
       "agent_permissions": {
         "frontend-agent": ["shadcn", "mercadopago"],
-        "backend-agent": ["vercel", "firebase", "upstash", "aws-ses", "mercadopago"],
+        "backend-agent": [
+          "vercel",
+          "firebase",
+          "upstash",
+          "aws-ses",
+          "mercadopago"
+        ],
         "payment-agent": ["mercadopago", "upstash", "firebase"],
         "medical-validator": ["firebase", "upstash"],
-        "deploy-orchestrator": ["vercel", "firebase", "upstash", "aws-ses", "mercadopago"]
+        "deploy-orchestrator": [
+          "vercel",
+          "firebase",
+          "upstash",
+          "aws-ses",
+          "mercadopago"
+        ]
       }
     },
 

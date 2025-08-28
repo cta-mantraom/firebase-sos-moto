@@ -32,13 +32,18 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [processingStarted, setProcessingStarted] = useState(false);
-  
+
   // Generate IDs once on mount
-  const [paymentId] = useState(() => `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`);
-  const [uniqueUrl] = useState(() => `profile_${Date.now()}_${Math.random().toString(36).substring(7)}`);
-  
+  const [paymentId] = useState(
+    () => `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`
+  );
+  const [uniqueUrl] = useState(
+    () => `profile_${Date.now()}_${Math.random().toString(36).substring(7)}`
+  );
+
   // Hook de polling para verificar status do pagamento
-  const { status, polling, progress, message, startPolling } = usePaymentPolling();
+  const { status, polling, progress, message, startPolling } =
+    usePaymentPolling();
 
   const createPendingProfile = React.useCallback(async () => {
     try {
@@ -47,22 +52,25 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
       // CRITICAL: Device ID is MANDATORY for 85%+ approval rate
       // Without Device ID, payment approval drops to ~40%
       if (!window.MP_DEVICE_SESSION_ID) {
-        console.error("❌ CRITICAL: Device ID not available - Payment will likely fail");
+        console.error(
+          "❌ CRITICAL: Device ID not available - Payment will likely fail"
+        );
         toast({
           title: "Aguarde o carregamento completo",
-          description: "Sistema de segurança está carregando. Por favor aguarde...",
+          description:
+            "Sistema de segurança está carregando. Por favor aguarde...",
           variant: "default",
         });
         // Wait more for device ID - it's critical!
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        
+
         // Check again after waiting
         if (!window.MP_DEVICE_SESSION_ID) {
           console.error("❌ Device ID still not available after waiting");
           throw new Error("Device ID não carregado. Recarregue a página.");
         }
       }
-      
+
       const currentDeviceId = window.MP_DEVICE_SESSION_ID;
       console.log("✅ Device ID collected successfully:", currentDeviceId);
 
@@ -94,38 +102,45 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || `HTTP ${response.status}: Failed to create pending profile`);
+        throw new Error(
+          error.message ||
+            `HTTP ${response.status}: Failed to create pending profile`
+        );
       }
 
       const data = await response.json();
       console.log("✅ Pending profile created:", data);
-      
+
       // Salvar dados no cache local ANTES do pagamento
       const formDataForCache = {
-        name: userData.name || '',
+        name: userData.name || "",
         surname: undefined, // UserProfile não tem surname
-        email: userData.email || '',
-        phone: userData.phone || '',
+        email: userData.email || "",
+        phone: userData.phone || "",
         birthDate: undefined, // UserProfile não tem birthDate
         age: userData.age,
-        bloodType: userData.bloodType || '',
+        bloodType: userData.bloodType || "",
         allergies: userData.allergies || [],
         medications: userData.medications || [],
         medicalConditions: userData.medicalConditions || [],
         healthPlan: userData.healthPlan,
         preferredHospital: userData.preferredHospital,
         medicalNotes: userData.medicalNotes,
-        emergencyContacts: userData.emergencyContacts?.map(contact => ({
-          name: contact.name || '',
-          phone: contact.phone || '',
-          relationship: contact.relationship || 'Não especificado'
-        })) || [],
+        emergencyContacts:
+          userData.emergencyContacts?.map((contact) => ({
+            name: contact.name || "",
+            phone: contact.phone || "",
+            relationship: contact.relationship || "Não especificado",
+          })) || [],
         selectedPlan: planType,
-        deviceId: currentDeviceId
+        deviceId: currentDeviceId,
       };
-      
-      const cacheSuccess = PaymentCache.saveFormData(formDataForCache, currentDeviceId);
-      
+
+      const cacheSuccess = PaymentCache.saveFormData(
+        formDataForCache,
+        currentDeviceId
+      );
+
       if (cacheSuccess) {
         console.log("[MercadoPago] Form data cached successfully");
       }
@@ -151,18 +166,18 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 
     // CRÍTICO: Device ID é OBRIGATÓRIO para taxa de aprovação 85%+
     // Sem Device ID: ~40% aprovação | Com Device ID: 85%+ aprovação
-    const script = document.createElement('script');
-    script.src = 'https://www.mercadopago.com/v2/security.js';
-    script.setAttribute('view', 'checkout');
-    script.setAttribute('output', window.location.hostname);
+    const script = document.createElement("script");
+    script.src = "https://www.mercadopago.com/v2/security.js";
+    script.setAttribute("view", "checkout");
+    script.setAttribute("output", window.location.hostname);
     document.head.appendChild(script);
-    
+
     console.log("🔒 Loading MercadoPago security script for Device ID...");
 
     // Wait for Device ID to be loaded (CRITICAL for fraud prevention)
     let attempts = 0;
     const maxAttempts = 100; // 10 segundos no total
-    
+
     const checkDeviceId = () => {
       if (window.MP_DEVICE_SESSION_ID) {
         const deviceIdValue = window.MP_DEVICE_SESSION_ID;
@@ -181,7 +196,8 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
         console.error("⚠️ Expected approval rate: ~40% without Device ID");
         toast({
           title: "Aviso Importante",
-          description: "Sistema de segurança não carregou completamente. O pagamento pode falhar.",
+          description:
+            "Sistema de segurança não carregou completamente. O pagamento pode falhar.",
           variant: "destructive",
         });
         // DO NOT proceed without Device ID for production
@@ -197,7 +213,7 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
 
     // Start checking for Device ID after a small delay to ensure script loads
     setTimeout(checkDeviceId, 500);
-    
+
     // Cleanup
     return () => {
       if (script.parentNode) {
@@ -257,22 +273,26 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           console.log("🔄 Payment submitted - Processing payment directly");
           console.log("Payment form data:", paymentFormData);
           console.log("Device ID:", window.MP_DEVICE_SESSION_ID);
-          
+
           // Prevent multiple submissions
           if (processingStarted) {
-            console.log("⚠️ Payment already processing, ignoring duplicate submission");
+            console.log(
+              "⚠️ Payment already processing, ignoring duplicate submission"
+            );
             return;
           }
           setProcessingStarted(true);
-          
+
           // CRITICAL: Ensure Device ID is included for 85%+ approval rate
           if (!window.MP_DEVICE_SESSION_ID) {
-            console.error("❌ Payment submitted without Device ID - High rejection risk!");
+            console.error(
+              "❌ Payment submitted without Device ID - High rejection risk!"
+            );
           }
-          
+
           // Extract the actual payment data from the formData wrapper
           const actualPaymentData = paymentFormData.formData || paymentFormData;
-          
+
           // Define proper type for payment data from Payment Brick
           interface PaymentBrickData {
             token?: string;
@@ -289,43 +309,48 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
               };
             };
           }
-          
+
           // Build correct payment structure for process-payment endpoint
           // Type guard to safely access payment data fields
           const paymentDataWithFields = actualPaymentData as PaymentBrickData;
-          
+
           const paymentRequest = {
             // IDs
             paymentId: paymentId,
             uniqueUrl: uniqueUrl,
             deviceId: window.MP_DEVICE_SESSION_ID || deviceId,
-            
+
             // Payment method data
             token: paymentDataWithFields.token,
-            issuer_id: paymentDataWithFields.issuer_id || paymentDataWithFields.issuerId,
-            payment_method_id: paymentDataWithFields.payment_method_id || paymentDataWithFields.paymentMethodId,
+            issuer_id:
+              paymentDataWithFields.issuer_id || paymentDataWithFields.issuerId,
+            payment_method_id:
+              paymentDataWithFields.payment_method_id ||
+              paymentDataWithFields.paymentMethodId,
             transaction_amount: planType === "premium" ? 85.0 : 5.0,
             installments: paymentDataWithFields.installments || 1,
-            
+
             // Payer data
             payer: {
               email: paymentDataWithFields.payer?.email || userData.email,
               identification: paymentDataWithFields.payer?.identification || {
                 type: "CPF",
-                number: paymentDataWithFields.payer?.identification?.number || "00000000000"
-              }
+                number:
+                  paymentDataWithFields.payer?.identification?.number ||
+                  "00000000000",
+              },
             },
-            
+
             // Additional metadata
             metadata: {
               plan_type: planType,
               blood_type: userData.bloodType,
               device_id: window.MP_DEVICE_SESSION_ID || deviceId,
-            }
+            },
           };
-          
+
           console.log("💳 Sending payment request:", paymentRequest);
-          
+
           try {
             // Update cache before processing
             PaymentCache.addPaymentInfo(
@@ -334,132 +359,138 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
               paymentId,
               undefined
             );
-            
+
             console.log("📤 Sending payment to process-payment endpoint...");
-            
+
             // Call process-payment endpoint with correct structure
-            const processResponse = await fetch('/api/process-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+            const processResponse = await fetch("/api/process-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify(paymentRequest),
             });
-            
+
             const processData = await processResponse.json();
             console.log("📥 Process payment response:", processData);
-              
-              // Handle PIX QR Code response
-              if (processData.status === 'pending_pix' && processData.pixData) {
-                console.log("📱 PIX QR Code received from process-payment");
-                setPixData(processData.pixData);
-                
-                // Continue polling for PIX payment confirmation
-                startPolling(paymentId, {
-                  interval: 3000,
-                  maxAttempts: 60, // 3 minutes for PIX
-                  onSuccess: (data) => {
-                    console.log("✅ PIX Payment approved:", data);
-                    PaymentCache.clear();
-                    if (uniqueUrl) {
-                      onSuccess(paymentDataWithFields, uniqueUrl);
-                    }
-                  },
-                  onError: (error) => {
-                    console.error("❌ PIX Payment failed:", error);
-                    PaymentCache.clear();
-                    toast({
-                      title: "Pagamento PIX não confirmado",
-                      description: error.message || "Tente novamente",
-                      variant: "destructive",
-                    });
-                    onError(error);
-                  },
-                  onTimeout: () => {
-                    console.error("⏱️ PIX Payment timeout");
-                    PaymentCache.clear();
-                    toast({
-                      title: "PIX expirado",
-                      description: "O QR Code expirou. Tente novamente.",
-                      variant: "destructive",
-                    });
-                    onError(new Error("PIX expirado"));
-                  }
-                });
-                return; // Exit here for PIX flow
-              }
-              
-              // Handle immediate approval
-              if (processData.status === 'approved') {
-                console.log("✅ Payment approved immediately!");
-                PaymentCache.clear();
-                if (uniqueUrl) {
-                  onSuccess(paymentDataWithFields, uniqueUrl);
-                }
-                return;
-              }
-              
-              // Handle immediate rejection
-              if (processData.status === 'rejected' || processData.status === 'error' || !processData.success) {
-                console.error("❌ Payment rejected:", processData.message);
-                PaymentCache.clear();
-                setProcessingStarted(false); // Allow retry
-                toast({
-                  title: "Pagamento não aprovado",
-                  description: processData.message || "Verifique os dados do cartão",
-                  variant: "destructive",
-                });
-                onError(new Error(processData.message || "Pagamento recusado"));
-                return;
-              }
-              
-              // For pending/in_process, start polling
-              console.log("⏳ Payment pending, starting polling...");
+
+            // Handle PIX QR Code response
+            if (processData.status === "pending_pix" && processData.pixData) {
+              console.log("📱 PIX QR Code received from process-payment");
+              setPixData(processData.pixData);
+
+              // Continue polling for PIX payment confirmation
               startPolling(paymentId, {
                 interval: 3000,
-                maxAttempts: 40,
+                maxAttempts: 60, // 3 minutes for PIX
                 onSuccess: (data) => {
-                  console.log("✅ Payment approved by polling:", data);
+                  console.log("✅ PIX Payment approved:", data);
                   PaymentCache.clear();
                   if (uniqueUrl) {
                     onSuccess(paymentDataWithFields, uniqueUrl);
                   }
                 },
                 onError: (error) => {
-                  console.error("❌ Payment failed:", error);
+                  console.error("❌ PIX Payment failed:", error);
                   PaymentCache.clear();
                   toast({
-                    title: "Pagamento não aprovado",
-                    description: error.message || "Verifique os dados e tente novamente",
+                    title: "Pagamento PIX não confirmado",
+                    description: error.message || "Tente novamente",
                     variant: "destructive",
                   });
                   onError(error);
                 },
                 onTimeout: () => {
-                  console.error("⏱️ Payment timeout");
+                  console.error("⏱️ PIX Payment timeout");
                   PaymentCache.clear();
                   toast({
-                    title: "Tempo limite excedido",
-                    description: "O pagamento está demorando mais que o esperado.",
+                    title: "PIX expirado",
+                    description: "O QR Code expirou. Tente novamente.",
                     variant: "destructive",
                   });
-                  onError(new Error("Tempo limite excedido"));
+                  onError(new Error("PIX expirado"));
                 },
-                onPixQRCode: (pixQRData) => {
-                  console.log("📱 Unexpected PIX QR Code in polling:", pixQRData);
-                  setPixData(pixQRData);
-                }
               });
-              
-            } catch (error) {
-              console.error("❌ Error processing payment:", error);
+              return; // Exit here for PIX flow
+            }
+
+            // Handle immediate approval
+            if (processData.status === "approved") {
+              console.log("✅ Payment approved immediately!");
+              PaymentCache.clear();
+              if (uniqueUrl) {
+                onSuccess(paymentDataWithFields, uniqueUrl);
+              }
+              return;
+            }
+
+            // Handle immediate rejection
+            if (
+              processData.status === "rejected" ||
+              processData.status === "error" ||
+              !processData.success
+            ) {
+              console.error("❌ Payment rejected:", processData.message);
               PaymentCache.clear();
               setProcessingStarted(false); // Allow retry
               toast({
-                title: "Erro ao processar pagamento",
-                description: "Ocorreu um erro inesperado. Tente novamente.",
+                title: "Pagamento não aprovado",
+                description:
+                  processData.message || "Verifique os dados do cartão",
                 variant: "destructive",
               });
-              onError(error as Error);
+              onError(new Error(processData.message || "Pagamento recusado"));
+              return;
             }
+
+            // For pending/in_process, start polling
+            console.log("⏳ Payment pending, starting polling...");
+            startPolling(paymentId, {
+              interval: 3000,
+              maxAttempts: 40,
+              onSuccess: (data) => {
+                console.log("✅ Payment approved by polling:", data);
+                PaymentCache.clear();
+                if (uniqueUrl) {
+                  onSuccess(paymentDataWithFields, uniqueUrl);
+                }
+              },
+              onError: (error) => {
+                console.error("❌ Payment failed:", error);
+                PaymentCache.clear();
+                toast({
+                  title: "Pagamento não aprovado",
+                  description:
+                    error.message || "Verifique os dados e tente novamente",
+                  variant: "destructive",
+                });
+                onError(error);
+              },
+              onTimeout: () => {
+                console.error("⏱️ Payment timeout");
+                PaymentCache.clear();
+                toast({
+                  title: "Tempo limite excedido",
+                  description:
+                    "O pagamento está demorando mais que o esperado.",
+                  variant: "destructive",
+                });
+                onError(new Error("Tempo limite excedido"));
+              },
+              onPixQRCode: (pixQRData) => {
+                console.log("📱 Unexpected PIX QR Code in polling:", pixQRData);
+                setPixData(pixQRData);
+              },
+            });
+          } catch (error) {
+            console.error("❌ Error processing payment:", error);
+            PaymentCache.clear();
+            setProcessingStarted(false); // Allow retry
+            toast({
+              title: "Erro ao processar pagamento",
+              description: "Ocorreu um erro inesperado. Tente novamente.",
+              variant: "destructive",
+            });
+            onError(error as Error);
+          }
         }}
         onError={(error) => {
           console.error("Payment error:", error);
@@ -471,10 +502,10 @@ export const MercadoPagoCheckout: React.FC<MercadoPagoCheckoutProps> = ({
           onError(new Error("Payment failed"));
         }}
       />
-      
+
       {/* Componente de status de pagamento - mostrar durante polling */}
       {polling && (
-        <PaymentStatus 
+        <PaymentStatus
           status={status}
           message={message}
           progress={progress}

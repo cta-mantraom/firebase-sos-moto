@@ -113,7 +113,8 @@ const CreatePaymentSchema = z.object({
     }),
   }),
   additional_info: z.object({
-    // Device ID is sent as header X-meli-session-id, not in body
+    // Device ID can be sent in additional_info for fraud prevention
+    device_session_id: z.string().optional(),
     // IP address for fraud prevention
     ip_address: z.string().optional(),
     items: z.array(z.object({
